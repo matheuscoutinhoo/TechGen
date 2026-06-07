@@ -1,0 +1,13 @@
+.container {
+   max-width: var(--container-base);
+   margin: 0 auto;
+   padding: var(--space-8) var(--space-6);
+}
+
+.narrow {
+   max-width: var(--container-narrow);
+}
+
+.wide {
+   max-width: var(--container-wide);
+}

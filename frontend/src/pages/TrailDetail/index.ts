@@ -1,0 +1,1 @@
+export { TrailDetailPage } from './TrailDetailPage';
