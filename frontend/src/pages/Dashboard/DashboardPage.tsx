@@ -64,7 +64,14 @@ export function DashboardPage() {
                   <li key={trail.id}>
                      <Link to={`/trails/${trail.id}`} className={styles.trailLink}>
                         <article className={styles.trailCard}>
-                           <span className={styles.topic}>{trail.topic}</span>
+                           <div className={styles.cardHeader}>
+                              <span className={styles.topic}>{trail.topic}</span>
+                              {trail.completed_at && (
+                                 <span className={styles.completedBadge}>
+                                    concluída
+                                 </span>
+                              )}
+                           </div>
                            <h2 className={styles.title}>{trail.title}</h2>
                            <p className={styles.summary}>{trail.summary}</p>
                            <span className={styles.meta}>

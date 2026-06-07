@@ -6,6 +6,23 @@ export interface User {
    updated_at: string;
 }
 
+export type ProficiencyLevel = 1 | 2 | 3 | 4;
+export type ProficiencyLabel = 'novice' | 'beginner' | 'intermediate' | 'advanced';
+
+export interface Skill {
+   id: number;
+   name: string;
+   proficiency: ProficiencyLevel;
+   proficiency_label: ProficiencyLabel;
+   created_at: string;
+   updated_at: string;
+}
+
+export interface SkillInput {
+   name: string;
+   proficiency: ProficiencyLevel;
+}
+
 export interface AuthResponse {
    access_token: string;
    token_type: string;
@@ -20,6 +37,7 @@ export interface Ticket {
    code: string;
    title: string;
    objective: string;
+   personalization_notes?: string | null;
    concepts: string[];
    tasks: TicketTask[];
    acceptance_criteria: string[];
@@ -41,6 +59,7 @@ export interface LearningTrail {
    title: string;
    summary: string;
    content: TrailContent;
+   completed_at: string | null;
    created_at: string;
    updated_at: string;
 }
@@ -50,8 +69,32 @@ export interface LearningTrailSummary {
    topic: string;
    title: string;
    summary: string;
+   completed_at: string | null;
    created_at: string;
    updated_at: string;
+}
+
+export interface ConceptExample {
+   title: string;
+   description: string;
+   code?: string | null;
+}
+
+export interface ConceptExplanation {
+   concept: string;
+   definition: string;
+   why_it_matters: string;
+   patterns: string[];
+   pitfalls: string[];
+   tips: string[];
+   examples: ConceptExample[];
+   further_reading: string[];
+}
+
+export interface CompleteTrailResponse {
+   trail: LearningTrail;
+   added_concepts: string[];
+   upgraded_concepts: string[];
 }
 
 export interface ApiErrorPayload {

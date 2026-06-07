@@ -17,6 +17,7 @@ class Ticket(BaseModel):
     code: str = Field(min_length=1, max_length=20, description="Ex.: TG-1, TG-2")
     title: str = Field(min_length=3, max_length=200)
     objective: str = Field(min_length=10, max_length=2000)
+    personalization_notes: str | None = Field(default=None, max_length=2000)
     concepts: list[str] = Field(default_factory=list)
     tasks: list[TicketTask] = Field(default_factory=list)
     acceptance_criteria: list[str] = Field(default_factory=list)
@@ -53,6 +54,7 @@ class LearningTrailRead(BaseModel):
     title: str
     summary: str
     content: TrailContent
+    completed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -65,5 +67,32 @@ class LearningTrailListItem(BaseModel):
     topic: str
     title: str
     summary: str
+    completed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class ConceptExample(BaseModel):
+    """Exemplo de uso pertencente a uma explicação de conceito."""
+    title: str = Field(min_length=2, max_length=120)
+    description: str = Field(min_length=10, max_length=2000)
+    code: str | None = Field(default=None, max_length=4000)
+
+
+class ConceptExplanation(BaseModel):
+    """Explicação pedagógica aprofundada de um conceito de um ticket."""
+    concept: str = Field(min_length=1, max_length=200)
+    definition: str = Field(min_length=20, max_length=4000)
+    why_it_matters: str = Field(min_length=10, max_length=2000)
+    patterns: list[str] = Field(default_factory=list, max_length=10)
+    pitfalls: list[str] = Field(default_factory=list, max_length=10)
+    tips: list[str] = Field(default_factory=list, max_length=10)
+    examples: list[ConceptExample] = Field(default_factory=list, max_length=5)
+    further_reading: list[str] = Field(default_factory=list, max_length=10)
+
+
+class CompleteTrailResponse(BaseModel):
+    """Resultado de concluir uma trilha: trilha atualizada + skills afetadas."""
+    trail: LearningTrailRead
+    added_concepts: list[str] = Field(default_factory=list)
+    upgraded_concepts: list[str] = Field(default_factory=list)

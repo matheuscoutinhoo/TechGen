@@ -121,3 +121,79 @@ class TestDeleteTrail:
             f"/api/v1/learning-trails/{created['id']}", headers=auth_headers
         )
         assert get_after.status_code == 404
+
+
+@pytest.mark.integration
+class TestCompleteTrail:
+    def test_complete_marks_trail_and_promotes_concepts_to_skills(
+        self, client, auth_headers
+    ):
+        created = client.post(
+            "/api/v1/learning-trails",
+            headers=auth_headers,
+            json={"topic": "Elixir"},
+        ).json()
+        response = client.post(
+            f"/api/v1/learning-trails/{created['id']}/complete",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["trail"]["completed_at"] is not None
+        assert body["added_concepts"]
+
+        skills = client.get("/api/v1/skills", headers=auth_headers).json()
+        skill_names = {s["name"] for s in skills}
+        for concept in body["added_concepts"]:
+            assert concept in skill_names
+
+    def test_second_complete_returns_conflict(self, client, auth_headers):
+        created = client.post(
+            "/api/v1/learning-trails",
+            headers=auth_headers,
+            json={"topic": "Crystal"},
+        ).json()
+        client.post(
+            f"/api/v1/learning-trails/{created['id']}/complete",
+            headers=auth_headers,
+        )
+        response = client.post(
+            f"/api/v1/learning-trails/{created['id']}/complete",
+            headers=auth_headers,
+        )
+        assert response.status_code == 409
+
+
+@pytest.mark.integration
+class TestExplainConcept:
+    def test_returns_explanation_for_real_concept(self, client, auth_headers):
+        created = client.post(
+            "/api/v1/learning-trails",
+            headers=auth_headers,
+            json={"topic": "Haskell"},
+        ).json()
+        ticket = created["content"]["tickets"][0]
+        concept = ticket["concepts"][0]
+        response = client.get(
+            f"/api/v1/learning-trails/{created['id']}"
+            f"/tickets/{ticket['code']}/concepts/{concept}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["concept"] == concept
+        assert body["definition"]
+        assert body["examples"]
+
+    def test_returns_404_for_unknown_ticket(self, client, auth_headers):
+        created = client.post(
+            "/api/v1/learning-trails",
+            headers=auth_headers,
+            json={"topic": "Haskell"},
+        ).json()
+        response = client.get(
+            f"/api/v1/learning-trails/{created['id']}"
+            "/tickets/TG-999/concepts/foo",
+            headers=auth_headers,
+        )
+        assert response.status_code == 404

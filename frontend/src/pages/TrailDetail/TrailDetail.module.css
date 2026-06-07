@@ -27,3 +27,52 @@
    font-weight: 600;
    margin-bottom: var(--space-3);
 }
+
+.completedBadge {
+   display: flex;
+   align-items: center;
+   gap: var(--space-3);
+   margin-top: var(--space-5);
+   padding: var(--space-4) var(--space-5);
+   border-radius: var(--radius-md);
+   background-color: #f0fdf4;
+   border: 1px solid #bbf7d0;
+   color: var(--color-success);
+   font-size: var(--font-size-sm);
+}
+
+.completedBadge strong {
+   font-weight: 700;
+}
+
+.completedBadge span {
+   color: var(--color-text);
+}
+
+.progress {
+   margin-top: var(--space-5);
+   padding: var(--space-5) var(--space-6);
+   border: 1px solid var(--color-primary);
+   border-radius: var(--radius-md);
+   background-color: var(--color-primary-soft);
+}
+
+.progress strong {
+   display: block;
+   font-size: var(--font-size-sm);
+   text-transform: uppercase;
+   letter-spacing: 0.06em;
+   color: var(--color-primary-strong);
+   margin-bottom: var(--space-2);
+}
+
+.progress p {
+   margin: var(--space-1) 0;
+   font-size: var(--font-size-sm);
+}
+
+.progress em {
+   font-style: normal;
+   font-weight: 600;
+   color: var(--color-primary-strong);
+}

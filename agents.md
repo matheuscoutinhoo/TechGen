@@ -560,10 +560,16 @@ Checklist antes de migrar:
   - `ABACUS_API_URL` (padrão `https://routellm.abacus.ai`)
   - `ABACUS_API_KEY` (header `Authorization: Bearer <key>`)
   - `ABACUS_MODEL` (ex.: `gpt-5`, `claude-sonnet-4`, etc.)
-  - `ABACUS_TIMEOUT_SECONDS` (padrão 60)
-- Prompts ficam em `app/services/ai/prompts.py` — versionados, revisados via PR.
-- Resposta esperada: `choices[0].message.content` contendo o JSON da trilha; é validado e parseado antes de virar `LearningTrail`.
-- Erros do provider viram `AIProviderError` com mensagem amigável.
+  - `ABACUS_TIMEOUT_SECONDS` (padrão 180; modelos top-tier exigem +60s)
+- A interface `AIProvider` expõe dois métodos obrigatórios:
+  - `generate_learning_trail(topic, *, skills)` — gera a trilha personalizada pelas skills do aluno.
+  - `explain_concept(concept, *, context, skills)` — gera uma explicação aprofundada de um conceito específico, calibrada pelo nível do aluno.
+- Prompts ficam em `app/services/ai/prompts.py` — versionados, revisados via PR. Princípios não-negociáveis:
+  - **Sem conteúdo genérico.** O modelo é instruído a sempre escolher um cenário concreto.
+  - **Personalização explícita por skill.** Cada ticket precisa expor `personalization_notes` referenciando o nível atual do aluno.
+  - **Concepts curtos e citáveis**, porque eles viram skills do aluno na conclusão.
+- Resposta esperada: `choices[0].message.content` contendo o JSON; é validado contra `TrailContent`/`ConceptExplanation` antes de virar domínio.
+- Erros do provider viram `AIProviderError` com mensagem amigável; timeout cita o valor configurado e a env var a ajustar.
 - Streaming não é usado (sempre `"stream": false`).
 - Em ambiente de teste, usar `FakeAIProvider` determinístico — a API real **nunca** é chamada nos testes.
 
@@ -596,16 +602,98 @@ Checklist antes de migrar:
 A experiência de gerar uma trilha deve transmitir intenção pedagógica clara:
 
 1. **Coleta de tema**: campo amplo, exemplos sugeridos, dica visível sobre o que torna um tema bom.
-2. **Loading explícito**: durante a geração (que pode levar segundos), mostrar mensagem como _"O mentor está desenhando o projeto e os tickets..."_, com indicador de progresso.
+2. **Loading explícito**: durante a geração (que pode levar dezenas de segundos), mostrar mensagem como _"O mentor está desenhando o projeto e os tickets..."_, com indicador de progresso.
 3. **Resultado estruturado**:
    - Título do projeto proposto.
    - Resumo do projeto e por que ele é realista.
    - Lista ordenada de tickets, cada um expansível.
-   - Cada ticket mostra: título, objetivo, conceitos abordados, tarefas, critérios de aceite.
-4. **Tom**: didático e exigente. Sem infantilizar. Sem encher de emoji.
-5. **Edição**: usuário pode editar título, descrição e tickets manualmente.
-6. **Regeneração**: pode pedir nova versão, mantendo histórico.
-7. **Leitura confortável**: largura controlada, contraste alto, espaçamento generoso.
+   - Cada ticket mostra: título, objetivo, **nota de personalização**, conceitos abordados (clicáveis), tarefas e critérios de aceite.
+4. **Conceitos aprofundáveis**: cada chip de conceito abre um modal com definição, padrões, armadilhas, dicas, exemplo de código e leituras complementares — também gerados por IA e calibrados pelo nível do aluno.
+5. **Conclusão + progressão**: ao concluir uma trilha, os conceitos cobertos viram skills (ou são elevados) automaticamente, e a UI mostra o que foi adicionado/elevado.
+6. **Tom**: didático e exigente. Sem infantilizar. Sem encher de emoji.
+7. **Edição**: usuário pode editar título, descrição e tickets manualmente.
+8. **Regeneração**: pode pedir nova versão; isso zera `completed_at` para reforçar que é uma nova jornada.
+9. **Leitura confortável**: largura controlada, contraste alto, espaçamento generoso.
+
+---
+
+## 37. Skills, Personalização e Progressão
+
+Skills são entidades de primeira classe — armazenam o que o aluno declara
+conhecer (e em que profundidade) e alimentam a personalização da IA.
+
+### Modelo
+- Tabela `skills`: `id`, `user_id`, `name` (lowercase, único por usuário),
+  `proficiency` (1-4), `created_at`, `updated_at`.
+- Níveis: `1=novice`, `2=beginner`, `3=intermediate`, `4=advanced`.
+- Constantes `PROFICIENCY_LEVELS`/`PROFICIENCY_LABELS` em
+  `app/models/skill.py` são a única fonte de verdade dos níveis.
+
+### Coleta
+- Skills podem ser declaradas no **cadastro** (`UserCreate.skills`) ou
+  gerenciadas a qualquer momento via `/api/v1/skills` (CRUD completo).
+- `SkillService.add_for_user` normaliza para lowercase e rejeita duplicatas
+  por usuário (`ConflictError`).
+
+### Personalização da IA
+- `LearningTrailService` converte `user.skills` em `UserSkillInput` e passa
+  ao provider, que injeta no prompt junto com o tema.
+- Prompts orientam o modelo a:
+  - **assumir fluência** em skills `intermediate`/`advanced`;
+  - **revisar rápido** o que está em `beginner`;
+  - **explicar do zero** o que está em `novice` ou ausente;
+  - escrever `personalization_notes` por ticket conectando o conteúdo ao
+    nível atual do aluno.
+
+### Progressão automática
+- Endpoint `POST /api/v1/learning-trails/{id}/complete`:
+  - marca `completed_at` na trilha;
+  - para cada conceito de cada ticket, garante uma skill no perfil;
+  - se a skill não existia, cria em nível `beginner` (2);
+  - se existia em nível abaixo de `beginner`, eleva para `beginner`.
+- Resposta inclui `added_concepts` e `upgraded_concepts` para feedback ao
+  usuário.
+- Concluir a mesma trilha duas vezes retorna `409 CONFLICT` — a regeneração
+  zera `completed_at` se o aluno quiser refazer o ciclo.
+
+### UX no frontend
+- `SkillEditor` é o único componente que entende skills no frontend.
+  Funciona em dois modos: estado local (cadastro) e remoto via callbacks
+  (página de conta).
+- `useSkills` encapsula `GET /skills` com `data/isLoading/error/refetch`.
+- Sempre exibir o rótulo curto (`novice`/`beginner`/`intermediate`/`advanced`)
+  além do número.
+
+---
+
+## 38. Explicação Aprofundada de Conceitos
+
+Todo conceito listado em um ticket é clicável e abre uma explicação
+gerada por IA.
+
+### Schema
+- `ConceptExplanation` em `app/schemas/learning_trail.py` carrega:
+  `concept`, `definition`, `why_it_matters`, `patterns`, `pitfalls`, `tips`,
+  `examples` (com `code` opcional) e `further_reading`. Limites de tamanho
+  estão no schema para impedir respostas absurdas.
+
+### Endpoint
+- `GET /api/v1/learning-trails/{id}/tickets/{code}/concepts/{concept}`.
+- Verifica autorização sobre a trilha, valida que o ticket existe e que o
+  conceito pertence a ele antes de chamar a IA.
+- Erros de domínio (`NotFoundError`, `ForbiddenError`) seguem o handler
+  global.
+
+### Prompt
+- `CONCEPT_SYSTEM_PROMPT` + `build_concept_prompt` em `prompts.py`.
+- Recebe `ConceptContext` (projeto, ticket, objetivo) e as skills do aluno
+  para calibrar o nível da explicação.
+- Saída JSON pura, validada antes de chegar ao frontend.
+
+### UX
+- `ConceptModal` mostra spinner enquanto carrega, renderiza definição,
+  padrões, armadilhas, dicas, exemplos (com bloco de código quando houver) e
+  leituras complementares. Fecha por botão, clique no backdrop ou `Escape`.
 
 ---
 
@@ -618,4 +706,4 @@ A experiência de gerar uma trilha deve transmitir intenção pedagógica clara:
 
 ---
 
-_Última atualização: v0.1.0_
+_Última atualização: v0.2.0_

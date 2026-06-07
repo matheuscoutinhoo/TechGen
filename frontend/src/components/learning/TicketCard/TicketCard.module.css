@@ -114,6 +114,38 @@
    font-size: var(--font-size-xs);
 }
 
+.chipInteractive {
+   border: 1px solid transparent;
+   cursor: pointer;
+   transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.chipInteractive:hover {
+   background-color: var(--color-primary-soft);
+   color: var(--color-primary-strong);
+   border-color: var(--color-primary);
+}
+
+.chipHint {
+   margin-top: var(--space-2);
+   font-size: var(--font-size-xs);
+   color: var(--color-text-subtle);
+}
+
+.personalization {
+   padding: var(--space-4);
+   border-left: 3px solid var(--color-primary);
+   background-color: var(--color-primary-soft);
+   border-radius: var(--radius-md);
+   color: var(--color-text);
+}
+
+.personalization p {
+   line-height: var(--line-height-loose);
+   color: var(--color-text);
+   margin-top: var(--space-2);
+}
+
 .effort {
    font-size: var(--font-size-xs);
    color: var(--color-text-subtle);

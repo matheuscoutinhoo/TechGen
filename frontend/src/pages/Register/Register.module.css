@@ -1,0 +1,74 @@
+.shell {
+   max-width: 560px;
+   margin: 0 auto;
+   padding: var(--space-9) var(--space-4);
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-6);
+}
+
+.shell h1 {
+   font-size: var(--font-size-2xl);
+}
+
+.subtitle {
+   color: var(--color-text-muted);
+}
+
+.form {
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-5);
+   padding: var(--space-7);
+   border: 1px solid var(--color-border);
+   border-radius: var(--radius-lg);
+   background-color: var(--color-bg);
+}
+
+.fieldGrid {
+   display: grid;
+   grid-template-columns: 1fr 1fr;
+   gap: var(--space-4);
+}
+
+@media (max-width: 640px) {
+   .fieldGrid {
+      grid-template-columns: 1fr;
+   }
+}
+
+.section {
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-3);
+   padding-top: var(--space-4);
+   border-top: 1px solid var(--color-border);
+}
+
+.sectionTitle {
+   font-size: var(--font-size-base);
+   font-weight: 600;
+}
+
+.sectionHint {
+   font-size: var(--font-size-sm);
+   color: var(--color-text-muted);
+}
+
+.error {
+   background-color: var(--color-danger-soft);
+   color: var(--color-danger);
+   padding: var(--space-3) var(--space-4);
+   border-radius: var(--radius-md);
+   font-size: var(--font-size-sm);
+}
+
+.helper {
+   font-size: var(--font-size-sm);
+   color: var(--color-text-muted);
+   text-align: center;
+}
+
+.helper a {
+   font-weight: 600;
+}

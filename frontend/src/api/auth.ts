@@ -1,10 +1,11 @@
 import { apiClient } from './client';
-import type { AuthResponse } from '../types/api';
+import type { AuthResponse, SkillInput } from '../types/api';
 
 export interface RegisterPayload {
    name: string;
    email: string;
    password: string;
+   skills?: SkillInput[];
 }
 
 export interface LoginPayload {

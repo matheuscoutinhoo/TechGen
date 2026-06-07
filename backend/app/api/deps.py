@@ -6,11 +6,13 @@ from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.user import User
 from app.repositories.learning_trail_repository import LearningTrailRepository
+from app.repositories.skill_repository import SkillRepository
 from app.repositories.user_repository import UserRepository
 from app.services.ai.base import AIProvider
 from app.services.ai.factory import get_ai_provider
 from app.services.auth_service import AuthService
 from app.services.learning_trail_service import LearningTrailService
+from app.services.skill_service import SkillService
 from app.services.user_service import UserService
 
 
@@ -19,15 +21,28 @@ def get_user_repository(db: Session = Depends(get_db)) -> UserRepository:
     return UserRepository(db)
 
 
-def get_learning_trail_repository(db: Session = Depends(get_db)) -> LearningTrailRepository:
+def get_learning_trail_repository(
+    db: Session = Depends(get_db),
+) -> LearningTrailRepository:
     return LearningTrailRepository(db)
 
 
+def get_skill_repository(db: Session = Depends(get_db)) -> SkillRepository:
+    return SkillRepository(db)
+
+
 # -------- Services --------
+def get_skill_service(
+    repo: SkillRepository = Depends(get_skill_repository),
+) -> SkillService:
+    return SkillService(repo)
+
+
 def get_auth_service(
     repo: UserRepository = Depends(get_user_repository),
+    skill_service: SkillService = Depends(get_skill_service),
 ) -> AuthService:
-    return AuthService(repo)
+    return AuthService(repo, skill_service=skill_service)
 
 
 def get_user_service(
@@ -43,8 +58,11 @@ def get_ai_provider_dep() -> AIProvider:
 def get_learning_trail_service(
     repo: LearningTrailRepository = Depends(get_learning_trail_repository),
     ai: AIProvider = Depends(get_ai_provider_dep),
+    skill_service: SkillService = Depends(get_skill_service),
 ) -> LearningTrailService:
-    return LearningTrailService(repository=repo, ai_provider=ai)
+    return LearningTrailService(
+        repository=repo, ai_provider=ai, skill_service=skill_service
+    )
 
 
 # -------- Autenticação --------

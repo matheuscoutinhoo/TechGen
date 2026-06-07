@@ -1,5 +1,11 @@
 import { apiClient } from './client';
-import type { LearningTrail, LearningTrailSummary, TrailContent } from '../types/api';
+import type {
+   CompleteTrailResponse,
+   ConceptExplanation,
+   LearningTrail,
+   LearningTrailSummary,
+   TrailContent,
+} from '../types/api';
 
 export interface CreateTrailPayload {
    topic: string;
@@ -21,4 +27,12 @@ export const learningTrailsApi = {
    regenerate: (id: number) =>
       apiClient.post<LearningTrail>(`/learning-trails/${id}/regenerate`),
    delete: (id: number) => apiClient.del<void>(`/learning-trails/${id}`),
+   complete: (id: number) =>
+      apiClient.post<CompleteTrailResponse>(`/learning-trails/${id}/complete`),
+   explainConcept: (id: number, ticketCode: string, concept: string) =>
+      apiClient.get<ConceptExplanation>(
+         `/learning-trails/${id}/tickets/${encodeURIComponent(
+            ticketCode,
+         )}/concepts/${encodeURIComponent(concept)}`,
+      ),
 };

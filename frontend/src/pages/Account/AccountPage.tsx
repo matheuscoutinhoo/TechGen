@@ -2,16 +2,22 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { usersApi } from '../../api/users';
+import { skillsApi } from '../../api/skills';
 import { ApiError } from '../../api/client';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { PageTitle } from '../../components/ui/PageTitle';
 import { ErrorState } from '../../components/ui/ErrorState';
+import { Spinner } from '../../components/ui/Spinner';
+import { SkillEditor, type SkillEditorEntry } from '../../components/learning/SkillEditor';
+import { useSkills } from '../../hooks/useSkills';
+import type { ProficiencyLevel, SkillInput } from '../../types/api';
 import styles from './Account.module.css';
 
 export function AccountPage() {
    const { user, applyUser, logout } = useAuth();
    const navigate = useNavigate();
+   const { skills, isLoading: skillsLoading, error: skillsError, refetch: refetchSkills } = useSkills();
 
    const [name, setName] = useState('');
    const [email, setEmail] = useState('');
@@ -25,6 +31,9 @@ export function AccountPage() {
    const [passwordError, setPasswordError] = useState<string | null>(null);
    const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
    const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+
+   const [skillsBusy, setSkillsBusy] = useState(false);
+   const [skillsActionError, setSkillsActionError] = useState<string | null>(null);
 
    const [deleteError, setDeleteError] = useState<string | null>(null);
    const [deleting, setDeleting] = useState(false);
@@ -90,6 +99,53 @@ export function AccountPage() {
       }
    };
 
+   const handleAddSkill = async (payload: SkillInput) => {
+      setSkillsActionError(null);
+      setSkillsBusy(true);
+      try {
+         await skillsApi.add(payload);
+         await refetchSkills();
+      } catch (err) {
+         setSkillsActionError(
+            err instanceof ApiError ? err.message : 'Não foi possível adicionar a skill.',
+         );
+      } finally {
+         setSkillsBusy(false);
+      }
+   };
+
+   const handleChangeProficiency = async (skill: SkillEditorEntry, next: ProficiencyLevel) => {
+      if (!skill.id) return;
+      setSkillsActionError(null);
+      setSkillsBusy(true);
+      try {
+         await skillsApi.updateProficiency(skill.id, next);
+         await refetchSkills();
+      } catch (err) {
+         setSkillsActionError(
+            err instanceof ApiError ? err.message : 'Não foi possível atualizar a skill.',
+         );
+      } finally {
+         setSkillsBusy(false);
+      }
+   };
+
+   const handleRemoveSkill = async (skill: SkillEditorEntry) => {
+      if (!skill.id) return;
+      setSkillsActionError(null);
+      setSkillsBusy(true);
+      try {
+         await skillsApi.delete(skill.id);
+         await refetchSkills();
+      } catch (err) {
+         setSkillsActionError(
+            err instanceof ApiError ? err.message : 'Não foi possível remover a skill.',
+         );
+      } finally {
+         setSkillsBusy(false);
+      }
+   };
+
    const handleDelete = async () => {
       const confirmed = window.confirm(
          'Excluir sua conta apaga todas as suas trilhas. Esta ação é definitiva. Deseja continuar?',
@@ -114,7 +170,7 @@ export function AccountPage() {
          <PageTitle
             eyebrow="Minha conta"
             title="Gerenciar conta"
-            description="Atualize seus dados, mude a senha ou exclua sua conta."
+            description="Atualize seus dados, suas skills, sua senha ou exclua sua conta."
          />
 
          <div className={styles.sections}>
@@ -142,6 +198,31 @@ export function AccountPage() {
                   </Button>
                </div>
             </form>
+
+            <section className={styles.section}>
+               <h2>Skills</h2>
+               <p className="lead">
+                  Suas skills nivelam o conteúdo gerado pela IA: tópicos que você
+                  domina recebem desafios profundos, tópicos desconhecidos são
+                  ensinados do zero. Concluir trilhas também adiciona conceitos aqui
+                  automaticamente.
+               </p>
+               {skillsError && (
+                  <ErrorState description={skillsError.message} />
+               )}
+               {skillsLoading ? (
+                  <Spinner label="Carregando suas skills..." />
+               ) : (
+                  <SkillEditor
+                     skills={skills}
+                     onAdd={handleAddSkill}
+                     onChangeProficiency={handleChangeProficiency}
+                     onRemove={handleRemoveSkill}
+                     isBusy={skillsBusy}
+                     error={skillsActionError}
+                  />
+               )}
+            </section>
 
             <form className={styles.section} onSubmit={handlePasswordSubmit} noValidate>
                <h2>Senha</h2>

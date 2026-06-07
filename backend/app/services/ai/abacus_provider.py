@@ -10,19 +10,30 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Any
+from typing import Any, Sequence
 
 import httpx
 from pydantic import ValidationError
 
 from app.exceptions import AIProviderError
-from app.schemas.learning_trail import TrailContent
-from app.services.ai.base import AIProvider
-from app.services.ai.prompts import SYSTEM_PROMPT, build_user_prompt
+from app.schemas.learning_trail import ConceptExplanation, TrailContent
+from app.services.ai.base import AIProvider, ConceptContext, UserSkillInput
+from app.services.ai.prompts import (
+    CONCEPT_SYSTEM_PROMPT,
+    SYSTEM_PROMPT,
+    build_concept_prompt,
+    build_user_prompt,
+)
 
 logger = logging.getLogger(__name__)
 
 _JSON_BLOCK_RE = re.compile(r"\{.*\}", re.DOTALL)
+
+
+def _serialize_skills(
+    skills: Sequence[UserSkillInput],
+) -> list[tuple[str, int, str]]:
+    return [(skill.name, skill.level, skill.label) for skill in skills]
 
 
 class AbacusAIProvider(AIProvider):
@@ -52,32 +63,88 @@ class AbacusAIProvider(AIProvider):
         self.timeout_seconds = timeout_seconds
         self._client = http_client
 
-    def generate_learning_trail(self, topic: str) -> TrailContent:
-        payload = self._build_payload(topic)
+    def generate_learning_trail(
+        self,
+        topic: str,
+        *,
+        skills: Sequence[UserSkillInput] = (),
+    ) -> TrailContent:
+        payload = self._build_trail_payload(topic, skills)
         raw = self._call_api(payload)
         text = self._extract_text(raw)
         data = self._parse_json(text)
         try:
             return TrailContent.model_validate(data)
         except ValidationError as exc:
-            logger.warning("Resposta da Abacus não casou com o schema: %s", exc)
+            logger.warning("Resposta da Abacus não casou com o schema de trilha: %s", exc)
             raise AIProviderError(
                 "A IA retornou uma trilha em formato inesperado. Tente novamente."
             ) from exc
 
+    def explain_concept(
+        self,
+        concept: str,
+        *,
+        context: ConceptContext,
+        skills: Sequence[UserSkillInput] = (),
+    ) -> ConceptExplanation:
+        payload = self._build_concept_payload(concept, context, skills)
+        raw = self._call_api(payload)
+        text = self._extract_text(raw)
+        data = self._parse_json(text)
+        try:
+            return ConceptExplanation.model_validate(data)
+        except ValidationError as exc:
+            logger.warning("Resposta da Abacus não casou com o schema de conceito: %s", exc)
+            raise AIProviderError(
+                "A IA retornou a explicação em formato inesperado. Tente novamente."
+            ) from exc
+
     # ------------------------------------------------------------------ #
-    # Helpers
+    # Payload builders
     # ------------------------------------------------------------------ #
-    def _build_payload(self, topic: str) -> dict[str, Any]:
+    def _build_trail_payload(
+        self, topic: str, skills: Sequence[UserSkillInput]
+    ) -> dict[str, Any]:
         return {
             "model": self.model,
             "stream": False,
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": build_user_prompt(topic)},
+                {
+                    "role": "user",
+                    "content": build_user_prompt(topic, _serialize_skills(skills)),
+                },
             ],
         }
 
+    def _build_concept_payload(
+        self,
+        concept: str,
+        context: ConceptContext,
+        skills: Sequence[UserSkillInput],
+    ) -> dict[str, Any]:
+        return {
+            "model": self.model,
+            "stream": False,
+            "messages": [
+                {"role": "system", "content": CONCEPT_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": build_concept_prompt(
+                        concept=concept,
+                        project_title=context.project_title,
+                        ticket_title=context.ticket_title,
+                        ticket_objective=context.ticket_objective,
+                        skills=_serialize_skills(skills),
+                    ),
+                },
+            ],
+        }
+
+    # ------------------------------------------------------------------ #
+    # HTTP helpers
+    # ------------------------------------------------------------------ #
     def _call_api(self, payload: dict[str, Any]) -> dict[str, Any]:
         url = f"{self.api_url}/v1/chat/completions"
         headers = {

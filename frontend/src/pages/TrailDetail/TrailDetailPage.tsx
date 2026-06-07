@@ -8,15 +8,27 @@ import { Spinner } from '../../components/ui/Spinner';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { TrailHeader } from '../../components/learning/TrailHeader';
 import { TicketCard } from '../../components/learning/TicketCard';
+import { ConceptModal } from '../../components/learning/ConceptModal';
+import { formatDate } from '../../utils/format';
+import type { CompleteTrailResponse } from '../../types/api';
 import styles from './TrailDetail.module.css';
+
+type Action = 'regenerate' | 'delete' | 'complete';
+
+interface OpenConcept {
+   ticketCode: string;
+   concept: string;
+}
 
 export function TrailDetailPage() {
    const { id } = useParams<{ id: string }>();
    const trailId = id ? Number(id) : null;
    const navigate = useNavigate();
    const { trail, isLoading, error, refetch, setTrail } = useLearningTrail(trailId);
-   const [actionInFlight, setActionInFlight] = useState<'regenerate' | 'delete' | null>(null);
+   const [actionInFlight, setActionInFlight] = useState<Action | null>(null);
    const [actionError, setActionError] = useState<string | null>(null);
+   const [completion, setCompletion] = useState<CompleteTrailResponse | null>(null);
+   const [openConcept, setOpenConcept] = useState<OpenConcept | null>(null);
 
    const handleRegenerate = async () => {
       if (!trailId) return;
@@ -29,6 +41,7 @@ export function TrailDetailPage() {
       try {
          const updated = await learningTrailsApi.regenerate(trailId);
          setTrail(updated);
+         setCompletion(null);
       } catch (err) {
          setActionError(
             err instanceof ApiError ? err.message : 'Não foi possível regenerar agora.',
@@ -55,6 +68,23 @@ export function TrailDetailPage() {
       }
    };
 
+   const handleComplete = async () => {
+      if (!trailId) return;
+      setActionInFlight('complete');
+      setActionError(null);
+      try {
+         const response = await learningTrailsApi.complete(trailId);
+         setTrail(response.trail);
+         setCompletion(response);
+      } catch (err) {
+         setActionError(
+            err instanceof ApiError ? err.message : 'Não foi possível concluir agora.',
+         );
+      } finally {
+         setActionInFlight(null);
+      }
+   };
+
    if (isLoading) {
       return <Spinner label="Carregando trilha..." />;
    }
@@ -71,15 +101,54 @@ export function TrailDetailPage() {
       );
    }
 
+   const isCompleted = Boolean(trail.completed_at);
+
    return (
       <>
          <TrailHeader trail={trail} />
+
+         {isCompleted && (
+            <div className={styles.completedBadge}>
+               <strong>Trilha concluída</strong>
+               <span>
+                  em {formatDate(trail.completed_at as string)} — os conceitos foram
+                  adicionados às suas skills.
+               </span>
+            </div>
+         )}
+
+         {completion && (completion.added_concepts.length > 0 || completion.upgraded_concepts.length > 0) && (
+            <div className={styles.progress}>
+               <strong>Progressão registrada</strong>
+               {completion.added_concepts.length > 0 && (
+                  <p>
+                     Novas skills:{' '}
+                     <em>{completion.added_concepts.join(', ')}</em>
+                  </p>
+               )}
+               {completion.upgraded_concepts.length > 0 && (
+                  <p>
+                     Skills elevadas:{' '}
+                     <em>{completion.upgraded_concepts.join(', ')}</em>
+                  </p>
+               )}
+            </div>
+         )}
 
          <div className={styles.toolbar} style={{ marginTop: 'var(--space-6)' }}>
             <span className={styles.sectionTitle}>
                {trail.content.tickets.length} tickets
             </span>
             <div className={styles.actions}>
+               {!isCompleted && (
+                  <Button
+                     variant="primary"
+                     onClick={() => void handleComplete()}
+                     isLoading={actionInFlight === 'complete'}
+                  >
+                     Concluir trilha
+                  </Button>
+               )}
                <Link to={`/trails/${trail.id}/edit`}>
                   <Button variant="secondary">Editar</Button>
                </Link>
@@ -100,15 +169,29 @@ export function TrailDetailPage() {
             </div>
          </div>
 
-         {actionError && (
-            <ErrorState description={actionError} />
-         )}
+         {actionError && <ErrorState description={actionError} />}
 
          <section className={styles.tickets} aria-label="Lista de tickets da trilha">
             {trail.content.tickets.map((ticket, index) => (
-               <TicketCard key={ticket.code} ticket={ticket} defaultOpen={index === 0} />
+               <TicketCard
+                  key={ticket.code}
+                  ticket={ticket}
+                  defaultOpen={index === 0}
+                  onConceptClick={(concept) =>
+                     setOpenConcept({ ticketCode: ticket.code, concept })
+                  }
+               />
             ))}
          </section>
+
+         {openConcept && trailId !== null && (
+            <ConceptModal
+               trailId={trailId}
+               ticketCode={openConcept.ticketCode}
+               concept={openConcept.concept}
+               onClose={() => setOpenConcept(null)}
+            />
+         )}
       </>
    );
 }

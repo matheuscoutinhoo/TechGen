@@ -9,13 +9,13 @@ export function HomePage() {
          <section className={styles.hero}>
             <span className={styles.eyebrow}>Aprenda construindo</span>
             <h1 className={styles.title}>
-               Trilhas de tecnologia geradas como projetos reais de mercado.
+               Trilhas de tecnologia <em>personalizadas</em> como projetos reais de mercado.
             </h1>
             <p className={styles.lead}>
-               Diga o tema que você quer aprender. A IA do TechGen — atuando como um
-               Staff Software Engineer mentor — desenha um projeto e o quebra em
-               tickets estilo Jira, com escopo claro, fundamentos profundos e
-               progressão pedagógica.
+               Diga o tema que você quer aprender e declare suas skills atuais. A IA
+               do TechGen — atuando como um Staff Software Engineer mentor — desenha
+               um projeto e o quebra em tickets estilo Jira, calibrados ao seu nível
+               e com fundamentos profundos.
             </p>
             <div className={styles.actions}>
                <Link to="/register">
@@ -29,31 +29,32 @@ export function HomePage() {
 
          <section className={styles.pillars} aria-label="Pilares pedagógicos">
             <Card className={styles.pillar}>
-               <h3>Projeto realista</h3>
+               <h3>Personalizada por skills</h3>
                <p>
-                  Você não estuda fragmentos isolados — constrói um sistema com nível
-                  de mercado, com decisões de arquitetura e trade-offs reais.
+                  Você lista as tecnologias e conceitos que já domina. A IA assume
+                  fluência onde você é forte e ensina do zero o que falta.
                </p>
             </Card>
             <Card className={styles.pillar}>
                <h3>Tickets progressivos</h3>
                <p>
                   Cada etapa entrega um incremento utilizável, com conceitos novos
-                  apresentados <em>antes</em> da implementação.
+                  apresentados <em>antes</em> da implementação — e cada conceito tem
+                  uma explicação aprofundada a um clique.
                </p>
             </Card>
             <Card className={styles.pillar}>
-               <h3>TDD do início ao fim</h3>
+               <h3>Progressão automática</h3>
                <p>
-                  Os tickets reforçam testes automatizados, código limpo e revisão
-                  crítica — como em um time de produto sério.
+                  Concluiu a trilha? Os conceitos cobertos viram skills no seu perfil.
+                  A próxima trilha já parte de um nivelamento mais alto.
                </p>
             </Card>
          </section>
 
          <pre className={styles.codeBlock} aria-label="Exemplo de ticket gerado">
             {`# TG-3 — Primeiro caso de uso com TDD
-- Objetivo: implementar o caso de uso central com Red → Green → Refactor.
+- Calibrado para você: assume base em Python, ensina TDD do zero.
 - Conceitos: TDD, Arrange-Act-Assert, refatoração segura.
 - Critérios de aceite:
   * Teste unitário verde para o caso feliz

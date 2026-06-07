@@ -5,9 +5,11 @@ import styles from './TicketCard.module.css';
 export interface TicketCardProps {
    ticket: Ticket;
    defaultOpen?: boolean;
+   /** Quando fornecido, cada conceito vira um botão clicável. */
+   onConceptClick?(concept: string): void;
 }
 
-export function TicketCard({ ticket, defaultOpen = false }: TicketCardProps) {
+export function TicketCard({ ticket, defaultOpen = false, onConceptClick }: TicketCardProps) {
    const [isOpen, setOpen] = useState(defaultOpen);
    const bodyId = `ticket-${ticket.code}-body`;
 
@@ -32,16 +34,40 @@ export function TicketCard({ ticket, defaultOpen = false }: TicketCardProps) {
 
          {isOpen && (
             <div id={bodyId} className={styles.body}>
+               {ticket.personalization_notes && (
+                  <section className={styles.personalization}>
+                     <h3 className={styles.sectionTitle}>Calibrado para você</h3>
+                     <p>{ticket.personalization_notes}</p>
+                  </section>
+               )}
+
                {ticket.concepts.length > 0 && (
                   <section>
                      <h3 className={styles.sectionTitle}>Conceitos abordados</h3>
                      <div className={styles.chips}>
-                        {ticket.concepts.map((concept) => (
-                           <span key={concept} className={styles.chip}>
-                              {concept}
-                           </span>
-                        ))}
+                        {ticket.concepts.map((concept) =>
+                           onConceptClick ? (
+                              <button
+                                 key={concept}
+                                 type="button"
+                                 className={`${styles.chip} ${styles.chipInteractive}`}
+                                 onClick={() => onConceptClick(concept)}
+                                 aria-label={`Aprofundar conceito ${concept}`}
+                              >
+                                 {concept}
+                              </button>
+                           ) : (
+                              <span key={concept} className={styles.chip}>
+                                 {concept}
+                              </span>
+                           ),
+                        )}
                      </div>
+                     {onConceptClick && (
+                        <p className={styles.chipHint}>
+                           Clique em um conceito para ver a explicação aprofundada.
+                        </p>
+                     )}
                   </section>
                )}
 

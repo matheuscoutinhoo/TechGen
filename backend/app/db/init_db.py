@@ -8,6 +8,7 @@ from app.db.session import engine
 
 # importar modelos garante que estão registrados no metadata da Base
 from app.models import learning_trail as _learning_trail  # noqa: F401
+from app.models import skill as _skill  # noqa: F401
 from app.models import user as _user  # noqa: F401
 
 

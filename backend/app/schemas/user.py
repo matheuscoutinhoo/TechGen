@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from app.schemas.skill import SkillCreate
+
 
 class UserBase(BaseModel):
     name: str = Field(min_length=2, max_length=120)
@@ -11,6 +13,10 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(min_length=8, max_length=128)
+    # Skills opcionais informadas no momento do cadastro; o backend valida e
+    # persiste no mesmo fluxo de registro, garantindo personalização desde a
+    # primeira trilha.
+    skills: list[SkillCreate] = Field(default_factory=list, max_length=30)
 
 
 class UserUpdate(BaseModel):

@@ -23,6 +23,7 @@ def register(
         name=payload.name,
         email=payload.email,
         password=payload.password,
+        initial_skills=[(s.name, s.proficiency) for s in payload.skills],
     )
     return TokenResponse(
         access_token=AuthService.issue_token(user),

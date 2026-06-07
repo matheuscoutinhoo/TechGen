@@ -17,3 +17,7 @@ class User(Base, TimestampMixin):
         back_populates="owner",
         cascade="all, delete-orphan",
     )
+    skills: Mapped[list["Skill"]] = relationship(  # noqa: F821
+        back_populates="owner",
+        cascade="all, delete-orphan",
+    )

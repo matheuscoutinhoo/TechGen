@@ -148,3 +148,68 @@ class TestAbacusAIProvider:
         message = str(excinfo.value)
         assert "5s" in message
         assert "ABACUS_TIMEOUT_SECONDS" in message
+
+    @respx.mock
+    def test_skills_are_passed_in_the_user_prompt(self):
+        from app.services.ai.base import UserSkillInput
+
+        route = respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(200, json=_openai_response(json.dumps(VALID_TRAIL_JSON))),
+        )
+        _provider().generate_learning_trail(
+            "FastAPI",
+            skills=[UserSkillInput(name="JWT", level=3, label="intermediate")],
+        )
+        body = json.loads(route.calls.last.request.content)
+        user_content = body["messages"][1]["content"]
+        assert "JWT" in user_content
+        assert "intermediate" in user_content
+
+    @respx.mock
+    def test_explain_concept_returns_parsed_explanation(self):
+        from app.services.ai.base import ConceptContext
+
+        payload = {
+            "concept": "Repository",
+            "definition": "Definição com profundidade suficiente para passar.",
+            "why_it_matters": "Importa porque desacopla camadas.",
+            "patterns": ["P1", "P2"],
+            "pitfalls": ["X1", "X2"],
+            "tips": ["T1", "T2", "T3"],
+            "examples": [
+                {"title": "Ex1", "description": "Descrição razoável.", "code": "pass"}
+            ],
+            "further_reading": ["DDD"],
+        }
+        respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(200, json=_openai_response(json.dumps(payload))),
+        )
+        explanation = _provider().explain_concept(
+            "Repository",
+            context=ConceptContext(
+                project_title="X",
+                ticket_title="Persistência",
+                ticket_objective="Implementar repositório.",
+            ),
+        )
+        assert explanation.concept == "Repository"
+        assert explanation.examples[0].title == "Ex1"
+
+    @respx.mock
+    def test_explain_concept_raises_when_schema_mismatch(self):
+        from app.services.ai.base import ConceptContext
+
+        respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(
+                200, json=_openai_response(json.dumps({"oops": True}))
+            ),
+        )
+        with pytest.raises(AIProviderError):
+            _provider().explain_concept(
+                "Repository",
+                context=ConceptContext(
+                    project_title="X",
+                    ticket_title="Y",
+                    ticket_objective="Z",
+                ),
+            )

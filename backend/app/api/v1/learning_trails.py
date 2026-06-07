@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, Response, status
 from app.api.deps import get_current_user, get_learning_trail_service
 from app.models.user import User
 from app.schemas.learning_trail import (
+    CompleteTrailResponse,
+    ConceptExplanation,
     LearningTrailCreate,
     LearningTrailListItem,
     LearningTrailRead,
@@ -103,3 +105,38 @@ def delete_trail(
 ) -> Response:
     service.delete_for_user(current_user, trail_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{trail_id}/complete",
+    response_model=CompleteTrailResponse,
+    summary="Marca a trilha como concluída e atualiza as skills do usuário",
+)
+def complete_trail(
+    trail_id: int,
+    current_user: User = Depends(get_current_user),
+    service: LearningTrailService = Depends(get_learning_trail_service),
+) -> CompleteTrailResponse:
+    trail, added, upgraded = service.complete_for_user(current_user, trail_id)
+    return CompleteTrailResponse(
+        trail=service.to_read_model(trail),
+        added_concepts=added,
+        upgraded_concepts=upgraded,
+    )
+
+
+@router.get(
+    "/{trail_id}/tickets/{ticket_code}/concepts/{concept}",
+    response_model=ConceptExplanation,
+    summary="Explica em profundidade um conceito de um ticket via IA",
+)
+def explain_concept(
+    trail_id: int,
+    ticket_code: str,
+    concept: str,
+    current_user: User = Depends(get_current_user),
+    service: LearningTrailService = Depends(get_learning_trail_service),
+) -> ConceptExplanation:
+    return service.explain_concept_for_user(
+        current_user, trail_id, ticket_code, concept
+    )

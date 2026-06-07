@@ -23,6 +23,13 @@ const USER = {
    updated_at: '2025-01-02T00:00:00Z',
 };
 
+function defaultFetch(skills: unknown[] = []) {
+   return vi.fn().mockImplementation((url: string) => {
+      if (url.endsWith('/skills')) return Promise.resolve(jsonResponse(skills));
+      return Promise.resolve(jsonResponse(USER));
+   });
+}
+
 function renderAccount() {
    return render(
       <MemoryRouter initialEntries={['/account']}>
@@ -48,7 +55,7 @@ describe('<AccountPage />', () => {
    });
 
    it('preenche os campos com os dados do usuário', async () => {
-      globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse(USER)) as unknown as typeof fetch;
+      globalThis.fetch = defaultFetch() as unknown as typeof fetch;
 
       renderAccount();
       await waitFor(() => expect(screen.getByLabelText('Nome')).toHaveValue('Ada Lovelace'));
@@ -56,7 +63,8 @@ describe('<AccountPage />', () => {
    });
 
    it('atualiza o perfil e mostra feedback de sucesso', async () => {
-      globalThis.fetch = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+         if (url.endsWith('/skills')) return Promise.resolve(jsonResponse([]));
          if (init?.method === 'PATCH') {
             return Promise.resolve(jsonResponse({ ...USER, name: 'Ada Atualizada' }));
          }
@@ -78,9 +86,7 @@ describe('<AccountPage />', () => {
    });
 
    it('valida confirmação de senha antes de enviar', async () => {
-      const fetchSpy = vi
-         .fn()
-         .mockImplementation(() => Promise.resolve(jsonResponse(USER))) as unknown as typeof fetch;
+      const fetchSpy = defaultFetch() as unknown as typeof fetch;
       globalThis.fetch = fetchSpy;
 
       renderAccount();
@@ -97,7 +103,8 @@ describe('<AccountPage />', () => {
 
    it('exclui conta após confirmação e navega para a home', async () => {
       vi.spyOn(window, 'confirm').mockReturnValue(true);
-      globalThis.fetch = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+         if (url.endsWith('/skills')) return Promise.resolve(jsonResponse([]));
          if (init?.method === 'DELETE') {
             return Promise.resolve(new Response(null, { status: 204 }));
          }

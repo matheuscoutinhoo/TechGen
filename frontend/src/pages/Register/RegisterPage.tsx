@@ -4,7 +4,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ApiError } from '../../api/client';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import styles from '../Login/Login.module.css';
+import { SkillEditor, type SkillEditorEntry } from '../../components/learning/SkillEditor';
+import type { SkillInput } from '../../types/api';
+import styles from './Register.module.css';
 
 export function RegisterPage() {
    const { register } = useAuth();
@@ -13,8 +15,34 @@ export function RegisterPage() {
    const [email, setEmail] = useState('');
    const [password, setPassword] = useState('');
    const [confirmation, setConfirmation] = useState('');
+   const [skills, setSkills] = useState<SkillEditorEntry[]>([]);
    const [error, setError] = useState<string | null>(null);
    const [submitting, setSubmitting] = useState(false);
+
+   const handleAddSkill = (payload: SkillInput) => {
+      setSkills((current) => [...current, payload]);
+   };
+
+   const handleRemoveSkill = (skill: SkillEditorEntry) => {
+      setSkills((current) =>
+         current.filter(
+            (item) => item.name.toLowerCase() !== skill.name.toLowerCase(),
+         ),
+      );
+   };
+
+   const handleChangeSkill = (
+      skill: SkillEditorEntry,
+      next: SkillEditorEntry['proficiency'],
+   ) => {
+      setSkills((current) =>
+         current.map((item) =>
+            item.name.toLowerCase() === skill.name.toLowerCase()
+               ? { ...item, proficiency: next }
+               : item,
+         ),
+      );
+   };
 
    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -31,7 +59,15 @@ export function RegisterPage() {
 
       setSubmitting(true);
       try {
-         await register({ name, email, password });
+         await register({
+            name,
+            email,
+            password,
+            skills: skills.map(({ name: skillName, proficiency }) => ({
+               name: skillName,
+               proficiency,
+            })),
+         });
          navigate('/dashboard', { replace: true });
       } catch (err) {
          if (err instanceof ApiError) {
@@ -49,12 +85,14 @@ export function RegisterPage() {
          <header>
             <h1>Criar conta</h1>
             <p className={styles.subtitle}>
-               Comece a gerar trilhas pedagógicas em poucos segundos.
+               Em poucos segundos. Quanto mais skills você declarar, mais
+               personalizadas serão suas trilhas.
             </p>
          </header>
 
          <form className={styles.form} onSubmit={handleSubmit} noValidate>
             {error && <div className={styles.error}>{error}</div>}
+
             <Input
                label="Nome"
                value={name}
@@ -71,25 +109,44 @@ export function RegisterPage() {
                onChange={(event) => setEmail(event.target.value)}
                required
             />
-            <Input
-               label="Senha"
-               type="password"
-               autoComplete="new-password"
-               value={password}
-               onChange={(event) => setPassword(event.target.value)}
-               minLength={8}
-               required
-               hint="Mínimo de 8 caracteres."
-            />
-            <Input
-               label="Confirme a senha"
-               type="password"
-               autoComplete="new-password"
-               value={confirmation}
-               onChange={(event) => setConfirmation(event.target.value)}
-               minLength={8}
-               required
-            />
+
+            <div className={styles.fieldGrid}>
+               <Input
+                  label="Senha"
+                  type="password"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  minLength={8}
+                  required
+                  hint="Mínimo de 8 caracteres."
+               />
+               <Input
+                  label="Confirme a senha"
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmation}
+                  onChange={(event) => setConfirmation(event.target.value)}
+                  minLength={8}
+                  required
+               />
+            </div>
+
+            <section className={styles.section}>
+               <h2 className={styles.sectionTitle}>Suas skills (opcional)</h2>
+               <p className={styles.sectionHint}>
+                  Liste tecnologias e conceitos que você já conhece, com o seu nível.
+                  A IA usa essa informação para calibrar o nivelamento das trilhas.
+               </p>
+               <SkillEditor
+                  skills={skills}
+                  onAdd={handleAddSkill}
+                  onRemove={handleRemoveSkill}
+                  onChangeProficiency={handleChangeSkill}
+                  isBusy={submitting}
+               />
+            </section>
+
             <Button type="submit" variant="primary" block isLoading={submitting}>
                Criar conta
             </Button>

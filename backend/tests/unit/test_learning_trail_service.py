@@ -1,31 +1,39 @@
 """Testes unitários do LearningTrailService."""
 import pytest
 
-from app.exceptions import ForbiddenError, NotFoundError
+from app.exceptions import ConflictError, ForbiddenError, NotFoundError
 from app.repositories.learning_trail_repository import LearningTrailRepository
+from app.repositories.skill_repository import SkillRepository
 from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService
-from app.services.ai.fake_provider import FakeAIProvider
+from app.services.ai.fake_provider import FakeAIProvider  # noqa: F401
 from app.services.learning_trail_service import LearningTrailService
+from app.services.skill_service import SkillService
 
 
 @pytest.fixture
-def service(db_session, fake_ai_provider):
+def skill_service(db_session):
+    return SkillService(SkillRepository(db_session))
+
+
+@pytest.fixture
+def service(db_session, fake_ai_provider, skill_service):
     return LearningTrailService(
         repository=LearningTrailRepository(db_session),
         ai_provider=fake_ai_provider,
+        skill_service=skill_service,
     )
 
 
 @pytest.fixture
-def user_a(db_session):
-    auth = AuthService(UserRepository(db_session))
+def user_a(db_session, skill_service):
+    auth = AuthService(UserRepository(db_session), skill_service=skill_service)
     return auth.register(name="Ada", email="ada@example.com", password="secret12345")
 
 
 @pytest.fixture
-def user_b(db_session):
-    auth = AuthService(UserRepository(db_session))
+def user_b(db_session, skill_service):
+    auth = AuthService(UserRepository(db_session), skill_service=skill_service)
     return auth.register(name="Linus", email="linus@example.com", password="secret12345")
 
 
@@ -127,3 +135,66 @@ class TestDelete:
         trail = service.create_for_user(user_a, topic="Docker")
         with pytest.raises(ForbiddenError):
             service.delete_for_user(user_b, trail.id)
+
+
+@pytest.mark.unit
+class TestComplete:
+    def test_complete_marks_trail_and_adds_concepts_as_skills(
+        self, service, user_a, skill_service
+    ):
+        trail = service.create_for_user(user_a, topic="FastAPI")
+        # antes: usuário não tem skills
+        assert list(skill_service.list_for_user(user_a)) == []
+
+        completed, added, upgraded = service.complete_for_user(user_a, trail.id)
+
+        assert completed.completed_at is not None
+        assert added  # novos conceitos viraram skills
+        # cada skill criada existe no repositório
+        skills = {s.name for s in skill_service.list_for_user(user_a)}
+        assert all(name in skills for name in added)
+
+    def test_complete_upgrades_existing_skill_below_target(
+        self, service, user_a, skill_service
+    ):
+        # cria uma skill em nível novice; conclusão deve elevar para beginner (2)
+        skill_service.add_for_user(user_a, name="TDD", proficiency=1)
+
+        trail = service.create_for_user(user_a, topic="Ruby")
+        _, _, upgraded = service.complete_for_user(user_a, trail.id)
+
+        assert "tdd" in upgraded
+        skill = next(s for s in skill_service.list_for_user(user_a) if s.name == "tdd")
+        assert skill.proficiency == 2
+
+    def test_complete_twice_raises_conflict(self, service, user_a):
+        trail = service.create_for_user(user_a, topic="Crystal")
+        service.complete_for_user(user_a, trail.id)
+        with pytest.raises(ConflictError):
+            service.complete_for_user(user_a, trail.id)
+
+
+@pytest.mark.unit
+class TestExplainConcept:
+    def test_returns_explanation_for_valid_concept(self, service, user_a):
+        trail = service.create_for_user(user_a, topic="Haskell")
+        ticket = service.to_read_model(trail).content.tickets[0]
+        explanation = service.explain_concept_for_user(
+            user_a, trail.id, ticket.code, ticket.concepts[0]
+        )
+        assert explanation.concept == ticket.concepts[0]
+        assert explanation.definition
+        assert explanation.examples
+
+    def test_raises_when_ticket_does_not_exist(self, service, user_a):
+        trail = service.create_for_user(user_a, topic="Haskell")
+        with pytest.raises(NotFoundError):
+            service.explain_concept_for_user(user_a, trail.id, "TG-999", "qualquer")
+
+    def test_raises_when_concept_not_in_ticket(self, service, user_a):
+        trail = service.create_for_user(user_a, topic="Haskell")
+        ticket = service.to_read_model(trail).content.tickets[0]
+        with pytest.raises(NotFoundError):
+            service.explain_concept_for_user(
+                user_a, trail.id, ticket.code, "ConceitoFantasma"
+            )

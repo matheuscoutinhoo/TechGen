@@ -13,8 +13,8 @@ describe('<HomePage />', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/projetos reais/);
       expect(screen.getByRole('button', { name: 'Criar conta' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Já tenho conta' })).toBeInTheDocument();
-      expect(screen.getByRole('heading', { name: 'Projeto realista' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Personalizada por skills' })).toBeInTheDocument();
       expect(screen.getByRole('heading', { name: 'Tickets progressivos' })).toBeInTheDocument();
-      expect(screen.getByRole('heading', { name: 'TDD do início ao fim' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Progressão automática' })).toBeInTheDocument();
    });
 });
