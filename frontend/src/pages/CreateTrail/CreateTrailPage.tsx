@@ -106,7 +106,10 @@ export function CreateTrailPage() {
             </section>
 
             <aside className={styles.tips} aria-label="Dicas para um bom tema">
-               <h3>Como descrever um bom tema</h3>
+               <header className={styles.tipsHeader}>
+                  <span className={styles.tipsEyebrow}>Dicas</span>
+                  <h3>Como descrever um bom tema</h3>
+               </header>
                <ul>
                   <li>Inclua a tecnologia principal (ex.: <em>FastAPI</em>).</li>
                   <li>Mencione o tipo de projeto (API, CLI, app web, scraper...).</li>
