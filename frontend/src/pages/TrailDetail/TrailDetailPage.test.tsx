@@ -88,7 +88,7 @@ describe('<TrailDetailPage />', () => {
 
    it('botão Excluir confirma e navega para o dashboard', async () => {
       let deleted = false;
-      globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      globalThis.fetch = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
          if (init?.method === 'DELETE') {
             deleted = true;
             return Promise.resolve(new Response(null, { status: 204 }));
