@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from 'react';
+import { useId, useState, type KeyboardEvent } from 'react';
 import type { ProficiencyLabel, ProficiencyLevel, SkillInput } from '../../../types/api';
 import styles from './SkillEditor.module.css';
 
@@ -61,8 +61,10 @@ export function SkillEditor({
    const [proficiency, setProficiency] = useState<ProficiencyLevel>(2);
    const [localError, setLocalError] = useState<string | null>(null);
 
-   const handleAdd = async (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
+   // IMPORTANTE: este componente é usado dentro de outros <form>s (Register,
+   // Account). Por isso a área de adicionar é um <div>, não um <form> — forms
+   // aninhados são inválidos em HTML e fariam o botão acionar o form externo.
+   const handleAdd = async () => {
       setLocalError(null);
       const trimmed = name.trim();
       if (!trimmed) {
@@ -78,6 +80,13 @@ export function SkillEditor({
       setProficiency(2);
    };
 
+   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter') {
+         event.preventDefault();
+         void handleAdd();
+      }
+   };
+
    const handleProficiency = async (skill: SkillEditorEntry, raw: string) => {
       const next = Number(raw) as ProficiencyLevel;
       if (!LEVELS.includes(next)) return;
@@ -88,7 +97,7 @@ export function SkillEditor({
 
    return (
       <div className={styles.shell}>
-         <form className={styles.composer} onSubmit={handleAdd} noValidate aria-label="Adicionar skill">
+         <div className={styles.composer} role="group" aria-label="Adicionar skill">
             <label htmlFor={inputId} className="visually-hidden">
                Tecnologia ou conceito
             </label>
@@ -97,6 +106,7 @@ export function SkillEditor({
                className={styles.input}
                value={name}
                onChange={(event) => setName(event.target.value)}
+               onKeyDown={handleKeyDown}
                placeholder="ex.: Python, Docker, TDD"
                maxLength={120}
                disabled={isBusy}
@@ -123,14 +133,15 @@ export function SkillEditor({
                ))}
             </select>
             <button
-               type="submit"
+               type="button"
                className={styles.addBtn}
                disabled={isBusy}
+               onClick={() => void handleAdd()}
                aria-label="Adicionar skill"
             >
                Adicionar
             </button>
-         </form>
+         </div>
 
          {message ? (
             <span className={styles.error} role="alert">
