@@ -88,8 +88,8 @@ export function CreateTrailPage() {
                   </div>
 
                   <div>
-                     <Button type="submit" variant="primary" isLoading={isSubmitting}>
-                        Gerar trilha
+                     <Button type="submit" variant="primary" disabled={isSubmitting}>
+                        {isSubmitting ? 'Gerando...' : 'Gerar trilha'}
                      </Button>
                   </div>
                </form>
