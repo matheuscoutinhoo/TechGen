@@ -39,7 +39,14 @@ class AbacusAIProvider(AIProvider):
             raise AIProviderError(
                 "Provider Abacus mal configurado: api_key e model são obrigatórios"
             )
-        self.api_url = api_url.rstrip("/")
+        # Aceita URLs com sufixos comuns (ex.: .../v1, .../v1/chat/completions)
+        # e normaliza para a base esperada.
+        base = api_url.rstrip("/")
+        for suffix in ("/v1/chat/completions", "/v1"):
+            if base.endswith(suffix):
+                base = base[: -len(suffix)]
+                break
+        self.api_url = base
         self.api_key = api_key
         self.model = model
         self.timeout_seconds = timeout_seconds
@@ -88,10 +95,17 @@ class AbacusAIProvider(AIProvider):
             raise AIProviderError("Falha ao contatar a IA. Tente novamente em instantes.") from exc
 
         if response.status_code >= 400:
+            body_snippet = response.text[:500].strip()
             logger.error(
-                "Abacus retornou status %s: %s", response.status_code, response.text[:500]
+                "Abacus retornou status %s em %s: %s",
+                response.status_code,
+                response.request.url,
+                body_snippet,
             )
-            raise AIProviderError("A IA respondeu com erro. Tente novamente em instantes.")
+            raise AIProviderError(
+                f"A IA respondeu com erro (HTTP {response.status_code}). "
+                "Verifique credenciais, modelo e a URL configurados."
+            )
 
         try:
             return response.json()

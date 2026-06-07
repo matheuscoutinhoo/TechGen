@@ -113,3 +113,29 @@ class TestAbacusAIProvider:
             AbacusAIProvider(api_url=API_URL, api_key="", model="gpt-5")
         with pytest.raises(AIProviderError):
             AbacusAIProvider(api_url=API_URL, api_key="key", model="")
+
+    @pytest.mark.parametrize(
+        "configured_url",
+        [
+            API_URL,
+            f"{API_URL}/",
+            f"{API_URL}/v1",
+            f"{API_URL}/v1/",
+            f"{API_URL}/v1/chat/completions",
+        ],
+    )
+    def test_normalizes_api_url_suffixes(self, configured_url):
+        provider = AbacusAIProvider(
+            api_url=configured_url,
+            api_key="fake",
+            model="gpt-5",
+            timeout_seconds=5,
+        )
+        assert provider.api_url == API_URL
+
+    @respx.mock
+    def test_http_error_message_exposes_status_code(self):
+        respx.post(ENDPOINT).mock(return_value=httpx.Response(404, text="not found"))
+        with pytest.raises(AIProviderError) as excinfo:
+            _provider().generate_learning_trail("FastAPI")
+        assert "HTTP 404" in str(excinfo.value)
