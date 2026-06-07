@@ -1,9 +1,9 @@
 """Configurações globais carregadas a partir de variáveis de ambiente."""
 from functools import lru_cache
-from typing import List, Literal
+from typing import Annotated, List, Literal
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -27,8 +27,11 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 
-    # CORS
-    allowed_origins: List[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+    # CORS — ``NoDecode`` impede o pydantic-settings 2.10+ de tentar JSON-parse
+    # do valor cru; o validator abaixo cuida do split CSV.
+    allowed_origins: Annotated[List[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:5173"]
+    )
 
     # IA
     ai_provider: Literal["abacus", "fake"] = "fake"
