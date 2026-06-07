@@ -31,9 +31,17 @@ const EXPLANATION = {
          code: null,
       },
    ],
+   hands_on_steps: [
+      'Crie um arquivo `repo.py`',
+      'Defina a interface',
+      'Implemente o método mais simples',
+   ],
    tips: ['Comece simples', 'Refatore depois', 'Escreva teste antes'],
    pitfalls: ['Acoplar a HTTP', 'Esquecer testes'],
    further_reading: ['DDD', 'Hexagonal'],
+   glossary: [
+      { term: 'ORM', brief: 'Mapeamento objeto-relacional.' },
+   ],
 };
 
 function renderPage(initialPath = '/trails/1/tickets/TG-1/concepts/Repository') {
@@ -72,7 +80,7 @@ describe('<ConceptExplanationPage />', () => {
 
       // labels das seções na ordem
       const labels = screen.getAllByText(
-         /O que é|Por que isso importa|Como funciona|Exemplos|Como aplicar|O que evitar|Para ir além/,
+         /O que é|Por que isso importa|Como funciona|Exemplos|Passo a passo|Como aplicar|O que evitar|Para ir além/,
       );
       const labelTexts = labels.map((el) => el.textContent ?? '');
       const firstIdx = (text: string) => labelTexts.findIndex((t) => t.includes(text));
@@ -80,9 +88,23 @@ describe('<ConceptExplanationPage />', () => {
       expect(firstIdx('O que é')).toBeLessThan(firstIdx('Por que isso importa'));
       expect(firstIdx('Por que isso importa')).toBeLessThan(firstIdx('Como funciona'));
       expect(firstIdx('Como funciona')).toBeLessThan(firstIdx('Exemplos'));
-      expect(firstIdx('Exemplos')).toBeLessThan(firstIdx('Como aplicar'));
+      expect(firstIdx('Exemplos')).toBeLessThan(firstIdx('Passo a passo'));
+      expect(firstIdx('Passo a passo')).toBeLessThan(firstIdx('Como aplicar'));
       expect(firstIdx('Como aplicar')).toBeLessThan(firstIdx('O que evitar'));
       expect(firstIdx('O que evitar')).toBeLessThan(firstIdx('Para ir além'));
+   });
+
+   it('renderiza os passos numerados do hands_on_steps', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue(
+         jsonResponse(EXPLANATION),
+      ) as unknown as typeof fetch;
+      renderPage();
+      await waitFor(() =>
+         expect(screen.getByText(/Crie um arquivo/)).toBeInTheDocument(),
+      );
+      expect(screen.getByText('1')).toBeInTheDocument();
+      expect(screen.getByText('2')).toBeInTheDocument();
+      expect(screen.getByText('3')).toBeInTheDocument();
    });
 
    it('renderiza markdown leve nos campos', async () => {

@@ -80,15 +80,22 @@ export interface ConceptExample {
    code?: string | null;
 }
 
+export interface GlossaryEntry {
+   term: string;
+   brief: string;
+}
+
 export interface ConceptExplanation {
    concept: string;
    definition: string;
    why_it_matters: string;
    patterns: string[];
-   pitfalls: string[];
-   tips: string[];
    examples: ConceptExample[];
+   hands_on_steps: string[];
+   tips: string[];
+   pitfalls: string[];
    further_reading: string[];
+   glossary: GlossaryEntry[];
 }
 
 export interface CompleteTrailResponse {

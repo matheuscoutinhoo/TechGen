@@ -1,0 +1,95 @@
+.wrap {
+   position: relative;
+   display: inline;
+}
+
+.trigger {
+   appearance: none;
+   background: transparent;
+   border: 0;
+   padding: 0;
+   font: inherit;
+   color: var(--color-primary-strong);
+   font-weight: 600;
+   cursor: help;
+   /* sublinhado tracejado bem sutil para sinalizar que é interativo */
+   border-bottom: 1.5px dotted var(--color-primary);
+   line-height: inherit;
+   transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.trigger:hover,
+.trigger[aria-expanded='true'] {
+   color: var(--color-primary);
+   background-color: var(--color-primary-soft);
+   border-radius: 3px;
+}
+
+.popover {
+   position: absolute;
+   bottom: calc(100% + 0.5rem);
+   left: 50%;
+   transform: translateX(-50%);
+   min-width: 220px;
+   max-width: 320px;
+   padding: var(--space-3) var(--space-4);
+   background-color: #131c2b;
+   color: #f4f6f8;
+   border-radius: var(--radius-md);
+   box-shadow: var(--shadow-md);
+   font-size: var(--font-size-sm);
+   line-height: var(--line-height-base);
+   font-weight: 400;
+   text-align: left;
+   z-index: var(--z-modal);
+   animation: pop 140ms ease-out;
+}
+
+.popover::after {
+   content: '';
+   position: absolute;
+   top: 100%;
+   left: 50%;
+   transform: translateX(-50%);
+   border: 6px solid transparent;
+   border-top-color: #131c2b;
+}
+
+.popoverTerm {
+   display: block;
+   font-weight: 700;
+   color: #7ed4cc;
+   text-transform: lowercase;
+   letter-spacing: 0.02em;
+   margin-bottom: 0.25rem;
+   font-size: var(--font-size-xs);
+}
+
+.popoverBody {
+   color: #e2e8f0;
+}
+
+@keyframes pop {
+   from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(4px);
+   }
+   to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+   }
+}
+
+@media (max-width: 560px) {
+   .popover {
+      position: fixed;
+      bottom: var(--space-5);
+      left: var(--space-5);
+      right: var(--space-5);
+      transform: none;
+      max-width: none;
+   }
+   .popover::after {
+      display: none;
+   }
+}

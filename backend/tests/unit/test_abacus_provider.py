@@ -179,7 +179,9 @@ class TestAbacusAIProvider:
             "examples": [
                 {"title": "Ex1", "description": "Descrição razoável.", "code": "pass"}
             ],
+            "hands_on_steps": ["Passo 1", "Passo 2", "Passo 3"],
             "further_reading": ["DDD"],
+            "glossary": [{"term": "ORM", "brief": "Mapeamento objeto-relacional."}],
         }
         respx.post(ENDPOINT).mock(
             return_value=httpx.Response(200, json=_openai_response(json.dumps(payload))),

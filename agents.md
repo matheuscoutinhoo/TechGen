@@ -672,10 +672,12 @@ Todo conceito listado em um ticket é clicável e abre uma explicação
 gerada por IA.
 
 ### Schema
-- `ConceptExplanation` em `app/schemas/learning_trail.py` carrega:
-  `concept`, `definition`, `why_it_matters`, `patterns`, `pitfalls`, `tips`,
-  `examples` (com `code` opcional) e `further_reading`. Limites de tamanho
-  estão no schema para impedir respostas absurdas.
+- `ConceptExplanation` em `app/schemas/learning_trail.py` carrega, na ordem
+  pedagógica obrigatória: `concept`, `definition`, `why_it_matters`,
+  `patterns`, `examples` (com `code` opcional), `hands_on_steps` (passo a
+  passo executável), `tips`, `pitfalls`, `further_reading` e `glossary`
+  (lista de `{term, brief}` para tooltips em conceitos secundários).
+  Limites de tamanho estão no schema para impedir respostas absurdas.
 
 ### Endpoint
 - `GET /api/v1/learning-trails/{id}/tickets/{code}/concepts/{concept}`.
@@ -707,6 +709,12 @@ gerada por IA.
 - Exemplos **obrigatoriamente em domínio análogo**, nunca no domínio do
   projeto em que o conceito apareceu — força o aluno a fazer a transposição
   mental em vez de copiar/colar.
+- `hands_on_steps`: 3 a 7 passos curtos e executáveis na voz imperativa
+  ("Crie...", "Defina..."). Não usar a palavra "passo" no começo (UI
+  numera). Pode usar markdown inline.
+- `glossary`: 0 a 8 termos secundários citados nos textos com 1–2 frases
+  cada. NUNCA repetir o conceito principal. O frontend gera tooltip na
+  primeira ocorrência (case-insensitive, word boundary).
 - Pode usar markdown inline nos textos: `**negrito**`, `==marca-texto==`,
   `` `código inline` ``. Nada de cabeçalhos, listas ou blocos de código no
   texto livre — listas e código têm campos próprios no schema.
@@ -719,15 +727,23 @@ gerada por IA.
 - Chips de conceito do `TicketCard` são `<a target="_blank">` para
   **abrir em nova guia**.
 - Componente `RichText` renderiza o markdown leve com segurança (sem
-  `dangerouslySetInnerHTML`; XSS impossível por construção).
-- Ordem pedagógica das seções é fixa e obrigatória:
-  1. **O que é** (definição em palavras simples)
-  2. **Por que isso importa** (callout conectando ao projeto)
-  3. **Como funciona na prática** (padrões/variantes)
-  4. **Exemplos em outros contextos** (domínio análogo, com nota visual)
-  5. **Como aplicar bem** (dicas acionáveis com seta `→`)
-  6. **O que evitar** (armadilhas com `!` em fundo avermelhado)
-  7. **Para ir além** (termos para pesquisar a seguir)
+  `dangerouslySetInnerHTML`; XSS impossível por construção) e detecta
+  termos do `glossary` automaticamente, transformando a **primeira**
+  ocorrência (case-insensitive, word boundary) em `GlossaryTerm` clicável
+  com tooltip escuro.
+- Marca-texto (`==trecho==`) tem visual de **caneta verde irregular**:
+  cor primary do app, gradiente diagonal e bordas levemente desalinhadas
+  para parecer feito à mão.
+- Ordem pedagógica das seções é fixa e obrigatória, cada uma com label
+  pequeno + título grande + hint opcional:
+  1. **O que é** — definição em palavras simples (texto lead).
+  2. **Por que isso importa** — callout verde conectando ao projeto.
+  3. **Como funciona na prática** — padrões/variantes em lista.
+  4. **Exemplos em outros contextos** — domínio análogo, com nota.
+  5. **Passo a passo** — lista numerada executável para consolidar.
+  6. **Como aplicar bem** — dicas acionáveis com seta `→`.
+  7. **O que evitar** — armadilhas com `!` em fundo avermelhado.
+  8. **Para ir além** — termos em pills para pesquisar.
 - Botão discreto "Atualizar" no header dispara nova geração (cache bypass)
   para casos em que o usuário evoluiu de nível e quer recalibrar.
 

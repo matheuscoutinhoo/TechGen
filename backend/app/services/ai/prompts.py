@@ -181,17 +181,29 @@ mas o conteúdo deve respeitar o fluxo pedagógico:
       "code": "string opcional com snippet curto (max 25 linhas), de domínio análogo, na linguagem que melhor ilustra. Use null se um exemplo conceitual basta."
     }}
   ],
-  "tips": ["string - dicas práticas de como aplicar (orientadas a ação)."],
+  "hands_on_steps": ["string - passo a passo concreto e EXECUTÁVEL para criar/aplicar o conceito. Cada item é UM passo numerado em frase curta, na voz imperativa ('Crie...', 'Defina...', 'Teste...'). NÃO use a palavra 'passo' no começo (a UI já numera). Pode usar `código` inline para nomes de comandos/arquivos."],
+  "tips": ["string - dicas práticas de como aplicar bem (orientadas a ação)."],
   "pitfalls": ["string - armadilhas comuns e como evitar."],
-  "further_reading": ["string - termos para pesquisar a seguir, em ordem de profundidade crescente."]
+  "further_reading": ["string - termos para pesquisar a seguir, em ordem de profundidade crescente."],
+  "glossary": [
+    {{
+      "term": "string - termo SECUNDÁRIO mencionado nos textos acima que merece um tooltip rápido (ex.: 'router', 'middleware', 'JWT'). NUNCA inclua o próprio conceito principal aqui.",
+      "brief": "string - 1 a 2 frases explicando o termo de forma autossuficiente. Pode usar markdown inline."
+    }}
+  ]
 }}
 
 Regras inegociáveis:
 - Pelo menos 2 exemplos, e CADA UM em domínio diferente do projeto do aluno.
 - Entre 2 e 5 itens em `patterns`.
+- Entre 3 e 7 itens em `hands_on_steps` — passo a passo realmente executável.
 - Entre 3 e 6 itens em `tips`.
 - Entre 2 e 5 itens em `pitfalls`.
 - Entre 2 e 5 itens em `further_reading`.
+- Entre 0 e 8 itens em `glossary` — inclua APENAS termos secundários que o aluno
+  iniciante pode não conhecer e que aparecem nos textos. Não repita o conceito
+  principal. Se o texto não cita nenhum termo secundário relevante, devolva
+  uma lista vazia.
 - Markdown inline (`**`, `==`, `` ` ``) liberado nos textos; nunca em cabeçalho/listas.
 - Responda APENAS com JSON puro, sem markdown ao redor, sem ```.
 """

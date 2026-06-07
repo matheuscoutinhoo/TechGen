@@ -123,16 +123,22 @@ export function ConceptExplanationPage() {
 
          {/* 1. O que é */}
          <section className={styles.section}>
-            <span className={styles.sectionLabel}>O que é</span>
-            <RichText as="div" className={styles.lead}>
+            <header className={styles.sectionHead}>
+               <span className={styles.sectionLabel}>O que é</span>
+               <h2 className={styles.sectionTitle}>Em palavras simples</h2>
+            </header>
+            <RichText as="div" className={styles.lead} glossary={explanation.glossary}>
                {explanation.definition}
             </RichText>
          </section>
 
          {/* 2. Por que importa */}
          <section className={styles.section}>
-            <span className={styles.sectionLabel}>Por que isso importa</span>
-            <RichText as="div" className={styles.callout}>
+            <header className={styles.sectionHead}>
+               <span className={styles.sectionLabel}>Por que isso importa</span>
+               <h2 className={styles.sectionTitle}>Onde isso faz diferença</h2>
+            </header>
+            <RichText as="div" className={styles.callout} glossary={explanation.glossary}>
                {explanation.why_it_matters}
             </RichText>
          </section>
@@ -140,11 +146,14 @@ export function ConceptExplanationPage() {
          {/* 3. Como funciona */}
          {explanation.patterns.length > 0 && (
             <section className={styles.section}>
-               <span className={styles.sectionLabel}>Como funciona na prática</span>
+               <header className={styles.sectionHead}>
+                  <span className={styles.sectionLabel}>Como funciona na prática</span>
+                  <h2 className={styles.sectionTitle}>Variantes e padrões clássicos</h2>
+               </header>
                <ul className={styles.list}>
                   {explanation.patterns.map((pattern, i) => (
                      <li key={i}>
-                        <RichText>{pattern}</RichText>
+                        <RichText glossary={explanation.glossary}>{pattern}</RichText>
                      </li>
                   ))}
                </ul>
@@ -154,20 +163,25 @@ export function ConceptExplanationPage() {
          {/* 4. Exemplos análogos (não copiar/colar no projeto) */}
          {explanation.examples.length > 0 && (
             <section className={styles.section}>
-               <span className={styles.sectionLabel}>
-                  Exemplos em outros contextos
-               </span>
-               <p className={styles.subtitle}>
-                  Exemplos em domínios diferentes do seu projeto, propositalmente —
-                  faça a transposição mental para fixar a ideia.
-               </p>
+               <header className={styles.sectionHead}>
+                  <span className={styles.sectionLabel}>Exemplos em outros contextos</span>
+                  <h2 className={styles.sectionTitle}>Veja em domínios análogos</h2>
+                  <p className={styles.sectionHint}>
+                     Propositalmente em domínios diferentes do seu projeto — faça a
+                     transposição mental para fixar a ideia.
+                  </p>
+               </header>
                <div className={styles.examplesGroup}>
                   {explanation.examples.map((ex, i) => (
                      <article key={i} className={styles.example}>
                         <div className={styles.exampleHeader}>
                            <span className={styles.exampleTitle}>{ex.title}</span>
                         </div>
-                        <RichText as="div" className={styles.exampleBody}>
+                        <RichText
+                           as="div"
+                           className={styles.exampleBody}
+                           glossary={explanation.glossary}
+                        >
                            {ex.description}
                         </RichText>
                         {ex.code && <pre className={styles.exampleCode}>{ex.code}</pre>}
@@ -177,38 +191,80 @@ export function ConceptExplanationPage() {
             </section>
          )}
 
-         {/* 5. Dicas de aplicação */}
+         {/* 5. Passo a passo prático (consolida) */}
+         {explanation.hands_on_steps.length > 0 && (
+            <section className={styles.section}>
+               <header className={styles.sectionHead}>
+                  <span className={styles.sectionLabel}>Passo a passo</span>
+                  <h2 className={styles.sectionTitle}>
+                     Como fazer agora, sem dependências
+                  </h2>
+                  <p className={styles.sectionHint}>
+                     Uma sequência executável que consolida tudo que você acabou
+                     de ler. Cada passo deve ser pequeno o bastante para você
+                     terminar em minutos.
+                  </p>
+               </header>
+               <ol className={styles.stepsList}>
+                  {explanation.hands_on_steps.map((step, i) => (
+                     <li key={i}>
+                        <span className={styles.stepNumber} aria-hidden="true">
+                           {i + 1}
+                        </span>
+                        <RichText
+                           as="div"
+                           className={styles.stepBody}
+                           glossary={explanation.glossary}
+                        >
+                           {step}
+                        </RichText>
+                     </li>
+                  ))}
+               </ol>
+            </section>
+         )}
+
+         {/* 6. Dicas de aplicação */}
          {explanation.tips.length > 0 && (
             <section className={styles.section}>
-               <span className={styles.sectionLabel}>Como aplicar bem</span>
+               <header className={styles.sectionHead}>
+                  <span className={styles.sectionLabel}>Como aplicar bem</span>
+                  <h2 className={styles.sectionTitle}>Dicas que economizam tempo</h2>
+               </header>
                <ul className={styles.tipsList}>
                   {explanation.tips.map((tip, i) => (
                      <li key={i}>
-                        <RichText>{tip}</RichText>
+                        <RichText glossary={explanation.glossary}>{tip}</RichText>
                      </li>
                   ))}
                </ul>
             </section>
          )}
 
-         {/* 6. Armadilhas */}
+         {/* 7. Armadilhas */}
          {explanation.pitfalls.length > 0 && (
             <section className={styles.section}>
-               <span className={styles.sectionLabel}>O que evitar</span>
+               <header className={styles.sectionHead}>
+                  <span className={styles.sectionLabel}>O que evitar</span>
+                  <h2 className={styles.sectionTitle}>Armadilhas comuns</h2>
+               </header>
                <ul className={styles.pitfallsList}>
                   {explanation.pitfalls.map((p, i) => (
                      <li key={i}>
-                        <RichText>{p}</RichText>
+                        <RichText glossary={explanation.glossary}>{p}</RichText>
                      </li>
                   ))}
                </ul>
             </section>
          )}
 
-         {/* 7. Para ir além */}
+         {/* 8. Para ir além */}
          {explanation.further_reading.length > 0 && (
             <section className={styles.section}>
-               <span className={styles.sectionLabel}>Para ir além</span>
+               <header className={styles.sectionHead}>
+                  <span className={styles.sectionLabel}>Para ir além</span>
+                  <h2 className={styles.sectionTitle}>Próximos termos para pesquisar</h2>
+               </header>
                <ul className={styles.listGrid}>
                   {explanation.further_reading.map((item, i) => (
                      <li key={i}>

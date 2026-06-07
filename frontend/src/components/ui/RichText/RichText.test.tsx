@@ -56,4 +56,32 @@ describe('<RichText />', () => {
       const { container } = render(<RichText as="p">texto</RichText>);
       expect(container.querySelector('p')).not.toBeNull();
    });
+
+   it('wrap a primeira ocorrência de cada termo do glossário em botão', () => {
+      const glossary = [
+         { term: 'router', brief: 'Coisa que despacha requisições.' },
+         { term: 'JWT', brief: 'Token assinado.' },
+      ];
+      render(
+         <RichText glossary={glossary}>
+            O router decide a rota; o JWT autentica. Router de novo aqui.
+         </RichText>,
+      );
+      // primeira ocorrência vira botão; a segunda ocorrência de "router" não.
+      const buttons = screen.getAllByRole('button');
+      expect(buttons.map((b) => b.textContent)).toEqual(['router', 'JWT']);
+   });
+
+   it('case-insensitive e respeita word boundary', () => {
+      const glossary = [{ term: 'orm', brief: 'mapeador' }];
+      render(
+         <RichText glossary={glossary}>
+            ORM é útil. A palavra "form" não casa.
+         </RichText>,
+      );
+      // "ORM" como palavra isolada casa; "form" não casa por causa do \b.
+      const buttons = screen.getAllByRole('button');
+      expect(buttons).toHaveLength(1);
+      expect(buttons[0]).toHaveTextContent('ORM');
+   });
 });

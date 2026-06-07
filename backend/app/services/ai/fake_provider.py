@@ -14,6 +14,7 @@ from typing import Sequence
 from app.schemas.learning_trail import (
     ConceptExample,
     ConceptExplanation,
+    GlossaryEntry,
     Ticket,
     TicketTask,
     TrailContent,
@@ -337,10 +338,33 @@ class FakeAIProvider(AIProvider):
                 "Acoplar a abstração a detalhes de banco/HTTP/framework.",
                 "Ignorar testes ao introduzir o conceito — a refatoração fica arriscada.",
             ],
+            hands_on_steps=[
+                f"Crie um arquivo isolado para experimentar **{concept}** fora do projeto principal.",
+                "Defina a `interface` ou contrato mínimo que o conceito exige.",
+                "Implemente a versão mais simples possível, sem se preocupar com casos extremos.",
+                "Escreva um teste cobrindo o caminho feliz e rode com `pytest` (ou equivalente).",
+                "Refatore movendo o código para o projeto, mantendo a suite verde.",
+            ],
             further_reading=[
                 f"História e motivação de **{concept}**",
                 f"Anti-padrões comuns ao usar **{concept}**",
                 f"Variantes modernas de **{concept}**",
+            ],
+            glossary=[
+                GlossaryEntry(
+                    term="interface",
+                    brief=(
+                        "Um **contrato** que diz quais métodos uma classe precisa "
+                        "ter, sem dizer como implementá-los."
+                    ),
+                ),
+                GlossaryEntry(
+                    term="pytest",
+                    brief=(
+                        "Ferramenta padrão para escrever e rodar testes em Python. "
+                        "Roda no terminal com o comando `pytest`."
+                    ),
+                ),
             ],
         )
 

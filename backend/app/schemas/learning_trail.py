@@ -79,16 +79,29 @@ class ConceptExample(BaseModel):
     code: str | None = Field(default=None, max_length=4000)
 
 
+class GlossaryEntry(BaseModel):
+    """Termo secundário citado na explicação, com breve definição.
+
+    O frontend usa para criar tooltips em conceitos-satélite (ex.: ``router``,
+    ``middleware``) que aparecem dentro do texto sem desviar o aluno do tema
+    principal.
+    """
+    term: str = Field(min_length=1, max_length=80)
+    brief: str = Field(min_length=10, max_length=400)
+
+
 class ConceptExplanation(BaseModel):
     """Explicação pedagógica aprofundada de um conceito de um ticket."""
     concept: str = Field(min_length=1, max_length=200)
     definition: str = Field(min_length=20, max_length=4000)
     why_it_matters: str = Field(min_length=10, max_length=2000)
     patterns: list[str] = Field(default_factory=list, max_length=10)
-    pitfalls: list[str] = Field(default_factory=list, max_length=10)
-    tips: list[str] = Field(default_factory=list, max_length=10)
     examples: list[ConceptExample] = Field(default_factory=list, max_length=5)
+    hands_on_steps: list[str] = Field(min_length=3, max_length=10)
+    tips: list[str] = Field(default_factory=list, max_length=10)
+    pitfalls: list[str] = Field(default_factory=list, max_length=10)
     further_reading: list[str] = Field(default_factory=list, max_length=10)
+    glossary: list[GlossaryEntry] = Field(default_factory=list, max_length=12)
 
 
 class CompleteTrailResponse(BaseModel):
