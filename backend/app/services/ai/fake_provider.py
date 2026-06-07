@@ -267,8 +267,8 @@ class FakeAIProvider(AIProvider):
         )
         if focused_skill and focused_skill.level >= 3:
             level_note = (
-                f"Como você já está em nível {focused_skill.label}, vamos focar nos "
-                "trade-offs e padrões avançados."
+                f"Como você já está em nível **{focused_skill.label}**, vamos focar "
+                "nos trade-offs e padrões avançados."
             )
         elif focused_skill and focused_skill.level == 2:
             level_note = (
@@ -276,58 +276,71 @@ class FakeAIProvider(AIProvider):
             )
         else:
             level_note = (
-                "Vamos começar definindo o conceito com calma e exemplos concretos."
+                "Vamos começar definindo o conceito com calma e exemplos do dia a dia."
             )
 
         slug = concept.lower().replace(" ", "_").replace("-", "_")
         return ConceptExplanation(
             concept=concept,
             definition=(
-                f"{concept} é um conceito central no contexto de "
-                f"'{context.ticket_title}' dentro do projeto '{context.project_title}'. "
-                f"{level_note} Em termos práticos, ele descreve um padrão, técnica ou "
-                "abstração que você utilizará para entregar o objetivo do ticket: "
-                f"{context.ticket_objective}"
+                f"**{concept}** é uma ideia que aparece quando você precisa organizar "
+                "uma parte do código que cresce rápido. Em palavras simples: é uma "
+                "==forma idiomática== de resolver um problema recorrente, com vocabulário "
+                f"e estrutura próprios. {level_note} Pense nele como uma `peça de "
+                "lego` que se encaixa em outras peças do seu projeto."
             ),
             why_it_matters=(
-                f"Dominar {concept} permite tomar decisões técnicas mais sólidas e "
-                "evita retrabalho. No contexto deste ticket, ele é o que diferencia "
-                "uma implementação correta de uma implementação resiliente."
+                f"No contexto de '{context.ticket_title}' (parte do projeto "
+                f"'{context.project_title}'), dominar **{concept}** é o que diferencia "
+                "uma solução que funciona hoje de uma que continua funcionando quando "
+                "o sistema cresce."
             ),
             patterns=[
-                f"Padrão clássico de aplicação de {concept}",
-                f"Uso de {concept} em arquiteturas em camadas",
-                "Composição com outros padrões do projeto",
-            ],
-            pitfalls=[
-                f"Aplicar {concept} sem entender o problema que ele resolve",
-                "Acoplar o conceito a detalhes de infraestrutura",
-                "Ignorar testes ao introduzir o conceito",
-            ],
-            tips=[
-                "Comece com o caso mais simples e refatore.",
-                "Escreva o teste antes da implementação.",
-                "Documente o porquê da escolha em um README curto.",
-                "Releia o ticket após cada commit para garantir alinhamento.",
+                f"Uso clássico de **{concept}** com responsabilidades bem separadas.",
+                f"Combinação de **{concept}** com testes automatizados.",
+                "Variação simplificada quando o contexto é pequeno demais para "
+                "justificar a forma completa.",
             ],
             examples=[
                 ConceptExample(
-                    title=f"Exemplo mínimo de {concept}",
+                    title="Catálogo de livros de uma biblioteca",
                     description=(
-                        "Snippet ilustrativo que mostra o conceito aplicado de forma "
-                        "isolada antes de integrar ao projeto."
+                        "Imagine um app que lista livros. O conceito aparece quando "
+                        "você separa **quem busca os livros** de **quem decide o que "
+                        "mostrar na tela**."
                     ),
                     code=(
-                        "# pseudo-código\n"
-                        f"def usar_{slug}():\n"
-                        "    # aplica o conceito de forma isolada\n"
-                        "    pass\n"
+                        "# domínio análogo: catálogo de livros\n"
+                        f"def {slug}_no_catalogo(repo):\n"
+                        '    livros = repo.buscar(termo="ficção")\n'
+                        "    return [l for l in livros if l.disponivel]\n"
                     ),
                 ),
+                ConceptExample(
+                    title="Pedido de uma cafeteria",
+                    description=(
+                        "Numa cafeteria, o atendente faz o pedido (==intenção==), o "
+                        "barista prepara (==execução==), e o caixa cobra (==registro==). "
+                        f"**{concept}** é o que mantém esses papéis claros."
+                    ),
+                    code=None,
+                ),
+            ],
+            tips=[
+                "Comece com o caso mais simples e refatore quando o segundo aparecer.",
+                "Escreva o teste **antes** de criar a abstração — ele guia o desenho.",
+                "Documente em uma frase qual problema o conceito resolve no seu README.",
+                "Releia o ticket após cada commit para garantir alinhamento.",
+            ],
+            pitfalls=[
+                f"Aplicar **{concept}** sem entender qual problema ele resolve.",
+                "Acoplar a abstração a detalhes de banco/HTTP/framework.",
+                "Ignorar testes ao introduzir o conceito — a refatoração fica arriscada.",
             ],
             further_reading=[
-                f"Histórico e motivação de {concept}",
-                f"Anti-padrões comuns ao usar {concept}",
+                f"História e motivação de **{concept}**",
+                f"Anti-padrões comuns ao usar **{concept}**",
+                f"Variantes modernas de **{concept}**",
             ],
         )
 

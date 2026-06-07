@@ -41,4 +41,20 @@ describe('<TicketCard />', () => {
       render(<TicketCard ticket={TICKET} defaultOpen />);
       expect(screen.getByText('Instalar Node')).toBeInTheDocument();
    });
+
+   it('quando conceptHref é passado, os conceitos viram links em nova guia', () => {
+      const href = (concept: string) =>
+         `/trails/1/tickets/TG-1/concepts/${encodeURIComponent(concept)}`;
+      render(<TicketCard ticket={TICKET} defaultOpen conceptHref={href} />);
+
+      const link = screen.getByRole('link', {
+         name: /Aprofundar conceito Ambiente/,
+      });
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+      expect(link).toHaveAttribute(
+         'href',
+         '/trails/1/tickets/TG-1/concepts/Ambiente',
+      );
+   });
 });

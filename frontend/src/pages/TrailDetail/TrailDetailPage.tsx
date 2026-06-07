@@ -8,17 +8,11 @@ import { Spinner } from '../../components/ui/Spinner';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { TrailHeader } from '../../components/learning/TrailHeader';
 import { TicketCard } from '../../components/learning/TicketCard';
-import { ConceptModal } from '../../components/learning/ConceptModal';
 import { formatDate } from '../../utils/format';
 import type { CompleteTrailResponse } from '../../types/api';
 import styles from './TrailDetail.module.css';
 
 type Action = 'regenerate' | 'delete' | 'complete';
-
-interface OpenConcept {
-   ticketCode: string;
-   concept: string;
-}
 
 export function TrailDetailPage() {
    const { id } = useParams<{ id: string }>();
@@ -28,7 +22,6 @@ export function TrailDetailPage() {
    const [actionInFlight, setActionInFlight] = useState<Action | null>(null);
    const [actionError, setActionError] = useState<string | null>(null);
    const [completion, setCompletion] = useState<CompleteTrailResponse | null>(null);
-   const [openConcept, setOpenConcept] = useState<OpenConcept | null>(null);
 
    const handleRegenerate = async () => {
       if (!trailId) return;
@@ -102,6 +95,10 @@ export function TrailDetailPage() {
    }
 
    const isCompleted = Boolean(trail.completed_at);
+   const conceptHref = (ticketCode: string) => (concept: string) =>
+      `/trails/${trail.id}/tickets/${encodeURIComponent(
+         ticketCode,
+      )}/concepts/${encodeURIComponent(concept)}`;
 
    return (
       <>
@@ -177,21 +174,10 @@ export function TrailDetailPage() {
                   key={ticket.code}
                   ticket={ticket}
                   defaultOpen={index === 0}
-                  onConceptClick={(concept) =>
-                     setOpenConcept({ ticketCode: ticket.code, concept })
-                  }
+                  conceptHref={conceptHref(ticket.code)}
                />
             ))}
          </section>
-
-         {openConcept && trailId !== null && (
-            <ConceptModal
-               trailId={trailId}
-               ticketCode={openConcept.ticketCode}
-               concept={openConcept.concept}
-               onClose={() => setOpenConcept(null)}
-            />
-         )}
       </>
    );
 }

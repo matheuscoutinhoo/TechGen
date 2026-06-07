@@ -1,0 +1,35 @@
+.text {
+   line-height: var(--line-height-loose);
+}
+
+.text strong {
+   color: var(--color-text);
+   font-weight: 600;
+}
+
+.text mark {
+   background-color: rgba(255, 215, 0, 0.35);
+   color: inherit;
+   padding: 0 0.15rem;
+   border-radius: 2px;
+   /* leve "tinta" diagonal pra parecer marca-texto humano */
+   background-image: linear-gradient(
+      105deg,
+      rgba(255, 215, 0, 0) 0%,
+      rgba(255, 215, 0, 0.45) 8%,
+      rgba(255, 215, 0, 0.45) 92%,
+      rgba(255, 215, 0, 0) 100%
+   );
+   box-decoration-break: clone;
+   -webkit-box-decoration-break: clone;
+}
+
+.text code {
+   font-family: var(--font-mono);
+   font-size: 0.92em;
+   background-color: var(--color-surface-strong);
+   color: var(--color-primary-strong);
+   padding: 0.1rem 0.4rem;
+   border-radius: 4px;
+   border: 1px solid var(--color-border);
+}

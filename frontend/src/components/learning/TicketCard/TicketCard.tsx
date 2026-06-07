@@ -5,11 +5,15 @@ import styles from './TicketCard.module.css';
 export interface TicketCardProps {
    ticket: Ticket;
    defaultOpen?: boolean;
-   /** Quando fornecido, cada conceito vira um botão clicável. */
-   onConceptClick?(concept: string): void;
+   /**
+    * Quando fornecido, cada conceito vira um link clicável que abre a
+    * explicação em uma **nova guia** (target="_blank") — facilita uso em
+    * pairing e consulta paralela sem perder a trilha original.
+    */
+   conceptHref?(concept: string): string;
 }
 
-export function TicketCard({ ticket, defaultOpen = false, onConceptClick }: TicketCardProps) {
+export function TicketCard({ ticket, defaultOpen = false, conceptHref }: TicketCardProps) {
    const [isOpen, setOpen] = useState(defaultOpen);
    const bodyId = `ticket-${ticket.code}-body`;
 
@@ -46,16 +50,17 @@ export function TicketCard({ ticket, defaultOpen = false, onConceptClick }: Tick
                      <h3 className={styles.sectionTitle}>Conceitos abordados</h3>
                      <div className={styles.chips}>
                         {ticket.concepts.map((concept) =>
-                           onConceptClick ? (
-                              <button
+                           conceptHref ? (
+                              <a
                                  key={concept}
-                                 type="button"
                                  className={`${styles.chip} ${styles.chipInteractive}`}
-                                 onClick={() => onConceptClick(concept)}
-                                 aria-label={`Aprofundar conceito ${concept}`}
+                                 href={conceptHref(concept)}
+                                 target="_blank"
+                                 rel="noopener noreferrer"
+                                 aria-label={`Aprofundar conceito ${concept} (abre em nova guia)`}
                               >
                                  {concept}
-                              </button>
+                              </a>
                            ) : (
                               <span key={concept} className={styles.chip}>
                                  {concept}
@@ -63,9 +68,10 @@ export function TicketCard({ ticket, defaultOpen = false, onConceptClick }: Tick
                            ),
                         )}
                      </div>
-                     {onConceptClick && (
+                     {conceptHref && (
                         <p className={styles.chipHint}>
-                           Clique em um conceito para ver a explicação aprofundada.
+                           Clique em um conceito para abrir a explicação aprofundada
+                           em uma nova guia.
                         </p>
                      )}
                   </section>

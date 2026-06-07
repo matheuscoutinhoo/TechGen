@@ -702,12 +702,32 @@ gerada por IA.
 - `CONCEPT_SYSTEM_PROMPT` + `build_concept_prompt` em `prompts.py`.
 - Recebe `ConceptContext` (projeto, ticket, objetivo) e as skills do aluno
   para calibrar o nível da explicação.
+- Tom: **acessível ao iniciante engajado**, com analogias antes do termo
+  técnico, sem jargão não definido. Frases curtas, voz ativa.
+- Exemplos **obrigatoriamente em domínio análogo**, nunca no domínio do
+  projeto em que o conceito apareceu — força o aluno a fazer a transposição
+  mental em vez de copiar/colar.
+- Pode usar markdown inline nos textos: `**negrito**`, `==marca-texto==`,
+  `` `código inline` ``. Nada de cabeçalhos, listas ou blocos de código no
+  texto livre — listas e código têm campos próprios no schema.
 - Saída JSON pura, validada antes de chegar ao frontend.
 
 ### UX
-- `ConceptModal` mostra spinner enquanto carrega, renderiza definição,
-  padrões, armadilhas, dicas, exemplos (com bloco de código quando houver) e
-  leituras complementares. Fecha por botão, clique no backdrop ou `Escape`.
+- **Página dedicada** em `/trails/:id/tickets/:code/concepts/:concept` —
+  não modal. Permite múltiplas abas abertas, pairing, compartilhamento
+  de link.
+- Chips de conceito do `TicketCard` são `<a target="_blank">` para
+  **abrir em nova guia**.
+- Componente `RichText` renderiza o markdown leve com segurança (sem
+  `dangerouslySetInnerHTML`; XSS impossível por construção).
+- Ordem pedagógica das seções é fixa e obrigatória:
+  1. **O que é** (definição em palavras simples)
+  2. **Por que isso importa** (callout conectando ao projeto)
+  3. **Como funciona na prática** (padrões/variantes)
+  4. **Exemplos em outros contextos** (domínio análogo, com nota visual)
+  5. **Como aplicar bem** (dicas acionáveis com seta `→`)
+  6. **O que evitar** (armadilhas com `!` em fundo avermelhado)
+  7. **Para ir além** (termos para pesquisar a seguir)
 - Botão discreto "Atualizar" no header dispara nova geração (cache bypass)
   para casos em que o usuário evoluiu de nível e quer recalibrar.
 

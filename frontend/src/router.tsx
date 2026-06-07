@@ -10,6 +10,7 @@ import { CreateTrailPage } from './pages/CreateTrail';
 import { TrailDetailPage } from './pages/TrailDetail';
 import { EditTrailPage } from './pages/EditTrail';
 import { AccountPage } from './pages/Account';
+import { ConceptExplanationPage } from './pages/ConceptExplanation';
 import { NotFoundPage } from './pages/NotFound';
 
 export function AppRoutes() {
@@ -90,6 +91,16 @@ export function AppRoutes() {
                <ProtectedRoute>
                   <PageContainer width="base">
                      <EditTrailPage />
+                  </PageContainer>
+               </ProtectedRoute>
+            }
+         />
+         <Route
+            path="/trails/:id/tickets/:code/concepts/:concept"
+            element={
+               <ProtectedRoute>
+                  <PageContainer width="base">
+                     <ConceptExplanationPage />
                   </PageContainer>
                </ProtectedRoute>
             }
