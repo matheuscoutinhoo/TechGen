@@ -415,26 +415,46 @@ test(users): cobrir cenário de email duplicado
 
 ---
 
-## 25. Fluxo de Branches — GitFlow
+## 25. Fluxo de Branches — Trunk-Based em `develop`
+
+> **Atualizado.** O projeto não usa mais branches de feature. Toda mudança
+> nova (feat, fix, docs, refactor, test, chore) é commitada **direto na
+> `develop`**, com testes verdes e cobertura mantida. `main` continua sendo
+> protagonizada por `release/*` e `hotfix/*`.
 
 | Branch | Propósito |
 |---|---|
-| `main` | Código em produção. Apenas merges de `release/*` ou `hotfix/*`. |
-| `develop` | Integração de features. Base de novas features. |
-| `feature/<slug>` | Nova feature. Sai e volta para `develop`. |
-| `release/<versão>` | Estabilização para release. Sai de `develop`, vai para `main` e volta para `develop`. |
+| `main` | Código em produção. Recebe apenas merges de `release/*` ou `hotfix/*`. |
+| `develop` | **Branch de trabalho diário.** Todo commit novo entra aqui. |
+| `release/<versão>` | Estabilização de release. Sai de `develop`, vai para `main` e volta para `develop`. |
 | `hotfix/<slug>` | Correção urgente em produção. Sai de `main`, vai para `main` e `develop`. |
 
 Regras:
-- Branches `feature/*` devem ser pequenas (idealmente < 400 linhas alteradas).
-- Sempre rebase de `develop` antes de abrir PR.
+- Antes de qualquer commit em `develop`: `git pull --rebase origin develop`.
+- Cada commit é pequeno, focado e segue Conventional Commits (§24).
+- Cada commit precisa estar com a suite verde — quebrar `develop` é incidente.
 - Tags semânticas em `main` (`v0.1.0`, `v0.2.0`...).
+- Branches `feature/*` **não são mais criadas**. Se aparecerem (importadas, automações etc.), devem ser removidas após o merge.
+
+Fluxo típico:
+```powershell
+git checkout develop
+git pull --rebase origin develop
+# editar, testar
+git add .
+git commit -m "feat(escopo): mensagem clara"
+git push origin develop
+```
 
 ---
 
-## 26. Regras de Pull Request
+## 26. Pull Requests
 
-Todo PR deve conter:
+PRs deixam de ser obrigatórios para o fluxo de `develop`. Continuam **obrigatórios** apenas para:
+- `release/* → main`
+- `hotfix/* → main` (e também merge de volta para `develop`)
+
+Quando um PR é necessário, ele deve conter:
 1. Descrição do **problema** que resolve.
 2. Descrição da **solução** adotada.
 3. Lista de testes adicionados ou ajustados.
@@ -446,7 +466,11 @@ Todo PR deve conter:
    - [ ] `agents.md` consultado e respeitado
    - [ ] Documentação atualizada se necessário
 
-PRs devem ter pelo menos **1 revisor**. PRs grandes (>800 linhas) precisam de revisão dupla.
+Critérios de qualidade em `develop` (sem PR como gate):
+- A suite (`pytest` no backend, `npm run test:run` no frontend) precisa estar verde **antes** do push.
+- Cobertura mínima descrita em §23 precisa ser mantida.
+- Auditoria de dependências (`pip-audit`, `npm audit`) deve estar zerada.
+- Mudanças destrutivas ou de contrato continuam exigindo nota explícita no corpo do commit.
 
 ---
 

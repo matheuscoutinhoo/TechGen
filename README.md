@@ -16,7 +16,7 @@ Plataforma educacional de tecnologia movida a IA. O usuário descreve um tema e 
 | IA | Abacus AI (provider abstraído) |
 | Testes | pytest + httpx (backend), Vitest + React Testing Library (frontend) |
 | Auth | JWT (HS256) + bcrypt |
-| VCS | Git + GitFlow |
+| VCS | Git (trunk-based em `develop`, releases via `release/*`) |
 
 ---
 
@@ -140,24 +140,25 @@ npm run test:coverage # com cobertura
 
 ---
 
-## Fluxo de desenvolvimento (GitFlow resumido)
+## Fluxo de desenvolvimento (trunk-based em `develop`)
 
 ```
-main         ────────●────────────●─────  (releases)
+main        ────────●────────────●─────  (releases / hotfixes)
                     /            /
-develop  ──●───●───●────●───●───●────────  (integração)
-            \   \         \
-   feature/login feature/trails hotfix/...
+develop  ──●──●──●────●───●───●────────  (branch de trabalho diário)
 ```
 
-1. Crie sua branch a partir de `develop`:
+1. Sempre comece sincronizado:
    ```powershell
    git checkout develop
-   git pull
-   git checkout -b feature/<slug>
+   git pull --rebase origin develop
    ```
-2. Commits seguindo Conventional Commits (`feat`, `fix`, `test`, `docs`, `refactor`, `chore`, `perf`, `style`).
-3. Abra PR contra `develop`. Detalhes em [agents.md §26](./agents.md).
+2. Edite, rode `pytest` / `npm run test:run` (devem estar verdes), commite em Conventional Commits (`feat`, `fix`, `test`, `docs`, `refactor`, `chore`, `perf`, `style`).
+3. Push direto em `develop`:
+   ```powershell
+   git push origin develop
+   ```
+4. **Sem branches `feature/*`**. PR continua sendo a porta de entrada apenas para `release/* → main` e `hotfix/* → main`. Detalhes em [agents.md §25](./agents.md).
 
 ---
 
@@ -172,7 +173,7 @@ develop  ──●───●───●────●───●───�
 | CSS Modules + design tokens | Zero dependência de framework de UI, identidade própria, build leve |
 | Context API para auth + hooks para dados | Estado mínimo, evita complexidade prematura; migração para TanStack Query prevista como evolução |
 | TDD obrigatório | Garante regressão controlada e desenho dirigido por uso |
-| Conventional Commits + GitFlow | Histórico legível e releases previsíveis |
+| Conventional Commits + trunk-based em `develop` | Histórico legal e linear; releases previsíveis via `release/*` |
 
 Detalhamento completo em [agents.md](./agents.md).
 
