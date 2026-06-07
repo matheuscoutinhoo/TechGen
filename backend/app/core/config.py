@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     abacus_api_url: str = "https://routellm.abacus.ai"
     abacus_api_key: str = ""
     abacus_model: str = "gpt-5"
-    abacus_timeout_seconds: int = 60
+    abacus_timeout_seconds: int = 180
 
     @field_validator("allowed_origins", mode="before")
     @classmethod

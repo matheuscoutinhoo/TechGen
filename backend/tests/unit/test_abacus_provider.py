@@ -139,3 +139,12 @@ class TestAbacusAIProvider:
         with pytest.raises(AIProviderError) as excinfo:
             _provider().generate_learning_trail("FastAPI")
         assert "HTTP 404" in str(excinfo.value)
+
+    @respx.mock
+    def test_timeout_error_message_mentions_timeout_value(self):
+        respx.post(ENDPOINT).mock(side_effect=httpx.ReadTimeout("timed out"))
+        with pytest.raises(AIProviderError) as excinfo:
+            _provider().generate_learning_trail("FastAPI")
+        message = str(excinfo.value)
+        assert "5s" in message
+        assert "ABACUS_TIMEOUT_SECONDS" in message

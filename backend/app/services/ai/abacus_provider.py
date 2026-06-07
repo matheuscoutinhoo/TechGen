@@ -90,6 +90,12 @@ class AbacusAIProvider(AIProvider):
             else:
                 with httpx.Client(timeout=self.timeout_seconds) as client:
                     response = client.post(url, headers=headers, json=payload)
+        except httpx.TimeoutException as exc:
+            logger.warning("Timeout (%ss) ao chamar Abacus", self.timeout_seconds)
+            raise AIProviderError(
+                f"A IA demorou mais que {self.timeout_seconds}s para responder. "
+                "Aumente ABACUS_TIMEOUT_SECONDS no .env ou use um modelo mais rápido."
+            ) from exc
         except httpx.HTTPError as exc:
             logger.exception("Falha de rede ao chamar Abacus")
             raise AIProviderError("Falha ao contatar a IA. Tente novamente em instantes.") from exc
