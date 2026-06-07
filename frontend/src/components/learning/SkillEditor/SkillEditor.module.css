@@ -134,53 +134,60 @@
    margin: 0.3rem 0;
 }
 
-/* Container para o select que substitui o badge de nível */
+/* ----- Nível dentro do chip ----- */
 .chipLevel {
-   position: relative;
-   display: inline-flex;
-   align-items: center;
-}
-
-.chipLevelLabel {
    display: inline-flex;
    align-items: center;
    gap: 0.4rem;
-   padding: 0.25rem 0.6rem;
+   padding: 0.25rem 0.55rem 0.25rem 0.5rem;
+   color: var(--levelColor, var(--color-text-muted));
    font-size: 0.7rem;
-   font-weight: 600;
+   font-weight: 700;
    text-transform: uppercase;
    letter-spacing: 0.05em;
-   color: var(--levelColor, var(--color-text-muted));
-   pointer-events: none;
+   line-height: 1.4;
 }
 
-.chipLevelLabel::before {
+.chipLevel::before {
    content: '';
    width: 6px;
    height: 6px;
    border-radius: 50%;
    background-color: currentColor;
+   flex-shrink: 0;
 }
 
+/* Select inline real (sem sobreposição), com aparência discreta. */
 .chipLevelSelect {
-   position: absolute;
-   inset: 0;
-   width: 100%;
-   height: 100%;
    appearance: none;
    -webkit-appearance: none;
    background: transparent;
    border: 0;
-   color: transparent;
-   font-size: 0.7rem;
+   color: inherit;
+   font: inherit;
+   text-transform: inherit;
+   letter-spacing: inherit;
+   padding: 0 0.85rem 0 0;
+   margin: 0;
    cursor: pointer;
-   opacity: 0;
+   line-height: 1.4;
+   /* seta custom no fundo (caret pequeno na cor atual) */
+   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'><path fill='currentColor' d='M0 0l4 5 4-5z'/></svg>");
+   background-repeat: no-repeat;
+   background-position: right 0 center;
+   background-size: 7px 4px;
 }
 
-.chipLevelSelect:focus-visible+.chipLevelLabel {
+.chipLevelSelect option {
+   color: var(--color-text);
+   background-color: var(--color-bg);
+   text-transform: lowercase;
+}
+
+.chipLevelSelect:focus-visible {
    outline: 2px solid var(--color-primary);
    outline-offset: 2px;
-   border-radius: 999px;
+   border-radius: 4px;
 }
 
 /* Cores por nível, expostas como custom property no contêiner do chip */

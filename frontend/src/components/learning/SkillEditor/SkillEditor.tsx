@@ -182,9 +182,6 @@ export function SkillEditor({
                                     </option>
                                  ))}
                               </select>
-                              <span className={styles.chipLevelLabel} aria-hidden="true">
-                                 {SHORT_LABELS[skill.proficiency]}
-                              </span>
                            </span>
                         ) : (
                            <span
