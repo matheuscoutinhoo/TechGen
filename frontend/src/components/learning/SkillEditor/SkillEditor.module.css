@@ -4,139 +4,234 @@
    gap: var(--space-3);
 }
 
-.add {
-   display: grid;
-   grid-template-columns: 1fr 180px auto;
+/* ----- Linha de adição: input + select + botão alinhados ----- */
+.composer {
+   display: flex;
+   align-items: stretch;
+   gap: 0;
+   border: 1px solid var(--color-border-strong);
+   border-radius: var(--radius-md);
+   background-color: var(--color-bg);
+   overflow: hidden;
+   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.composer:focus-within {
+   border-color: var(--color-primary);
+   box-shadow: 0 0 0 3px rgba(0, 150, 136, 0.15);
+}
+
+.input,
+.select {
+   border: 0;
+   background: transparent;
+   font-size: var(--font-size-sm);
+   color: var(--color-text);
+   padding: 0.6rem 0.85rem;
+   outline: none;
+}
+
+.input {
+   flex: 1;
+   min-width: 0;
+}
+
+.input::placeholder {
+   color: var(--color-text-subtle);
+}
+
+.select {
+   border-left: 1px solid var(--color-border);
+   color: var(--color-text-muted);
+   appearance: none;
+   -webkit-appearance: none;
+   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%237b8794' d='M1 1l4 4 4-4'/></svg>");
+   background-repeat: no-repeat;
+   background-position: right 0.75rem center;
+   padding-right: 1.85rem;
+   cursor: pointer;
+}
+
+.addBtn {
+   appearance: none;
+   border: 0;
+   border-left: 1px solid var(--color-border);
+   background-color: var(--color-surface);
+   color: var(--color-primary-strong);
+   padding: 0 0.95rem;
+   font-size: var(--font-size-sm);
+   font-weight: 600;
+   cursor: pointer;
+   display: inline-flex;
+   align-items: center;
    gap: var(--space-2);
-   align-items: end;
+   transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
-@media (max-width: 640px) {
-   .add {
-      grid-template-columns: 1fr;
-   }
+.addBtn:hover:not(:disabled) {
+   background-color: var(--color-primary-soft);
 }
 
+.addBtn:disabled {
+   opacity: 0.5;
+   cursor: not-allowed;
+}
+
+.addBtn::before {
+   content: '+';
+   font-size: 1.05rem;
+   line-height: 1;
+}
+
+.hint {
+   font-size: var(--font-size-xs);
+   color: var(--color-text-subtle);
+}
+
+.error {
+   font-size: var(--font-size-xs);
+   color: var(--color-danger);
+}
+
+/* ----- Lista de skills (chips inline) ----- */
 .list {
    display: flex;
-   flex-direction: column;
+   flex-wrap: wrap;
    gap: var(--space-2);
    margin: 0;
    padding: 0;
    list-style: none;
 }
 
-.item {
-   display: flex;
-   align-items: center;
-   gap: var(--space-3);
-   padding: var(--space-3) var(--space-4);
-   border: 1px solid var(--color-border);
-   border-radius: var(--radius-md);
-   background-color: var(--color-bg);
-   transition: border-color 150ms ease, box-shadow 150ms ease;
-}
-
-.item:hover {
-   border-color: var(--color-border-strong);
-   box-shadow: var(--shadow-xs);
-}
-
-.name {
-   flex: 1;
-   font-weight: 600;
-   color: var(--color-text);
-   text-transform: capitalize;
-}
-
-.level {
+.chip {
    display: inline-flex;
    align-items: center;
-   gap: var(--space-2);
-   padding: 0.2rem 0.6rem;
+   gap: 0;
+   border: 1px solid var(--color-border);
    border-radius: 999px;
-   font-size: var(--font-size-xs);
+   background-color: var(--color-surface);
+   transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.chip:hover {
+   border-color: var(--color-border-strong);
+   background-color: var(--color-bg);
+}
+
+.chipName {
+   font-size: var(--font-size-sm);
+   font-weight: 500;
+   color: var(--color-text);
+   text-transform: capitalize;
+   padding: 0.25rem 0.55rem 0.25rem 0.85rem;
+   line-height: 1.4;
+}
+
+.chipDivider {
+   width: 1px;
+   align-self: stretch;
+   background-color: var(--color-border);
+   margin: 0.3rem 0;
+}
+
+/* Container para o select que substitui o badge de nível */
+.chipLevel {
+   position: relative;
+   display: inline-flex;
+   align-items: center;
+}
+
+.chipLevelLabel {
+   display: inline-flex;
+   align-items: center;
+   gap: 0.4rem;
+   padding: 0.25rem 0.6rem;
+   font-size: 0.7rem;
    font-weight: 600;
    text-transform: uppercase;
    letter-spacing: 0.05em;
+   color: var(--levelColor, var(--color-text-muted));
+   pointer-events: none;
 }
 
-.levelDot {
-   width: 8px;
-   height: 8px;
+.chipLevelLabel::before {
+   content: '';
+   width: 6px;
+   height: 6px;
    border-radius: 50%;
-   background: currentColor;
+   background-color: currentColor;
 }
 
-.level1 {
-   color: #6b7280;
-   background-color: rgba(107, 114, 128, 0.12);
+.chipLevelSelect {
+   position: absolute;
+   inset: 0;
+   width: 100%;
+   height: 100%;
+   appearance: none;
+   -webkit-appearance: none;
+   background: transparent;
+   border: 0;
+   color: transparent;
+   font-size: 0.7rem;
+   cursor: pointer;
+   opacity: 0;
 }
 
-.level2 {
-   color: var(--color-primary-strong);
-   background-color: var(--color-primary-soft);
+.chipLevelSelect:focus-visible + .chipLevelLabel {
+   outline: 2px solid var(--color-primary);
+   outline-offset: 2px;
+   border-radius: 999px;
 }
 
-.level3 {
-   color: #c2410c;
-   background-color: rgba(194, 65, 12, 0.10);
-}
+/* Cores por nível, expostas como custom property no contêiner do chip */
+.level1 { --levelColor: #6b7280; }
+.level2 { --levelColor: #00796b; }
+.level3 { --levelColor: #c2410c; }
+.level4 { --levelColor: #7e22ce; }
 
-.level4 {
-   color: #7e22ce;
-   background-color: rgba(126, 34, 206, 0.10);
-}
-
-.empty {
-   padding: var(--space-4);
-   border: 1px dashed var(--color-border-strong);
-   border-radius: var(--radius-md);
-   color: var(--color-text-muted);
-   font-size: var(--font-size-sm);
-   text-align: center;
-}
-
-.select {
-   padding: 0.6rem 0.85rem;
-   border-radius: var(--radius-md);
-   border: 1px solid var(--color-border-strong);
-   background-color: var(--color-bg);
-   font-size: var(--font-size-base);
-   color: var(--color-text);
-   transition: border-color 150ms ease;
-}
-
-.select:hover:not(:disabled) {
-   border-color: var(--color-text-muted);
-}
-
-.field {
-   display: flex;
-   flex-direction: column;
-   gap: var(--space-2);
-}
-
-.label {
-   font-size: var(--font-size-sm);
-   font-weight: 600;
-}
-
-.itemSelect {
-   font-size: var(--font-size-sm);
-   padding: 0.35rem 0.5rem;
-   border-radius: var(--radius-sm);
-   border: 1px solid var(--color-border);
-   background-color: var(--color-surface);
-}
-
-.itemActions {
-   display: flex;
+.chipRemove {
+   appearance: none;
+   border: 0;
+   background: transparent;
+   color: var(--color-text-subtle);
+   font-size: 1rem;
+   line-height: 1;
+   padding: 0 0.7rem;
+   cursor: pointer;
+   border-radius: 0 999px 999px 0;
+   transition: color var(--transition-fast), background-color var(--transition-fast);
+   align-self: stretch;
+   display: inline-flex;
    align-items: center;
-   gap: var(--space-2);
 }
 
-.error {
-   font-size: var(--font-size-xs);
+.chipRemove:hover:not(:disabled) {
    color: var(--color-danger);
+   background-color: var(--color-danger-soft);
+}
+
+.chipRemove:disabled {
+   opacity: 0.4;
+   cursor: not-allowed;
+}
+
+/* Modo estático (sem onChangeProficiency): apenas badge, sem select */
+.chipLevelStatic {
+   padding: 0.25rem 0.6rem;
+   font-size: 0.7rem;
+   font-weight: 600;
+   text-transform: uppercase;
+   letter-spacing: 0.05em;
+   color: var(--levelColor, var(--color-text-muted));
+   display: inline-flex;
+   align-items: center;
+   gap: 0.4rem;
+}
+
+.chipLevelStatic::before {
+   content: '';
+   width: 6px;
+   height: 6px;
+   border-radius: 50%;
+   background-color: currentColor;
 }

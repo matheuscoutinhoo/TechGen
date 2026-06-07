@@ -1,7 +1,5 @@
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import type { ProficiencyLabel, ProficiencyLevel, SkillInput } from '../../../types/api';
-import { Button } from '../../ui/Button';
-import { Input } from '../../ui/Input';
 import styles from './SkillEditor.module.css';
 
 export interface SkillEditorEntry {
@@ -26,18 +24,18 @@ export interface SkillEditorProps {
    error?: string | null;
 }
 
-const LEVEL_LABELS: Record<ProficiencyLevel, string> = {
-   1: 'Já ouvi falar',
-   2: 'Já mexi um pouco',
-   3: 'Uso confortavelmente',
-   4: 'Domino o tópico',
-};
-
 const SHORT_LABELS: Record<ProficiencyLevel, string> = {
    1: 'novice',
    2: 'beginner',
    3: 'intermediate',
    4: 'advanced',
+};
+
+const HELP_LABELS: Record<ProficiencyLevel, string> = {
+   1: 'novice — já ouvi falar',
+   2: 'beginner — já mexi um pouco',
+   3: 'intermediate — uso confortavelmente',
+   4: 'advanced — domino o tópico',
 };
 
 const LEVEL_CLASS: Record<ProficiencyLevel, string> = {
@@ -47,6 +45,8 @@ const LEVEL_CLASS: Record<ProficiencyLevel, string> = {
    4: styles.level4,
 };
 
+const LEVELS: ProficiencyLevel[] = [1, 2, 3, 4];
+
 export function SkillEditor({
    skills,
    onAdd,
@@ -55,6 +55,8 @@ export function SkillEditor({
    isBusy = false,
    error,
 }: SkillEditorProps) {
+   const inputId = useId();
+   const levelId = useId();
    const [name, setName] = useState('');
    const [proficiency, setProficiency] = useState<ProficiencyLevel>(2);
    const [localError, setLocalError] = useState<string | null>(null);
@@ -76,100 +78,124 @@ export function SkillEditor({
       setProficiency(2);
    };
 
-   const handleProficiency = async (
-      skill: SkillEditorEntry,
-      raw: string,
-   ) => {
+   const handleProficiency = async (skill: SkillEditorEntry, raw: string) => {
       const next = Number(raw) as ProficiencyLevel;
-      if (![1, 2, 3, 4].includes(next)) return;
+      if (!LEVELS.includes(next)) return;
       await onChangeProficiency?.(skill, next);
    };
 
+   const message = localError ?? error;
+
    return (
       <div className={styles.shell}>
-         <form className={styles.add} onSubmit={handleAdd} noValidate>
-            <Input
-               label="Tecnologia ou conceito"
+         <form className={styles.composer} onSubmit={handleAdd} noValidate aria-label="Adicionar skill">
+            <label htmlFor={inputId} className="visually-hidden">
+               Tecnologia ou conceito
+            </label>
+            <input
+               id={inputId}
+               className={styles.input}
                value={name}
                onChange={(event) => setName(event.target.value)}
                placeholder="ex.: Python, Docker, TDD"
                maxLength={120}
                disabled={isBusy}
+               autoComplete="off"
             />
-            <div className={styles.field}>
-               <label className={styles.label} htmlFor="skill-proficiency">
-                  Nível
-               </label>
-               <select
-                  id="skill-proficiency"
-                  className={styles.select}
-                  value={proficiency}
-                  onChange={(event) => setProficiency(Number(event.target.value) as ProficiencyLevel)}
-                  disabled={isBusy}
-               >
-                  {([1, 2, 3, 4] as ProficiencyLevel[]).map((value) => (
-                     <option key={value} value={value}>
-                        {value} — {LEVEL_LABELS[value]}
-                     </option>
-                  ))}
-               </select>
-            </div>
-            <Button type="submit" variant="secondary" isLoading={isBusy}>
+            <label htmlFor={levelId} className="visually-hidden">
+               Nível
+            </label>
+            <select
+               id={levelId}
+               className={styles.select}
+               value={proficiency}
+               onChange={(event) =>
+                  setProficiency(Number(event.target.value) as ProficiencyLevel)
+               }
+               disabled={isBusy}
+               aria-label="Nível"
+               title={HELP_LABELS[proficiency]}
+            >
+               {LEVELS.map((value) => (
+                  <option key={value} value={value}>
+                     {SHORT_LABELS[value]}
+                  </option>
+               ))}
+            </select>
+            <button
+               type="submit"
+               className={styles.addBtn}
+               disabled={isBusy}
+               aria-label="Adicionar skill"
+            >
                Adicionar
-            </Button>
+            </button>
          </form>
 
-         {(localError || error) && (
+         {message ? (
             <span className={styles.error} role="alert">
-               {localError ?? error}
+               {message}
             </span>
-         )}
+         ) : skills.length === 0 ? (
+            <span className={styles.hint}>
+               Você ainda não adicionou nenhuma skill — comece pelas que mais domina.
+            </span>
+         ) : null}
 
-         {skills.length === 0 ? (
-            <p className={styles.empty}>
-               Você ainda não adicionou nenhuma skill. Comece com aquelas que você mais
-               domina — a IA usará isso para calibrar suas trilhas.
-            </p>
-         ) : (
+         {skills.length > 0 && (
             <ul className={styles.list}>
-               {skills.map((skill, index) => (
-                  <li key={skill.id ?? `${skill.name}-${index}`} className={styles.item}>
-                     <span className={styles.name}>{skill.name}</span>
-                     <span
-                        className={`${styles.level} ${LEVEL_CLASS[skill.proficiency]}`}
-                        aria-label={`Nível ${skill.proficiency} — ${SHORT_LABELS[skill.proficiency]}`}
+               {skills.map((skill, index) => {
+                  const key = skill.id ?? `${skill.name}-${index}`;
+                  return (
+                     <li
+                        key={key}
+                        className={`${styles.chip} ${LEVEL_CLASS[skill.proficiency]}`}
                      >
-                        <span className={styles.levelDot} aria-hidden="true" />
-                        {SHORT_LABELS[skill.proficiency]}
-                     </span>
-                     <div className={styles.itemActions}>
-                        {onChangeProficiency && (
-                           <select
-                              className={styles.itemSelect}
-                              value={skill.proficiency}
-                              onChange={(event) => handleProficiency(skill, event.target.value)}
-                              aria-label={`Alterar nível de ${skill.name}`}
-                              disabled={isBusy}
+                        <span className={styles.chipName}>{skill.name}</span>
+                        <span className={styles.chipDivider} aria-hidden="true" />
+                        {onChangeProficiency ? (
+                           <span className={styles.chipLevel}>
+                              <select
+                                 className={styles.chipLevelSelect}
+                                 value={skill.proficiency}
+                                 onChange={(event) =>
+                                    handleProficiency(skill, event.target.value)
+                                 }
+                                 disabled={isBusy}
+                                 aria-label={`Alterar nível de ${skill.name}`}
+                                 title={HELP_LABELS[skill.proficiency]}
+                              >
+                                 {LEVELS.map((value) => (
+                                    <option key={value} value={value}>
+                                       {SHORT_LABELS[value]}
+                                    </option>
+                                 ))}
+                              </select>
+                              <span className={styles.chipLevelLabel} aria-hidden="true">
+                                 {SHORT_LABELS[skill.proficiency]}
+                              </span>
+                           </span>
+                        ) : (
+                           <span
+                              className={styles.chipLevelStatic}
+                              aria-label={`Nível ${SHORT_LABELS[skill.proficiency]}`}
                            >
-                              {([1, 2, 3, 4] as ProficiencyLevel[]).map((value) => (
-                                 <option key={value} value={value}>
-                                    {value} — {SHORT_LABELS[value]}
-                                 </option>
-                              ))}
-                           </select>
+                              {SHORT_LABELS[skill.proficiency]}
+                           </span>
                         )}
-                        <Button
+                        <button
                            type="button"
-                           variant="ghost"
+                           className={styles.chipRemove}
                            onClick={() => onRemove(skill)}
                            disabled={isBusy}
                            aria-label={`Remover ${skill.name}`}
+                           title={`Remover ${skill.name}`}
                         >
-                           Remover
-                        </Button>
-                     </div>
-                  </li>
-               ))}
+                           ×
+                        </button>
+                     </li>
+                  );
+               })}
             </ul>
          )}
       </div>

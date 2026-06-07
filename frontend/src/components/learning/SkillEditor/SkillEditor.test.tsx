@@ -14,11 +14,13 @@ describe('<SkillEditor />', () => {
       expect(screen.getByText(/ainda não adicionou nenhuma skill/i)).toBeInTheDocument();
    });
 
-   it('renderiza skills com rótulo de nível', () => {
+   it('renderiza skills como chips', () => {
       render(<SkillEditor skills={ITEMS} onAdd={vi.fn()} onRemove={vi.fn()} />);
       expect(screen.getByText('fastapi')).toBeInTheDocument();
-      expect(screen.getByText('intermediate')).toBeInTheDocument();
-      expect(screen.getByText('advanced')).toBeInTheDocument();
+      expect(screen.getByText('tdd')).toBeInTheDocument();
+      // chips mostram o rótulo do nível (em modo estático, sem select)
+      expect(screen.getByLabelText('Nível intermediate')).toBeInTheDocument();
+      expect(screen.getByLabelText('Nível advanced')).toBeInTheDocument();
    });
 
    it('dispara onAdd após preencher e clicar', async () => {
@@ -27,7 +29,7 @@ describe('<SkillEditor />', () => {
 
       const user = userEvent.setup();
       await user.type(screen.getByLabelText('Tecnologia ou conceito'), 'React');
-      await user.click(screen.getByRole('button', { name: 'Adicionar' }));
+      await user.click(screen.getByRole('button', { name: 'Adicionar skill' }));
 
       expect(onAdd).toHaveBeenCalledWith({ name: 'React', proficiency: 2 });
    });
@@ -37,7 +39,7 @@ describe('<SkillEditor />', () => {
       render(<SkillEditor skills={[]} onAdd={onAdd} onRemove={vi.fn()} />);
 
       const user = userEvent.setup();
-      await user.click(screen.getByRole('button', { name: 'Adicionar' }));
+      await user.click(screen.getByRole('button', { name: 'Adicionar skill' }));
 
       expect(screen.getByRole('alert')).toHaveTextContent(/tecnologia ou conceito/i);
       expect(onAdd).not.toHaveBeenCalled();
@@ -49,7 +51,7 @@ describe('<SkillEditor />', () => {
 
       const user = userEvent.setup();
       await user.type(screen.getByLabelText('Tecnologia ou conceito'), 'FastAPI');
-      await user.click(screen.getByRole('button', { name: 'Adicionar' }));
+      await user.click(screen.getByRole('button', { name: 'Adicionar skill' }));
 
       expect(screen.getByRole('alert')).toHaveTextContent(/já adicionou/i);
       expect(onAdd).not.toHaveBeenCalled();
@@ -63,5 +65,24 @@ describe('<SkillEditor />', () => {
       await user.click(screen.getByRole('button', { name: 'Remover fastapi' }));
 
       expect(onRemove).toHaveBeenCalledWith(ITEMS[0]);
+   });
+
+   it('permite alterar o nível via select inline quando onChangeProficiency é passado', async () => {
+      const onChange = vi.fn();
+      render(
+         <SkillEditor
+            skills={ITEMS}
+            onAdd={vi.fn()}
+            onRemove={vi.fn()}
+            onChangeProficiency={onChange}
+         />,
+      );
+
+      const user = userEvent.setup();
+      await user.selectOptions(
+         screen.getByLabelText('Alterar nível de fastapi'),
+         '4',
+      );
+      expect(onChange).toHaveBeenCalledWith(ITEMS[0], 4);
    });
 });
