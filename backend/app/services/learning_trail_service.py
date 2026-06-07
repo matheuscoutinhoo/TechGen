@@ -11,6 +11,9 @@ from app.exceptions import ValidationError as DomainValidationError
 from app.models.learning_trail import LearningTrail
 from app.models.skill import PROFICIENCY_LABELS
 from app.models.user import User
+from app.repositories.concept_explanation_repository import (
+    ConceptExplanationRepository,
+)
 from app.repositories.learning_trail_repository import LearningTrailRepository
 from app.schemas.learning_trail import (
     ConceptExplanation,
@@ -39,10 +42,12 @@ class LearningTrailService:
         repository: LearningTrailRepository,
         ai_provider: AIProvider,
         skill_service: SkillService,
+        concept_cache_repository: ConceptExplanationRepository,
     ) -> None:
         self.repository = repository
         self.ai_provider = ai_provider
         self.skill_service = skill_service
+        self.concept_cache = concept_cache_repository
 
     # ------------------------------------------------------------------ #
     # Queries
@@ -82,7 +87,10 @@ class LearningTrailService:
         trail.summary = content.project_summary
         trail.content_json = content.model_dump_json()
         trail.completed_at = None
-        return self.repository.update(trail)
+        updated = self.repository.update(trail)
+        # Conteúdo da trilha mudou: as explicações antigas perderam contexto.
+        self.concept_cache.delete_for_trail(trail.id)
+        return updated
 
     def update_for_user(
         self,
@@ -104,6 +112,8 @@ class LearningTrailService:
                 trail.title = content.project_title
             if summary is None:
                 trail.summary = content.project_summary
+            # Edição manual do conteúdo também invalida o cache.
+            self.concept_cache.delete_for_trail(trail.id)
         return self.repository.update(trail)
 
     def delete_for_user(self, user: User, trail_id: int) -> None:
@@ -136,6 +146,8 @@ class LearningTrailService:
         trail_id: int,
         ticket_code: str,
         concept: str,
+        *,
+        force_refresh: bool = False,
     ) -> ConceptExplanation:
         trail = self.get_for_user(user, trail_id)
         content = self._parse_content(trail)
@@ -149,7 +161,19 @@ class LearningTrailService:
             raise NotFoundError(
                 f"Conceito '{concept}' não pertence ao ticket {ticket_code}"
             )
-        return self.ai_provider.explain_concept(
+
+        if not force_refresh:
+            cached = self.concept_cache.get(
+                trail_id=trail.id, ticket_code=ticket.code, concept=concept
+            )
+            if cached is not None:
+                try:
+                    return ConceptExplanation.model_validate_json(cached.payload_json)
+                except ValidationError:
+                    # Cache corrompido (mudança de schema, etc.): regenera.
+                    pass
+
+        explanation = self.ai_provider.explain_concept(
             concept,
             context=ConceptContext(
                 project_title=content.project_title,
@@ -158,6 +182,40 @@ class LearningTrailService:
             ),
             skills=_to_skill_inputs(user),
         )
+        self.concept_cache.upsert(
+            trail_id=trail.id,
+            ticket_code=ticket.code,
+            concept=concept,
+            payload_json=explanation.model_dump_json(),
+        )
+        return explanation
+
+    # ------------------------------------------------------------------ #
+    # Serialization
+    # ------------------------------------------------------------------ #
+    @staticmethod
+    def to_read_model(trail: LearningTrail) -> LearningTrailRead:
+        content = LearningTrailService._parse_content(trail)
+        return LearningTrailRead(
+            id=trail.id,
+            topic=trail.topic,
+            title=trail.title,
+            summary=trail.summary,
+            content=content,
+            completed_at=trail.completed_at,
+            created_at=trail.created_at,
+            updated_at=trail.updated_at,
+        )
+
+    @staticmethod
+    def _parse_content(trail: LearningTrail) -> TrailContent:
+        try:
+            return TrailContent.model_validate_json(trail.content_json)
+        except ValidationError as exc:
+            raise DomainValidationError(
+                "Conteúdo da trilha está corrompido",
+                details={"trail_id": trail.id},
+            ) from exc
 
     # ------------------------------------------------------------------ #
     # Serialization

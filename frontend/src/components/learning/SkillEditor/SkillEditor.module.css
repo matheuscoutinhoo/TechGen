@@ -177,17 +177,28 @@
    opacity: 0;
 }
 
-.chipLevelSelect:focus-visible + .chipLevelLabel {
+.chipLevelSelect:focus-visible+.chipLevelLabel {
    outline: 2px solid var(--color-primary);
    outline-offset: 2px;
    border-radius: 999px;
 }
 
 /* Cores por nível, expostas como custom property no contêiner do chip */
-.level1 { --levelColor: #6b7280; }
-.level2 { --levelColor: #00796b; }
-.level3 { --levelColor: #c2410c; }
-.level4 { --levelColor: #7e22ce; }
+.level1 {
+   --levelColor: #6b7280;
+}
+
+.level2 {
+   --levelColor: #00796b;
+}
+
+.level3 {
+   --levelColor: #c2410c;
+}
+
+.level4 {
+   --levelColor: #7e22ce;
+}
 
 .chipRemove {
    appearance: none;

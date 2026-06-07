@@ -5,6 +5,9 @@ from sqlalchemy.orm import Session
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.user import User
+from app.repositories.concept_explanation_repository import (
+    ConceptExplanationRepository,
+)
 from app.repositories.learning_trail_repository import LearningTrailRepository
 from app.repositories.skill_repository import SkillRepository
 from app.repositories.user_repository import UserRepository
@@ -29,6 +32,12 @@ def get_learning_trail_repository(
 
 def get_skill_repository(db: Session = Depends(get_db)) -> SkillRepository:
     return SkillRepository(db)
+
+
+def get_concept_explanation_repository(
+    db: Session = Depends(get_db),
+) -> ConceptExplanationRepository:
+    return ConceptExplanationRepository(db)
 
 
 # -------- Services --------
@@ -59,9 +68,15 @@ def get_learning_trail_service(
     repo: LearningTrailRepository = Depends(get_learning_trail_repository),
     ai: AIProvider = Depends(get_ai_provider_dep),
     skill_service: SkillService = Depends(get_skill_service),
+    concept_cache: ConceptExplanationRepository = Depends(
+        get_concept_explanation_repository
+    ),
 ) -> LearningTrailService:
     return LearningTrailService(
-        repository=repo, ai_provider=ai, skill_service=skill_service
+        repository=repo,
+        ai_provider=ai,
+        skill_service=skill_service,
+        concept_cache_repository=concept_cache,
     )
 
 

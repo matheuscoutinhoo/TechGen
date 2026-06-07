@@ -134,9 +134,14 @@ def explain_concept(
     trail_id: int,
     ticket_code: str,
     concept: str,
+    refresh: bool = False,
     current_user: User = Depends(get_current_user),
     service: LearningTrailService = Depends(get_learning_trail_service),
 ) -> ConceptExplanation:
     return service.explain_concept_for_user(
-        current_user, trail_id, ticket_code, concept
+        current_user,
+        trail_id,
+        ticket_code,
+        concept,
+        force_refresh=refresh,
     )

@@ -2,6 +2,9 @@
 import pytest
 
 from app.exceptions import ConflictError, ForbiddenError, NotFoundError
+from app.repositories.concept_explanation_repository import (
+    ConceptExplanationRepository,
+)
 from app.repositories.learning_trail_repository import LearningTrailRepository
 from app.repositories.skill_repository import SkillRepository
 from app.repositories.user_repository import UserRepository
@@ -17,11 +20,17 @@ def skill_service(db_session):
 
 
 @pytest.fixture
-def service(db_session, fake_ai_provider, skill_service):
+def concept_cache_repo(db_session):
+    return ConceptExplanationRepository(db_session)
+
+
+@pytest.fixture
+def service(db_session, fake_ai_provider, skill_service, concept_cache_repo):
     return LearningTrailService(
         repository=LearningTrailRepository(db_session),
         ai_provider=fake_ai_provider,
         skill_service=skill_service,
+        concept_cache_repository=concept_cache_repo,
     )
 
 
@@ -198,3 +207,116 @@ class TestExplainConcept:
             service.explain_concept_for_user(
                 user_a, trail.id, ticket.code, "ConceitoFantasma"
             )
+
+
+@pytest.mark.unit
+class TestExplainConceptCache:
+    """Garante que o cache persistido evita chamadas redundantes à IA."""
+
+    def _spy_provider(self, fake_ai_provider):
+        """Wrap o provider para contar quantas vezes explain_concept é chamado."""
+        calls = {"count": 0}
+        original = fake_ai_provider.explain_concept
+
+        def counted(*args, **kwargs):
+            calls["count"] += 1
+            return original(*args, **kwargs)
+
+        fake_ai_provider.explain_concept = counted
+        return calls
+
+    def test_second_call_returns_from_cache(self, service, user_a, fake_ai_provider):
+        calls = self._spy_provider(fake_ai_provider)
+        trail = service.create_for_user(user_a, topic="Erlang")
+        ticket = service.to_read_model(trail).content.tickets[0]
+        concept = ticket.concepts[0]
+
+        first = service.explain_concept_for_user(user_a, trail.id, ticket.code, concept)
+        second = service.explain_concept_for_user(user_a, trail.id, ticket.code, concept)
+
+        assert calls["count"] == 1  # cache evita a segunda chamada
+        assert first.model_dump() == second.model_dump()
+
+    def test_force_refresh_bypasses_cache(self, service, user_a, fake_ai_provider):
+        calls = self._spy_provider(fake_ai_provider)
+        trail = service.create_for_user(user_a, topic="Erlang")
+        ticket = service.to_read_model(trail).content.tickets[0]
+        concept = ticket.concepts[0]
+
+        service.explain_concept_for_user(user_a, trail.id, ticket.code, concept)
+        service.explain_concept_for_user(
+            user_a, trail.id, ticket.code, concept, force_refresh=True
+        )
+
+        assert calls["count"] == 2
+
+    def test_regenerate_invalidates_cache(self, service, user_a, fake_ai_provider):
+        calls = self._spy_provider(fake_ai_provider)
+        trail = service.create_for_user(user_a, topic="Erlang")
+        ticket = service.to_read_model(trail).content.tickets[0]
+        concept = ticket.concepts[0]
+
+        service.explain_concept_for_user(user_a, trail.id, ticket.code, concept)
+        assert calls["count"] == 1
+
+        service.regenerate_for_user(user_a, trail.id)
+        regenerated_ticket = service.to_read_model(
+            service.get_for_user(user_a, trail.id)
+        ).content.tickets[0]
+
+        service.explain_concept_for_user(
+            user_a, trail.id, regenerated_ticket.code, regenerated_ticket.concepts[0]
+        )
+        assert calls["count"] == 2
+
+    def test_manual_content_update_invalidates_cache(
+        self, service, user_a, fake_ai_provider
+    ):
+        from app.schemas.learning_trail import Ticket, TicketTask, TrailContent
+
+        calls = self._spy_provider(fake_ai_provider)
+        trail = service.create_for_user(user_a, topic="Erlang")
+        original = service.to_read_model(trail).content
+        ticket = original.tickets[0]
+        concept = ticket.concepts[0]
+        service.explain_concept_for_user(user_a, trail.id, ticket.code, concept)
+        assert calls["count"] == 1
+
+        new_content = TrailContent(
+            project_title=original.project_title,
+            project_summary=original.project_summary,
+            why_realistic=original.why_realistic,
+            target_audience=original.target_audience,
+            prerequisites=list(original.prerequisites),
+            tickets=[
+                Ticket(
+                    code=ticket.code,
+                    title="Novo título",
+                    objective=ticket.objective,
+                    concepts=list(ticket.concepts),
+                    tasks=[TicketTask(description="Nova tarefa")],
+                    acceptance_criteria=list(ticket.acceptance_criteria),
+                )
+            ],
+        )
+        service.update_for_user(user_a, trail.id, content=new_content)
+
+        service.explain_concept_for_user(user_a, trail.id, ticket.code, concept)
+        assert calls["count"] == 2
+
+    def test_cache_isolated_per_trail(self, service, user_a, fake_ai_provider):
+        calls = self._spy_provider(fake_ai_provider)
+        trail_a = service.create_for_user(user_a, topic="Haskell")
+        trail_b = service.create_for_user(user_a, topic="Crystal")
+        ticket_a = service.to_read_model(trail_a).content.tickets[0]
+        ticket_b = service.to_read_model(trail_b).content.tickets[0]
+
+        # mesmo conceito ("Ambiente de desenvolvimento" do TG-1), trilhas
+        # distintas: deve gerar duas vezes.
+        service.explain_concept_for_user(
+            user_a, trail_a.id, ticket_a.code, ticket_a.concepts[0]
+        )
+        service.explain_concept_for_user(
+            user_a, trail_b.id, ticket_b.code, ticket_b.concepts[0]
+        )
+        assert calls["count"] == 2

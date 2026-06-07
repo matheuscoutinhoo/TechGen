@@ -681,8 +681,22 @@ gerada por IA.
 - `GET /api/v1/learning-trails/{id}/tickets/{code}/concepts/{concept}`.
 - Verifica autorização sobre a trilha, valida que o ticket existe e que o
   conceito pertence a ele antes de chamar a IA.
+- Aceita querystring `?refresh=true` para ignorar o cache e regenerar.
 - Erros de domínio (`NotFoundError`, `ForbiddenError`) seguem o handler
   global.
+
+### Cache persistido
+- Tabela `concept_explanation_cache` com chave única
+  `(trail_id, ticket_code, concept_key)`; `concept_key` é o conceito
+  normalizado em lowercase.
+- `LearningTrailService.explain_concept_for_user` consulta o cache primeiro;
+  só chama a IA em cache miss ou `force_refresh=True`, e persiste o resultado.
+- Cascade `ON DELETE` na trilha limpa o cache automaticamente.
+- `regenerate_for_user` e edições manuais de `content` invalidam o cache
+  associado à trilha — o contexto mudou, explicações antigas perderam validade.
+- Tradeoff aceito: a explicação é calibrada pelo nível das skills **no
+  momento da geração**. O usuário pode forçar regeneração via botão
+  "Atualizar" no modal (envia `?refresh=true`).
 
 ### Prompt
 - `CONCEPT_SYSTEM_PROMPT` + `build_concept_prompt` em `prompts.py`.
@@ -694,6 +708,8 @@ gerada por IA.
 - `ConceptModal` mostra spinner enquanto carrega, renderiza definição,
   padrões, armadilhas, dicas, exemplos (com bloco de código quando houver) e
   leituras complementares. Fecha por botão, clique no backdrop ou `Escape`.
+- Botão discreto "Atualizar" no header dispara nova geração (cache bypass)
+  para casos em que o usuário evoluiu de nível e quer recalibrar.
 
 ---
 

@@ -197,3 +197,33 @@ class TestExplainConcept:
             headers=auth_headers,
         )
         assert response.status_code == 404
+
+    def test_refresh_query_param_bypasses_cache(
+        self, client, auth_headers, fake_ai_provider
+    ):
+        calls = {"count": 0}
+        original = fake_ai_provider.explain_concept
+
+        def counted(*args, **kwargs):
+            calls["count"] += 1
+            return original(*args, **kwargs)
+
+        fake_ai_provider.explain_concept = counted
+
+        created = client.post(
+            "/api/v1/learning-trails",
+            headers=auth_headers,
+            json={"topic": "Haskell"},
+        ).json()
+        ticket = created["content"]["tickets"][0]
+        concept = ticket["concepts"][0]
+        base_url = (
+            f"/api/v1/learning-trails/{created['id']}"
+            f"/tickets/{ticket['code']}/concepts/{concept}"
+        )
+
+        client.get(base_url, headers=auth_headers)
+        client.get(base_url, headers=auth_headers)  # cache hit
+        client.get(f"{base_url}?refresh=true", headers=auth_headers)
+
+        assert calls["count"] == 2

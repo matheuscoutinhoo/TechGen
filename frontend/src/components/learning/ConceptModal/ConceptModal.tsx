@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { learningTrailsApi } from '../../../api/learningTrails';
 import { ApiError } from '../../../api/client';
 import type { ConceptExplanation } from '../../../types/api';
@@ -17,31 +17,42 @@ export interface ConceptModalProps {
 export function ConceptModal({ trailId, ticketCode, concept, onClose }: ConceptModalProps) {
    const [explanation, setExplanation] = useState<ConceptExplanation | null>(null);
    const [isLoading, setLoading] = useState(true);
+   const [isRefreshing, setRefreshing] = useState(false);
    const [error, setError] = useState<string | null>(null);
 
-   useEffect(() => {
-      let cancelled = false;
-      setLoading(true);
-      setError(null);
-      void (async () => {
+   const load = useCallback(
+      async (options: { refresh?: boolean } = {}) => {
+         if (options.refresh) {
+            setRefreshing(true);
+         } else {
+            setLoading(true);
+         }
+         setError(null);
          try {
-            const data = await learningTrailsApi.explainConcept(trailId, ticketCode, concept);
-            if (!cancelled) setExplanation(data);
+            const data = await learningTrailsApi.explainConcept(
+               trailId,
+               ticketCode,
+               concept,
+               options,
+            );
+            setExplanation(data);
          } catch (err) {
-            if (cancelled) return;
             setError(
                err instanceof ApiError
                   ? err.message
                   : 'Não foi possível carregar a explicação.',
             );
          } finally {
-            if (!cancelled) setLoading(false);
+            setLoading(false);
+            setRefreshing(false);
          }
-      })();
-      return () => {
-         cancelled = true;
-      };
-   }, [trailId, ticketCode, concept]);
+      },
+      [trailId, ticketCode, concept],
+   );
+
+   useEffect(() => {
+      void load();
+   }, [load]);
 
    useEffect(() => {
       const handler = (event: KeyboardEvent) => {
@@ -72,14 +83,27 @@ export function ConceptModal({ trailId, ticketCode, concept, onClose }: ConceptM
                      {explanation?.concept ?? concept}
                   </h2>
                </div>
-               <button
-                  type="button"
-                  className={styles.closeBtn}
-                  onClick={onClose}
-                  aria-label="Fechar"
-               >
-                  ×
-               </button>
+               <div className={styles.headerActions}>
+                  {explanation && !isLoading && (
+                     <button
+                        type="button"
+                        className={styles.refreshBtn}
+                        onClick={() => void load({ refresh: true })}
+                        disabled={isRefreshing}
+                        title="Gerar uma nova explicação calibrada pelo seu nível atual"
+                     >
+                        {isRefreshing ? 'Atualizando...' : 'Atualizar'}
+                     </button>
+                  )}
+                  <button
+                     type="button"
+                     className={styles.closeBtn}
+                     onClick={onClose}
+                     aria-label="Fechar"
+                  >
+                     ×
+                  </button>
+               </div>
             </header>
 
             {isLoading && <Spinner label="Gerando explicação..." />}

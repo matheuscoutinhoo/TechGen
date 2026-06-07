@@ -29,10 +29,17 @@ export const learningTrailsApi = {
    delete: (id: number) => apiClient.del<void>(`/learning-trails/${id}`),
    complete: (id: number) =>
       apiClient.post<CompleteTrailResponse>(`/learning-trails/${id}/complete`),
-   explainConcept: (id: number, ticketCode: string, concept: string) =>
-      apiClient.get<ConceptExplanation>(
+   explainConcept: (
+      id: number,
+      ticketCode: string,
+      concept: string,
+      options: { refresh?: boolean } = {},
+   ) => {
+      const query = options.refresh ? '?refresh=true' : '';
+      return apiClient.get<ConceptExplanation>(
          `/learning-trails/${id}/tickets/${encodeURIComponent(
             ticketCode,
-         )}/concepts/${encodeURIComponent(concept)}`,
-      ),
+         )}/concepts/${encodeURIComponent(concept)}${query}`,
+      );
+   },
 };
