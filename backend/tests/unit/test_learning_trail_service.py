@@ -235,14 +235,18 @@ class TestComplete:
     def test_complete_upgrades_existing_skill_below_target(
         self, service, user_a, skill_service
     ):
-        # cria uma skill em nível novice; conclusão deve elevar para beginner (2)
-        skill_service.add_for_user(user_a, name="TDD", proficiency=1)
+        # Cria a skill GENÉRICA em nível novice; conclusão deve elevar para
+        # beginner (2). Usamos "testes" porque é a categoria em que o
+        # FakeProvider colapsa os concepts de TDD/pytest/etc.
+        skill_service.add_for_user(user_a, name="testes", proficiency=1)
 
         trail = service.create_for_user(user_a, topic="Ruby")
         _, _, upgraded = service.complete_for_user(user_a, trail.id)
 
-        assert "tdd" in upgraded
-        skill = next(s for s in skill_service.list_for_user(user_a) if s.name == "tdd")
+        assert "testes" in upgraded
+        skill = next(
+            s for s in skill_service.list_for_user(user_a) if s.name == "testes"
+        )
         assert skill.proficiency == 2
 
     def test_complete_twice_raises_conflict(self, service, user_a):
@@ -250,6 +254,32 @@ class TestComplete:
         service.complete_for_user(user_a, trail.id)
         with pytest.raises(ConflictError):
             service.complete_for_user(user_a, trail.id)
+
+    def test_create_populates_skill_categories_and_complete_uses_them(
+        self, service, user_a, skill_service
+    ):
+        """Garante que skills no perfil são as categorias genéricas, não os concepts."""
+        trail = service.create_for_user(user_a, topic="FastAPI com JWT")
+        content = service.to_read_model(trail).content
+
+        # 1. create já populou as categorias genéricas
+        assert content.skill_categories, "skill_categories não foi populado"
+        # categorias genéricas têm volume muito menor que concepts crus
+        raw_concepts: list[str] = []
+        for ticket in content.tickets:
+            raw_concepts.extend(ticket.concepts)
+        assert len(content.skill_categories) <= len(raw_concepts)
+        # e estão em lowercase
+        assert all(c == c.lower() for c in content.skill_categories)
+
+        # 2. complete aplica as categorias (não os concepts brutos)
+        _, added, _ = service.complete_for_user(user_a, trail.id)
+        skills = {s.name for s in skill_service.list_for_user(user_a)}
+        assert set(added) == set(content.skill_categories)
+        assert all(cat in skills for cat in content.skill_categories)
+        # E NÃO entrou nada com nome de concept específico (TDD, JWT, etc.)
+        assert "tdd" not in skills
+        assert "jwt" not in skills
 
 
 @pytest.mark.unit

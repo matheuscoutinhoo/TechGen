@@ -3,24 +3,28 @@ import type { Skill, Ticket } from '../../../types/api';
 import styles from './EarnedSkillsCard.module.css';
 
 export interface EarnedSkillsCardProps {
-   tickets: Ticket[];
-   /** Skills atuais do perfil — define o que vai entrar como nova vs. existente. */
+   /**
+    * Skills genéricas que o aluno vai adicionar/elevar ao concluir.
+    * Geradas pela IA na criação da trilha (`TrailContent.skill_categories`).
+    */
+   categories: string[];
+   /**
+    * Tickets — só usado como FALLBACK quando `categories` está vazio (trilhas
+    * geradas antes do campo existir). Quando há categorias, o componente
+    * ignora os tickets.
+    */
+   tickets?: Ticket[];
+   /** Skills atuais do perfil; define o que entra como nova vs. já existente. */
    currentSkills: Skill[];
-   /** Quando true, mostra o estado pós-conclusão (skills foram adicionadas). */
+   /** Quando true, mostra o estado pós-conclusão. */
    completed?: boolean;
-   /**
-    * Quando vier do endpoint /complete: nomes que ENTRARAM agora no perfil.
-    * Lowercase, como o backend devolve. Aplicável só se `completed` for true.
-    */
+   /** Categorias que ENTRARAM no perfil agora (lowercase). */
    addedConcepts?: string[];
-   /**
-    * Conceitos que já existiam e foram elevados (lowercase). Mostrados como
-    * "reforçadas" no estado pós-conclusão.
-    */
+   /** Categorias já existentes que foram ELEVADAS (lowercase). */
    upgradedConcepts?: string[];
 }
 
-function dedupeConcepts(tickets: Ticket[]): string[] {
+function fallbackFromTickets(tickets: Ticket[]): string[] {
    const seen = new Set<string>();
    const out: string[] = [];
    for (const ticket of tickets) {
@@ -37,34 +41,39 @@ function dedupeConcepts(tickets: Ticket[]): string[] {
 }
 
 export function EarnedSkillsCard({
-   tickets,
+   categories,
+   tickets = [],
    currentSkills,
    completed = false,
    addedConcepts = [],
    upgradedConcepts = [],
 }: EarnedSkillsCardProps) {
-   const concepts = useMemo(() => dedupeConcepts(tickets), [tickets]);
+   // Fonte primária: categorias (lowercase, já abstraídas). Fallback:
+   // concepts dos tickets (trilhas legadas geradas antes do campo existir).
+   const items = useMemo(() => {
+      if (categories.length > 0) return categories;
+      return fallbackFromTickets(tickets);
+   }, [categories, tickets]);
 
    const ownedNames = useMemo(
       () => new Set(currentSkills.map((s) => s.name.toLowerCase())),
       [currentSkills],
    );
 
-   if (concepts.length === 0) return null;
+   if (items.length === 0) return null;
 
-   // Antes de concluir: separa em "novas para o perfil" vs. "você já tem".
-   const newOnes = concepts.filter((c) => !ownedNames.has(c.toLowerCase()));
-   const owned = concepts.filter((c) => ownedNames.has(c.toLowerCase()));
+   const newOnes = items.filter((c) => !ownedNames.has(c.toLowerCase()));
+   const owned = items.filter((c) => ownedNames.has(c.toLowerCase()));
 
-   const eyebrow = completed ? 'Skills adicionadas' : 'Skills que você ganhará';
+   const eyebrow = completed ? 'Skills adicionadas' : 'Skills que você vai ganhar';
    const description = completed
-      ? 'Os conceitos abaixo passaram a fazer parte do seu perfil — você pode ajustar o nível na sua conta.'
-      : 'Ao concluir esta trilha, os conceitos abaixo entram no seu perfil em nível beginner. Skills que você já tem ficam destacadas.';
+      ? 'Estas skills passaram a fazer parte do seu perfil — você pode ajustar o nível na sua conta.'
+      : 'Ao concluir esta trilha, estas skills genéricas entram no seu perfil em nível beginner. Skills que você já tem ficam destacadas.';
 
    return (
       <section
          className={styles.wrapper}
-         aria-label="Skills que você ganhará ao concluir esta trilha"
+         aria-label="Skills que você vai ganhar ao concluir esta trilha"
       >
          <header className={styles.header}>
             <span className={styles.eyebrow}>{eyebrow}</span>
@@ -77,10 +86,10 @@ export function EarnedSkillsCard({
                   <div className={styles.group}>
                      <span className={styles.groupLabel}>Novas</span>
                      <ul className={styles.chipList}>
-                        {addedConcepts.map((concept) => (
-                           <li key={`added-${concept}`}>
+                        {addedConcepts.map((name) => (
+                           <li key={`added-${name}`}>
                               <span className={`${styles.chip} ${styles.chipNew}`}>
-                                 {concept}
+                                 {name}
                                  <span className={styles.chipMeta}>beginner</span>
                               </span>
                            </li>
@@ -92,12 +101,12 @@ export function EarnedSkillsCard({
                   <div className={styles.group}>
                      <span className={styles.groupLabel}>Reforçadas</span>
                      <ul className={styles.chipList}>
-                        {upgradedConcepts.map((concept) => (
-                           <li key={`up-${concept}`}>
+                        {upgradedConcepts.map((name) => (
+                           <li key={`up-${name}`}>
                               <span
                                  className={`${styles.chip} ${styles.chipUpgraded}`}
                               >
-                                 {concept}
+                                 {name}
                               </span>
                            </li>
                         ))}
@@ -106,7 +115,7 @@ export function EarnedSkillsCard({
                )}
                {addedConcepts.length === 0 && upgradedConcepts.length === 0 && (
                   <p className={styles.emptyNote}>
-                     Os conceitos desta trilha já estavam no seu perfil — nada
+                     As skills desta trilha já estavam no seu perfil — nada
                      foi alterado.
                   </p>
                )}
@@ -119,10 +128,10 @@ export function EarnedSkillsCard({
                         Novas no seu perfil ({newOnes.length})
                      </span>
                      <ul className={styles.chipList}>
-                        {newOnes.map((concept) => (
-                           <li key={`new-${concept}`}>
+                        {newOnes.map((name) => (
+                           <li key={`new-${name}`}>
                               <span className={`${styles.chip} ${styles.chipNew}`}>
-                                 {concept}
+                                 {name}
                                  <span className={styles.chipMeta}>beginner</span>
                               </span>
                            </li>
@@ -136,18 +145,18 @@ export function EarnedSkillsCard({
                         Você já tem ({owned.length})
                      </span>
                      <ul className={styles.chipList}>
-                        {owned.map((concept) => {
+                        {owned.map((name) => {
                            const profile = currentSkills.find(
-                              (s) => s.name.toLowerCase() === concept.toLowerCase(),
+                              (s) => s.name.toLowerCase() === name.toLowerCase(),
                            );
                            const willUpgrade =
                               !!profile && profile.proficiency < 2;
                            return (
-                              <li key={`owned-${concept}`}>
+                              <li key={`owned-${name}`}>
                                  <span
                                     className={`${styles.chip} ${styles.chipOwned}`}
                                  >
-                                    {concept}
+                                    {name}
                                     {profile && (
                                        <span className={styles.chipMeta}>
                                           {profile.proficiency_label}
@@ -162,15 +171,6 @@ export function EarnedSkillsCard({
                   </div>
                )}
             </div>
-         )}
-
-         {!completed && (
-            <p className={styles.footnote}>
-               Total de conceitos cobertos: <strong>{concepts.length}</strong>.
-               Reaproveitamos os nomes dos conceitos de cada ticket; ajustamos
-               proficiência apenas quando o concluir vê que você ainda não
-               tinha o conceito.
-            </p>
          )}
       </section>
    );

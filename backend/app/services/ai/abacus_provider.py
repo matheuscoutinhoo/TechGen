@@ -24,9 +24,11 @@ from app.schemas.learning_trail import (
 )
 from app.services.ai.base import AIProvider, ConceptContext, UserSkillInput
 from app.services.ai.prompts import (
+    CATEGORIZER_SYSTEM_PROMPT,
     CONCEPT_SYSTEM_PROMPT,
     NEXT_QUESTION_SYSTEM_PROMPT,
     SYSTEM_PROMPT,
+    build_categorizer_prompt,
     build_concept_prompt,
     build_next_question_prompt,
     build_user_prompt,
@@ -51,6 +53,7 @@ class AbacusAIProvider(AIProvider):
         api_key: str,
         model: str,
         questions_model: str | None = None,
+        categorizer_model: str | None = None,
         timeout_seconds: int = 300,
         http_client: httpx.Client | None = None,
     ) -> None:
@@ -71,6 +74,9 @@ class AbacusAIProvider(AIProvider):
         # Modelo dedicado para perguntas de diagnóstico (mais leve/barato).
         # Fallback transparente no ``model`` principal quando não configurado.
         self.questions_model = (questions_model or "").strip() or model
+        # Modelo dedicado para categorização de skills (chamada barata).
+        # Fallback transparente no ``model`` principal quando não configurado.
+        self.categorizer_model = (categorizer_model or "").strip() or model
         self.timeout_seconds = timeout_seconds
         self._client = http_client
 
@@ -145,6 +151,32 @@ class AbacusAIProvider(AIProvider):
                 "A IA retornou a explicação em formato inesperado. Tente novamente."
             ) from exc
 
+    def categorize_concepts(self, concepts: Sequence[str]) -> list[str]:
+        cleaned = [c.strip() for c in concepts if c and c.strip()]
+        if not cleaned:
+            return []
+        payload = self._build_categorizer_payload(cleaned)
+        raw = self._call_api(payload)
+        text = self._extract_text(raw)
+        data = self._parse_json(text)
+        categories = data.get("categories")
+        if not isinstance(categories, list):
+            raise AIProviderError(
+                "A IA não retornou a lista de categorias esperada."
+            )
+        # Normaliza: lowercase, trim, dedup (preservando ordem).
+        seen: set[str] = set()
+        out: list[str] = []
+        for item in categories:
+            if not isinstance(item, str):
+                continue
+            normalized = item.strip().lower()
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            out.append(normalized)
+        return out
+
     # ------------------------------------------------------------------ #
     # Payload builders
     # ------------------------------------------------------------------ #
@@ -186,6 +218,21 @@ class AbacusAIProvider(AIProvider):
                         skills=_serialize_skills(skills),
                         previous_answers=previous_answers,
                     ),
+                },
+            ],
+        }
+
+    def _build_categorizer_payload(
+        self, concepts: Sequence[str]
+    ) -> dict[str, Any]:
+        return {
+            "model": self.categorizer_model,
+            "stream": False,
+            "messages": [
+                {"role": "system", "content": CATEGORIZER_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": build_categorizer_prompt(concepts),
                 },
             ],
         }

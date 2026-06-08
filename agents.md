@@ -564,8 +564,12 @@ Checklist antes de migrar:
   - `ABACUS_QUESTIONS_MODEL` (ex.: `gemini-3.5-flash`) — modelo dedicado
     às perguntas de diagnóstico inicial. Curtas, baratas, mais rápidas.
     Quando vazio, faz fallback transparente em `ABACUS_MODEL`.
+  - `ABACUS_CATEGORIZER_MODEL` (padrão `claude-haiku-4-5-20251001`) —
+    modelo barato usado para abstrair os concepts dos tickets em poucas
+    skills genéricas no momento da criação/regeneração da trilha. Fallback
+    transparente em `ABACUS_MODEL` quando vazio.
   - `ABACUS_TIMEOUT_SECONDS` (padrão 300 — 5 min; trilhas longas com modelos top-tier podem se aproximar disso)
-- A interface `AIProvider` expõe três métodos obrigatórios:
+- A interface `AIProvider` expõe quatro métodos obrigatórios:
   - `generate_next_topic_question(topic, *, skills, previous_answers)` —
     gera a **próxima** pergunta de diagnóstico levando em conta o histórico
     de respostas. Retorna `None` quando a IA decide que já tem contexto
@@ -577,6 +581,11 @@ Checklist antes de migrar:
   - `explain_concept(concept, *, context, skills)` — gera uma explicação
     aprofundada de um conceito específico, calibrada pelo nível do aluno.
     Usa `model`.
+  - `categorize_concepts(concepts)` — colapsa uma lista de concepts
+    específicos ("JWT", "OAuth2", "Repository", "Migrations") em poucas
+    categorias genéricas ("autenticação", "banco de dados"). Chamado pelo
+    `LearningTrailService` no `create_for_user`/`regenerate_for_user` para
+    popular `TrailContent.skill_categories`. Usa `categorizer_model`.
 - Prompts ficam em `app/services/ai/prompts.py` — versionados, revisados via PR. Princípios não-negociáveis:
   - **Sem conteúdo genérico.** O modelo é instruído a sempre escolher um cenário concreto.
   - **Personalização explícita por skill E pelo diagnóstico.** Cada ticket
@@ -679,13 +688,23 @@ conhecer (e em que profundidade) e alimentam a personalização da IA.
     nível atual do aluno.
 
 ### Progressão automática
+- Skills no perfil são **categorias genéricas e transferíveis** (`git`,
+  `python`, `api rest`, `autenticação`, etc.), não nomes específicos de
+  conceitos. As categorias são geradas pela IA no `create`/`regenerate`
+  da trilha (modelo `ABACUS_CATEGORIZER_MODEL`, padrão Claude Haiku) e
+  persistidas em `TrailContent.skill_categories`. Isso evita poluir o
+  perfil do aluno com dezenas de termos pontuais ("JWT", "OAuth2",
+  "bcrypt"…) — eles colapsam em "autenticação".
 - Endpoint `POST /api/v1/learning-trails/{id}/complete`:
   - marca `completed_at` na trilha;
-  - para cada conceito de cada ticket, garante uma skill no perfil;
+  - itera sobre `content.skill_categories` (não sobre `ticket.concepts`)
+    e garante uma skill no perfil para cada categoria;
   - se a skill não existia, cria em nível `beginner` (2);
-  - se existia em nível abaixo de `beginner`, eleva para `beginner`.
-- Resposta inclui `added_concepts` e `upgraded_concepts` para feedback ao
-  usuário.
+  - se existia em nível abaixo de `beginner`, eleva para `beginner`;
+  - trilhas geradas antes do campo existir caem num backfill on-the-fly
+    (chama o categorizer naquele momento e persiste o resultado).
+- Resposta inclui `added_concepts` e `upgraded_concepts` (nomes de
+  categorias, lowercase) para feedback ao usuário.
 - Concluir a mesma trilha duas vezes retorna `409 CONFLICT` — a regeneração
   zera `completed_at` se o aluno quiser refazer o ciclo.
 

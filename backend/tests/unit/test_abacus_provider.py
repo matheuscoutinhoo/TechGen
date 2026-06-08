@@ -337,3 +337,82 @@ class TestAbacusAIProvider:
         )
         assert result is not None
         assert result.id == "q3"  # forçado pelo provider
+
+    # ------------------------------------------------------------------ #
+    # Categorizador de skills
+    # ------------------------------------------------------------------ #
+    @respx.mock
+    def test_categorize_uses_categorizer_model(self):
+        provider = AbacusAIProvider(
+            api_url=API_URL,
+            api_key="fake",
+            model="claude-sonnet-4",
+            categorizer_model="claude-haiku-4-5-20251001",
+            timeout_seconds=5,
+        )
+        route = respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(
+                200,
+                json=_openai_response(
+                    json.dumps({"categories": ["autenticação", "banco de dados"]})
+                ),
+            )
+        )
+        provider.categorize_concepts(["JWT", "Repository"])
+        body = json.loads(route.calls.last.request.content)
+        assert body["model"] == "claude-haiku-4-5-20251001"
+
+    @respx.mock
+    def test_categorize_falls_back_to_model_when_not_configured(self):
+        provider = AbacusAIProvider(
+            api_url=API_URL,
+            api_key="fake",
+            model="claude-sonnet-4",
+            timeout_seconds=5,
+        )
+        route = respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(
+                200, json=_openai_response(json.dumps({"categories": ["python"]}))
+            )
+        )
+        provider.categorize_concepts(["Pydantic"])
+        body = json.loads(route.calls.last.request.content)
+        assert body["model"] == "claude-sonnet-4"
+
+    @respx.mock
+    def test_categorize_normalizes_dedupes_and_lowercases(self):
+        respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(
+                200,
+                json=_openai_response(
+                    json.dumps(
+                        {
+                            "categories": [
+                                "Python",
+                                "  python  ",
+                                "API REST",
+                                "Banco de Dados",
+                                "Banco de dados",
+                            ]
+                        }
+                    )
+                ),
+            )
+        )
+        result = _provider().categorize_concepts(["x", "y", "z"])
+        assert result == ["python", "api rest", "banco de dados"]
+
+    def test_categorize_empty_input_skips_api_call(self):
+        # Sem respx.mock instalado: se chamasse a API, daria erro de rede.
+        result = _provider().categorize_concepts([])
+        assert result == []
+
+    @respx.mock
+    def test_categorize_raises_when_response_missing_categories(self):
+        respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(
+                200, json=_openai_response(json.dumps({"oops": True}))
+            )
+        )
+        with pytest.raises(AIProviderError):
+            _provider().categorize_concepts(["JWT"])

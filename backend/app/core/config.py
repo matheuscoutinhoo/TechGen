@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     # Modelo usado nas perguntas de diagnóstico (curtas, baratas). Fallback no
     # ``abacus_model`` quando vazio.
     abacus_questions_model: str = ""
+    # Modelo usado para abstrair os concepts dos tickets em poucas skills
+    # genéricas (chamada barata, output pequeno). Fallback no ``abacus_model``
+    # quando vazio.
+    abacus_categorizer_model: str = "claude-haiku-4-5-20251001"
     abacus_timeout_seconds: int = 300
 
     @field_validator("allowed_origins", mode="before")

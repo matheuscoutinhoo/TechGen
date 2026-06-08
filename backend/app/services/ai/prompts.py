@@ -437,3 +437,73 @@ def build_concept_prompt(
         ticket_objective=ticket_objective.strip(),
         skills_block=_format_skills(skills),
     )
+
+
+# ====================================================================== #
+# Categorizador de skills (abstrai concepts em rótulos genéricos)
+# ====================================================================== #
+CATEGORIZER_SYSTEM_PROMPT = """\
+Você é um bibliotecário técnico organizando o portfólio de skills de um
+aluno. Sua tarefa é COLAPSAR uma lista de conceitos pontuais (que o aluno
+acabou de aprender numa trilha) em poucas categorias GENÉRICAS e
+transferíveis — coisas que aparecem em um currículo, não em um glossário.
+
+Por que isso importa: se o aluno aprendeu "JWT", "OAuth2", "bcrypt",
+"Refresh tokens", o perfil dele NÃO precisa ter 4 skills separadas. Vira
+uma só: "autenticação". Mesma lógica para "Repository", "Migrations",
+"ORM" → "banco de dados".
+
+Regras inegociáveis:
+- Devolva entre 2 e 8 categorias no total. **Menos é melhor.**
+- Categorias em lowercase, português brasileiro, 1 a 3 palavras.
+- Prefira ESTA lista canônica quando aplicável (use o nome exato):
+  - git
+  - python
+  - typescript
+  - javascript
+  - sql
+  - banco de dados
+  - api rest
+  - autenticação
+  - testes
+  - arquitetura de software
+  - devops
+  - docker
+  - observabilidade
+  - frontend
+  - segurança
+  - qualidade de código
+- Use categorias FORA dessa lista APENAS quando nenhuma se encaixar e a
+  categoria for genérica o suficiente para reaparecer em outros projetos
+  (ex.: "machine learning", "redes", "cloud").
+- Bibliotecas e frameworks colapsam na linguagem/domínio
+  (ex.: "Pydantic" → "python", "FastAPI" → "api rest" + "python",
+  "React" → "frontend" + "javascript").
+- Deduplique. Nunca repita.
+- NUNCA invente categorias hiper-específicas como "jwt" ou "repository
+  pattern" — isso derrota o propósito.
+
+Você SEMPRE responde com um único objeto JSON válido, sem comentários
+nem texto fora do JSON, respeitando o schema descrito.
+"""
+
+
+CATEGORIZER_USER_TEMPLATE = """\
+Conceitos aprendidos pelo aluno nesta trilha:
+{concepts_block}
+
+Agrupe-os em poucas categorias genéricas de skill. Schema obrigatório:
+
+{{
+  "categories": ["categoria 1", "categoria 2", "..."]
+}}
+
+Responda APENAS com o JSON puro, sem markdown ao redor, sem ```.
+"""
+
+
+def build_categorizer_prompt(concepts: Sequence[str]) -> str:
+    lines = [f"- {c}" for c in concepts if c.strip()]
+    if not lines:
+        lines = ["- (nenhum conceito)"]
+    return CATEGORIZER_USER_TEMPLATE.format(concepts_block="\n".join(lines))

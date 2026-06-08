@@ -52,6 +52,12 @@ export interface TrailContent {
    prerequisites: string[];
    /** Artefato concreto que o aluno terá ao concluir o último ticket. */
    final_deliverable?: string;
+   /**
+    * Skills genéricas (já abstraídas pela IA) que entram/elevam no perfil
+    * ao concluir a trilha. Ex.: ["python", "api rest", "autenticação"].
+    * Vazio em trilhas geradas antes do campo existir.
+    */
+   skill_categories?: string[];
    tickets: Ticket[];
 }
 

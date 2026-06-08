@@ -47,6 +47,55 @@ def _looks_low_familiarity(text: str) -> bool:
     return any(signal in lowered for signal in _LOW_FAMILIARITY_SIGNALS)
 
 
+# Ordem importa: o primeiro keyword cuja substring aparece no concept vence.
+# Os keywords precisam ser específicos o bastante para não falsear positivo
+# (ex.: "git" vem antes de qualquer coisa que contenha "digital").
+_CATEGORY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("autenticação", ("jwt", "oauth", "bcrypt", "auth", "login", "senha", "token")),
+    ("segurança", ("seguran", "criptograf", "owasp", "vulnerab")),
+    ("banco de dados", (
+        "sql", "banco", "database", "migration", "orm", "repository",
+        "tabela", "índice", "indice", "transac",
+    )),
+    ("api rest", (
+        "rest", "endpoint", " api", "http", "rota", "router", "fastapi",
+        "express", "graphql",
+    )),
+    ("testes", ("test", "tdd", "mock", "pytest", "cobertura", "arrange-act-assert")),
+    ("docker", ("docker", "container")),
+    ("devops", (
+        "deploy", "ci/cd", "ci ", "cd ", "kubernetes", "k8s", "build",
+        "ambiente", "dependência", "dependencia", "pipeline",
+    )),
+    ("observabilidade", ("log", "métrica", "metrica", "telemetria", "trace", "monitor")),
+    ("arquitetura de software", (
+        "solid", "dry", "pattern", "boundary", "domín", "domin",
+        "modelagem", "refator", "code smell", "linguagem ub", "ubíqua",
+        "ubiqua", "entidade", "valor", "validação", "validacao", "erro de domínio",
+    )),
+    ("git", ("git", "versionamento", "branch", "commit", "merge")),
+    ("python", ("python", "pydantic", "django", "flask")),
+    ("typescript", ("typescript", " ts ")),
+    ("javascript", ("javascript", " js ", "node", "react", "vue", "angular")),
+    ("frontend", ("frontend", "ui", "ux", "css", "html", "componente")),
+    ("qualidade de código", ("definition of done", "end-to-end", "ponta a ponta", "demo")),
+    ("fundamentos", ("fundament", "pré-requisito", "pre-requisito", "setup")),
+)
+
+
+def _categorize_one(concept: str) -> str:
+    """Retorna a primeira categoria cujo keyword aparece no concept."""
+    # Acrescenta espaços nas pontas para permitir matches por palavra inteira.
+    lowered = f" {concept.lower()} "
+    for category, keywords in _CATEGORY_KEYWORDS:
+        for keyword in keywords:
+            if keyword in lowered:
+                return category
+    # Sem match: cai em "fundamentos" — categoria genérica menos quebradiça
+    # que repetir o concept inteiro.
+    return "fundamentos"
+
+
 def _personalization_for(
     concepts: Sequence[str],
     skills: Sequence[UserSkillInput],
@@ -668,6 +717,26 @@ class FakeAIProvider(AIProvider):
                 ),
             ],
         )
+
+    def categorize_concepts(self, concepts: Sequence[str]) -> list[str]:
+        """Mapeia concepts específicos em poucas categorias genéricas.
+
+        Determinístico (sem rede): para cada concept, encontra a primeira
+        categoria do ``_CATEGORY_KEYWORDS`` cujo keyword aparece como
+        substring (case-insensitive) no texto. Concepts sem keyword caem
+        em "fundamentos".
+        """
+        seen: set[str] = set()
+        out: list[str] = []
+        for concept in concepts:
+            if not concept or not concept.strip():
+                continue
+            category = _categorize_one(concept)
+            if category in seen:
+                continue
+            seen.add(category)
+            out.append(category)
+        return out
 
     @staticmethod
     def _make_ticket(

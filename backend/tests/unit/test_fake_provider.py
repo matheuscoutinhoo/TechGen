@@ -327,6 +327,55 @@ class TestAdaptiveQuestions:
 
 
 @pytest.mark.unit
+class TestCategorizeConcepts:
+    """O categorizador colapsa concepts específicos em categorias genéricas."""
+
+    def test_empty_input_returns_empty(self):
+        provider = FakeAIProvider()
+        assert provider.categorize_concepts([]) == []
+
+    def test_groups_specific_concepts_into_generic_categories(self):
+        provider = FakeAIProvider()
+        result = provider.categorize_concepts(
+            [
+                "JWT",
+                "OAuth2",
+                "Refresh tokens",
+                "Repository Pattern",
+                "Migrations",
+                "ORM",
+            ]
+        )
+        # 6 conceitos → no máximo 2 categorias (autenticação + banco de dados)
+        assert "autenticação" in result
+        assert "banco de dados" in result
+        assert len(result) <= 3
+
+    def test_result_is_deduplicated_and_lowercase(self):
+        provider = FakeAIProvider()
+        result = provider.categorize_concepts(["TDD", "Pytest", "Mock", "Cobertura"])
+        assert result == ["testes"]
+
+    def test_falls_back_to_fundamentos_when_no_keyword_matches(self):
+        provider = FakeAIProvider()
+        result = provider.categorize_concepts(["xyzqwe123"])
+        assert "fundamentos" in result
+
+    def test_full_trail_categorization_reduces_drastically(self):
+        """Trilha real (6+ tickets, ~20 concepts) precisa virar ~3-5 categorias."""
+        provider = FakeAIProvider()
+        content = provider.generate_learning_trail("FastAPI com JWT")
+        all_concepts: list[str] = []
+        for ticket in content.tickets:
+            all_concepts.extend(ticket.concepts)
+        categories = provider.categorize_concepts(all_concepts)
+        # Confirma a abstração: muito mais concepts do que categorias
+        assert len(all_concepts) >= 6
+        assert len(categories) <= 8
+        assert len(categories) < len(all_concepts)
+
+
+@pytest.mark.unit
 class TestExplainConcept:
     def test_returns_full_explanation(self):
         provider = FakeAIProvider()

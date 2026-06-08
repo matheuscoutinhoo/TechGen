@@ -114,6 +114,7 @@ class LearningTrailService:
         content = self.ai_provider.generate_learning_trail(
             topic, skills=_to_skill_inputs(user), assessment=assessment
         )
+        content = self._with_skill_categories(content)
         return self.repository.create(
             user_id=user.id,
             topic=topic.strip(),
@@ -131,6 +132,7 @@ class LearningTrailService:
             skills=_to_skill_inputs(user),
             assessment=stored,
         )
+        content = self._with_skill_categories(content)
         trail.title = content.project_title
         trail.summary = content.project_summary
         trail.content_json = content.model_dump_json()
@@ -154,15 +156,38 @@ class LearningTrailService:
         if trail.completed_at is not None:
             raise ConflictError("Trilha já marcada como concluída")
         content = self._parse_content(trail)
-        all_concepts: list[str] = []
-        for ticket in content.tickets:
-            all_concepts.extend(ticket.concepts)
+        # Usa as categorias genéricas geradas no create/regenerate. Se a
+        # trilha foi criada antes do campo existir, categoriza agora.
+        categories = list(content.skill_categories)
+        if not categories:
+            raw_concepts: list[str] = []
+            for ticket in content.tickets:
+                raw_concepts.extend(ticket.concepts)
+            categories = self.ai_provider.categorize_concepts(raw_concepts)
+            content = content.model_copy(update={"skill_categories": categories})
+            trail.content_json = content.model_dump_json()
         added, upgraded = self.skill_service.apply_concepts(
-            user, all_concepts, target_level=2
+            user, categories, target_level=2
         )
         trail.completed_at = datetime.now(timezone.utc)
         self.repository.update(trail)
         return trail, added, upgraded
+
+    # ------------------------------------------------------------------ #
+    # Helpers privados
+    # ------------------------------------------------------------------ #
+    def _with_skill_categories(self, content: TrailContent) -> TrailContent:
+        """Roda o categorizador sobre os concepts da trilha e injeta o resultado.
+
+        Se o provider falhar, repassa o erro — o aluno não pode ter trilha
+        sem skill_categories no contrato. Isolar a falha aqui evita estado
+        meio-pronto persistido.
+        """
+        raw_concepts: list[str] = []
+        for ticket in content.tickets:
+            raw_concepts.extend(ticket.concepts)
+        categories = self.ai_provider.categorize_concepts(raw_concepts)
+        return content.model_copy(update={"skill_categories": categories})
 
     def explain_concept_for_user(
         self,

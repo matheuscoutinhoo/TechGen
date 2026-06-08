@@ -8,15 +8,7 @@ const TICKETS: Ticket[] = [
       code: 'TG-1',
       title: 'Setup',
       objective: 'Preparar o ambiente.',
-      concepts: ['FastAPI', 'TDD'],
-      tasks: [],
-      acceptance_criteria: [],
-   } as unknown as Ticket,
-   {
-      code: 'TG-2',
-      title: 'Modelagem',
-      objective: 'Modelar o domínio.',
-      concepts: ['Pydantic', 'TDD'], // TDD repetido para validar dedupe
+      concepts: ['JWT', 'Repository Pattern'],
       tasks: [],
       acceptance_criteria: [],
    } as unknown as Ticket,
@@ -25,7 +17,7 @@ const TICKETS: Ticket[] = [
 const SKILLS: Skill[] = [
    {
       id: 1,
-      name: 'tdd',
+      name: 'testes',
       proficiency: 3,
       proficiency_label: 'intermediate',
       created_at: '2025-01-01T00:00:00Z',
@@ -34,49 +26,53 @@ const SKILLS: Skill[] = [
 ];
 
 describe('<EarnedSkillsCard />', () => {
-   it('antes de concluir mostra novas em destaque e marca skills que o user já tem', () => {
-      render(<EarnedSkillsCard tickets={TICKETS} currentSkills={SKILLS} />);
+   it('preview: mostra categorias genéricas; novas em primary, já existentes em cinza', () => {
+      render(
+         <EarnedSkillsCard
+            categories={['autenticação', 'banco de dados', 'testes']}
+            currentSkills={SKILLS}
+         />,
+      );
 
-      expect(screen.getByText('Skills que você ganhará')).toBeInTheDocument();
+      expect(screen.getByText('Skills que você vai ganhar')).toBeInTheDocument();
 
-      // FastAPI e Pydantic são novas
       const newGroup = screen.getByText(/Novas no seu perfil/).closest('div')!;
-      expect(within(newGroup).getByText('FastAPI')).toBeInTheDocument();
-      expect(within(newGroup).getByText('Pydantic')).toBeInTheDocument();
+      expect(within(newGroup).getByText('autenticação')).toBeInTheDocument();
+      expect(within(newGroup).getByText('banco de dados')).toBeInTheDocument();
 
-      // TDD já está no perfil, com label da proficiência atual
       const ownedGroup = screen.getByText(/Você já tem/).closest('div')!;
-      expect(within(ownedGroup).getByText('TDD')).toBeInTheDocument();
+      expect(within(ownedGroup).getByText('testes')).toBeInTheDocument();
       expect(within(ownedGroup).getByText(/intermediate/)).toBeInTheDocument();
    });
 
-   it('faz dedupe dos conceitos repetidos entre tickets', () => {
-      render(<EarnedSkillsCard tickets={TICKETS} currentSkills={[]} />);
-      const tdd = screen.getAllByText('TDD');
-      expect(tdd).toHaveLength(1);
+   it('quando categorias estão vazias, faz fallback para concepts dos tickets', () => {
+      render(<EarnedSkillsCard categories={[]} tickets={TICKETS} currentSkills={[]} />);
+      // mostra os concepts crus como fallback (trilhas legacy)
+      expect(screen.getByText('JWT')).toBeInTheDocument();
+      expect(screen.getByText('Repository Pattern')).toBeInTheDocument();
    });
 
-   it('estado concluído mostra apenas adicionadas e reforçadas', () => {
+   it('estado concluído mostra Novas + Reforçadas vindas do payload de complete', () => {
       render(
          <EarnedSkillsCard
-            tickets={TICKETS}
+            categories={['autenticação', 'testes']}
             currentSkills={SKILLS}
             completed
-            addedConcepts={['fastapi', 'pydantic']}
-            upgradedConcepts={['tdd']}
+            addedConcepts={['autenticação']}
+            upgradedConcepts={['testes']}
          />,
       );
 
       expect(screen.getByText('Skills adicionadas')).toBeInTheDocument();
-      expect(screen.getByText('fastapi')).toBeInTheDocument();
-      expect(screen.getByText('pydantic')).toBeInTheDocument();
+      const novas = screen.getByText('Novas').closest('div')!;
+      expect(within(novas).getByText('autenticação')).toBeInTheDocument();
       const reforced = screen.getByText('Reforçadas').closest('div')!;
-      expect(within(reforced).getByText('tdd')).toBeInTheDocument();
+      expect(within(reforced).getByText('testes')).toBeInTheDocument();
    });
 
-   it('sem conceitos não renderiza nada', () => {
+   it('sem categorias e sem tickets não renderiza nada', () => {
       const { container } = render(
-         <EarnedSkillsCard tickets={[]} currentSkills={SKILLS} />,
+         <EarnedSkillsCard categories={[]} currentSkills={SKILLS} />,
       );
       expect(container).toBeEmptyDOMElement();
    });

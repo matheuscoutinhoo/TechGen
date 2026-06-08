@@ -80,3 +80,14 @@ class AIProvider(ABC):
     ) -> ConceptExplanation:
         """Gera uma explicação aprofundada de um conceito no contexto de um ticket."""
 
+    @abstractmethod
+    def categorize_concepts(self, concepts: Sequence[str]) -> list[str]:
+        """Abstrai uma lista de concepts específicos em poucas skills genéricas.
+
+        Ex.: ``["JWT", "OAuth2", "Repository Pattern", "Migrations"]`` vira
+        ``["autenticação", "banco de dados"]``. Usado na conclusão da trilha
+        para evitar poluir o perfil do aluno com dezenas de termos pontuais.
+
+        Retorna lista deduplicada, em lowercase, com no máximo ~8 categorias.
+        """
+

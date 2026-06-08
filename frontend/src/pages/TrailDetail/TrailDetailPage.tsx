@@ -120,6 +120,7 @@ export function TrailDetailPage() {
          )}
 
          <EarnedSkillsCard
+            categories={trail.content.skill_categories ?? []}
             tickets={trail.content.tickets}
             currentSkills={skills}
             completed={isCompleted && completion !== null}

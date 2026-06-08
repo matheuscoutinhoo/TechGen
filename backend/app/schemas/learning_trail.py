@@ -83,6 +83,12 @@ class TrailContent(BaseModel):
     # Default vazio para retrocompatibilidade com trilhas geradas antes do
     # campo existir; novas trilhas SEMPRE preenchem.
     final_deliverable: str = Field(default="", max_length=2000)
+    # Conjunto pequeno e genérico de skills que o aluno vai adicionar/elevar
+    # ao concluir a trilha. Gerado por IA a partir dos `concepts` de cada
+    # ticket — abstrai dezenas de conceitos específicos em poucos rótulos
+    # transferíveis (ex.: "git", "python", "banco de dados").
+    # Vazio em trilhas geradas antes do campo existir.
+    skill_categories: list[str] = Field(default_factory=list, max_length=15)
     tickets: list[Ticket] = Field(min_length=1)
 
 
