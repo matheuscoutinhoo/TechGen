@@ -48,38 +48,61 @@ def _looks_low_familiarity(text: str) -> bool:
 
 
 # Ordem importa: o primeiro keyword cuja substring aparece no concept vence.
-# Os keywords precisam ser específicos o bastante para não falsear positivo
-# (ex.: "git" vem antes de qualquer coisa que contenha "digital").
+# Categorias mantêm granularidade média — específicas o bastante para terem
+# valor curricular, mas ainda transferíveis entre projetos.
 _CATEGORY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("autenticação", ("jwt", "oauth", "bcrypt", "auth", "login", "senha", "token")),
-    ("segurança", ("seguran", "criptograf", "owasp", "vulnerab")),
-    ("banco de dados", (
-        "sql", "banco", "database", "migration", "orm", "repository",
-        "tabela", "índice", "indice", "transac",
-    )),
-    ("api rest", (
-        "rest", "endpoint", " api", "http", "rota", "router", "fastapi",
-        "express", "graphql",
-    )),
-    ("testes", ("test", "tdd", "mock", "pytest", "cobertura", "arrange-act-assert")),
-    ("docker", ("docker", "container")),
-    ("devops", (
-        "deploy", "ci/cd", "ci ", "cd ", "kubernetes", "k8s", "build",
-        "ambiente", "dependência", "dependencia", "pipeline",
-    )),
-    ("observabilidade", ("log", "métrica", "metrica", "telemetria", "trace", "monitor")),
-    ("arquitetura de software", (
-        "solid", "dry", "pattern", "boundary", "domín", "domin",
-        "modelagem", "refator", "code smell", "linguagem ub", "ubíqua",
-        "ubiqua", "entidade", "valor", "validação", "validacao", "erro de domínio",
-    )),
-    ("git", ("git", "versionamento", "branch", "commit", "merge")),
-    ("python", ("python", "pydantic", "django", "flask")),
-    ("typescript", ("typescript", " ts ")),
-    ("javascript", ("javascript", " js ", "node", "react", "vue", "angular")),
-    ("frontend", ("frontend", "ui", "ux", "css", "html", "componente")),
-    ("qualidade de código", ("definition of done", "end-to-end", "ponta a ponta", "demo")),
-    ("fundamentos", ("fundament", "pré-requisito", "pre-requisito", "setup")),
+    # Auth & segurança — quebrados em subáreas concretas
+    ("autenticação com jwt", ("jwt", "json web token", "bearer", "access token", "refresh token")),
+    ("oauth e single sign-on", ("oauth", "sso", "openid", "single sign")),
+    ("criptografia e hashing de senha", ("bcrypt", "scrypt", "argon2", "hash", "salt", "criptograf")),
+    ("controle de acesso", ("rbac", "permiss", "autoriz", "role", "scope")),
+    ("autenticação", ("auth", "login", "senha", "token")),
+    ("segurança de aplicações web", ("seguran", "owasp", "vulnerab", "csrf", "xss", "sqli", "injection")),
+    # Persistência — separado por aspecto
+    ("migrations e versionamento de schema", ("migration", "alembic", "flyway", "schema versão", "schema versao")),
+    ("queries sql", ("query", "queries", "select", "join", "índice", "indice", "transac")),
+    ("modelagem relacional", ("modelagem", "modelo de dados", "tabela", "relacional", "normaliza")),
+    ("camada de persistência", ("repository", "dao", "orm", "active record")),
+    ("queries sql", ("sql",)),
+    ("banco de dados", ("banco", "database", "postgres", "mysql", "sqlite", "mongo")),
+    # API
+    ("design de api rest", ("rest", "endpoint", "rota", "router", "fastapi", "express", "verbo http")),
+    ("documentação de api", ("openapi", "swagger", "documentação de api", "documentacao de api")),
+    ("validação de input", ("validação", "validacao", "pydantic", "schema de entrada", "input")),
+    ("api rest", (" api ",)),
+    ("graphql", ("graphql",)),
+    # Testes
+    ("tdd e refatoração", ("tdd", "red", "refactor", "refator", "code smell")),
+    ("testes de integração", ("teste de integ", "test de integ", "end-to-end", "ponta a ponta")),
+    ("testes unitários", ("teste unit", "test unit", "mock", "stub", "fake", "pytest", "jest", "cobertura", "arrange-act-assert", "test")),
+    # Arquitetura
+    ("arquitetura em camadas", ("camad", "boundary", "clean arch", "hexagonal", "ports and adapters")),
+    ("modelagem de domínio", ("domín", "domin", "ddd", "linguagem ub", "ubíqua", "ubiqua", "entidade", "valor", "agregado")),
+    ("tratamento de erros", ("erro de domínio", "erro de dominio", "exception", "exceção", "excecao", "tratamento de erro")),
+    ("arquitetura de software", ("solid", "dry", "pattern")),
+    # Infra / devops
+    ("containerização com docker", ("docker", "container", "dockerfile", "compose")),
+    ("ci/cd", ("ci/cd", "ci ", "cd ", "github actions", "gitlab ci", "pipeline", "deploy")),
+    ("orquestração com kubernetes", ("kubernetes", "k8s", "helm")),
+    # Observabilidade
+    ("logs estruturados", ("log",)),
+    ("métricas e observabilidade", ("métrica", "metrica", "telemetria", "trace", "monitor", "prometheus", "grafana")),
+    # Linguagens & front
+    ("versionamento com git", ("git", "branch", "commit", "merge", "rebase")),
+    ("tipagem estática", ("tipagem", "type hint", "typescript", "mypy", " ts ")),
+    ("async e concorrência", ("async", "await", "concurrency", "thread", "asyncio")),
+    ("python", ("python", "django", "flask")),
+    ("javascript", ("javascript", " js ", "node")),
+    ("react", ("react",)),
+    ("vue", ("vue",)),
+    ("gerenciamento de estado", ("redux", "zustand", "estado global", "state manag")),
+    ("css e design system", ("css", "design system", "tokens de design", "tailwind", "styled")),
+    ("acessibilidade web", ("aria", "acessibilidade", "wcag")),
+    ("frontend", ("frontend", "ui", "ux", "html", "componente")),
+    # Qualidade
+    ("qualidade de código e revisão", ("code review", "linter", "definition of done", "demo", "qualidade")),
+    # Fundamentos (fallback didático para setup/pré-requisitos)
+    ("fundamentos da stack", ("fundament", "pré-requisito", "pre-requisito", "setup", "ambiente", "dependência", "dependencia", "build")),
 )
 
 
@@ -91,9 +114,9 @@ def _categorize_one(concept: str) -> str:
         for keyword in keywords:
             if keyword in lowered:
                 return category
-    # Sem match: cai em "fundamentos" — categoria genérica menos quebradiça
-    # que repetir o concept inteiro.
-    return "fundamentos"
+    # Sem match: cai em "fundamentos da stack" — categoria genérica menos
+    # quebradiça que repetir o concept inteiro.
+    return "fundamentos da stack"
 
 
 def _personalization_for(

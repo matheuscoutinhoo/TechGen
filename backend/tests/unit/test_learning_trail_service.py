@@ -235,17 +235,19 @@ class TestComplete:
     def test_complete_upgrades_existing_skill_below_target(
         self, service, user_a, skill_service
     ):
-        # Cria a skill GENÉRICA em nível novice; conclusão deve elevar para
-        # beginner (2). Usamos "testes" porque é a categoria em que o
+        # Cria a skill em nível novice; conclusão deve elevar para beginner (2).
+        # Usamos "testes unitários" porque é uma das categorias em que o
         # FakeProvider colapsa os concepts de TDD/pytest/etc.
-        skill_service.add_for_user(user_a, name="testes", proficiency=1)
+        skill_service.add_for_user(user_a, name="testes unitários", proficiency=1)
 
         trail = service.create_for_user(user_a, topic="Ruby")
         _, _, upgraded = service.complete_for_user(user_a, trail.id)
 
-        assert "testes" in upgraded
+        assert "testes unitários" in upgraded
         skill = next(
-            s for s in skill_service.list_for_user(user_a) if s.name == "testes"
+            s
+            for s in skill_service.list_for_user(user_a)
+            if s.name == "testes unitários"
         )
         assert skill.proficiency == 2
 
@@ -280,6 +282,10 @@ class TestComplete:
         # E NÃO entrou nada com nome de concept específico (TDD, JWT, etc.)
         assert "tdd" not in skills
         assert "jwt" not in skills
+        # Nem rótulos super amplos como "testes" / "autenticação" sozinhos —
+        # esses são vagos demais para ter valor curricular.
+        assert "testes" not in skills
+        assert "autenticação" not in skills
 
 
 @pytest.mark.unit

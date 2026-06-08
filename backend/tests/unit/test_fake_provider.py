@@ -346,33 +346,53 @@ class TestCategorizeConcepts:
                 "ORM",
             ]
         )
-        # 6 conceitos → no máximo 2 categorias (autenticação + banco de dados)
-        assert "autenticação" in result
-        assert "banco de dados" in result
-        assert len(result) <= 3
+        # 6 conceitos colapsam em categorias de granularidade média —
+        # subáreas específicas, não rótulos super amplos como "auth" ou
+        # "banco de dados" sozinhos.
+        assert "autenticação com jwt" in result
+        assert "oauth e single sign-on" in result
+        assert "migrations e versionamento de schema" in result
+        assert "camada de persistência" in result
+        # Bem menos categorias do que concepts.
+        assert len(result) < 6
 
     def test_result_is_deduplicated_and_lowercase(self):
         provider = FakeAIProvider()
         result = provider.categorize_concepts(["TDD", "Pytest", "Mock", "Cobertura"])
-        assert result == ["testes"]
+        # Quatro conceitos pontuais de teste viram duas subáreas concretas
+        # (refatoração-via-TDD e a prática de escrever unit tests).
+        assert "tdd e refatoração" in result
+        assert "testes unitários" in result
+        # Tudo lowercase e sem duplicação.
+        assert result == [c.lower() for c in result]
+        assert len(result) == len(set(result))
 
-    def test_falls_back_to_fundamentos_when_no_keyword_matches(self):
+    def test_falls_back_to_fundamentos_da_stack_when_no_keyword_matches(self):
         provider = FakeAIProvider()
         result = provider.categorize_concepts(["xyzqwe123"])
-        assert "fundamentos" in result
+        assert "fundamentos da stack" in result
 
-    def test_full_trail_categorization_reduces_drastically(self):
-        """Trilha real (6+ tickets, ~20 concepts) precisa virar ~3-5 categorias."""
+    def test_full_trail_categorization_keeps_granular_but_focused(self):
+        """Trilha real (6+ tickets, ~20 concepts) vira poucas skills calibradas."""
         provider = FakeAIProvider()
         content = provider.generate_learning_trail("FastAPI com JWT")
         all_concepts: list[str] = []
         for ticket in content.tickets:
             all_concepts.extend(ticket.concepts)
         categories = provider.categorize_concepts(all_concepts)
-        # Confirma a abstração: muito mais concepts do que categorias
+        # Confirma a abstração: muito mais concepts do que categorias.
         assert len(all_concepts) >= 6
-        assert len(categories) <= 8
         assert len(categories) < len(all_concepts)
+        # E o teto absoluto (max do schema) é respeitado.
+        assert len(categories) <= 15
+        # Toda categoria tem 2+ palavras OU é um termo indivisível conhecido.
+        single_word_allowed = {"python", "react", "vue", "javascript", "graphql"}
+        for cat in categories:
+            words = cat.split()
+            assert len(words) >= 2 or cat in single_word_allowed, (
+                f"Categoria '{cat}' está genérica demais (1 palavra) — "
+                "deveria quebrar em subárea."
+            )
 
 
 @pytest.mark.unit
