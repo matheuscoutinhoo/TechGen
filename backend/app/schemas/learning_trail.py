@@ -78,6 +78,11 @@ class TrailContent(BaseModel):
     why_realistic: str = Field(min_length=10, max_length=2000)
     target_audience: str = Field(min_length=5, max_length=500)
     prerequisites: list[str] = Field(default_factory=list)
+    # Descreve, em termos concretos, o artefato que o aluno tem em mãos quando
+    # o último ticket é fechado (URL, comando, demo, arquivo gerado, etc.).
+    # Default vazio para retrocompatibilidade com trilhas geradas antes do
+    # campo existir; novas trilhas SEMPRE preenchem.
+    final_deliverable: str = Field(default="", max_length=2000)
     tickets: list[Ticket] = Field(min_length=1)
 
 

@@ -50,6 +50,8 @@ export interface TrailContent {
    why_realistic: string;
    target_audience: string;
    prerequisites: string[];
+   /** Artefato concreto que o aluno terá ao concluir o último ticket. */
+   final_deliverable?: string;
    tickets: Ticket[];
 }
 

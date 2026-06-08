@@ -13,6 +13,20 @@ export function TrailHeader({ trail }: TrailHeaderProps) {
          <h1 className={styles.title}>{trail.title}</h1>
          <p className={styles.summary}>{trail.summary}</p>
 
+         {content.final_deliverable && (
+            <aside
+               className={styles.deliverable}
+               aria-label="Entregável final da trilha"
+            >
+               <span className={styles.deliverableEyebrow}>
+                  Ao final você terá
+               </span>
+               <p className={styles.deliverableText}>
+                  {content.final_deliverable}
+               </p>
+            </aside>
+         )}
+
          <div className={styles.meta}>
             <div className={styles.metaItem}>
                <strong>Por que é realista</strong>

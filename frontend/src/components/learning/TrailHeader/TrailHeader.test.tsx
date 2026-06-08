@@ -38,4 +38,25 @@ describe('<TrailHeader />', () => {
       render(<TrailHeader trail={trail} />);
       expect(screen.queryByText('Pré-requisitos')).not.toBeInTheDocument();
    });
+
+   it('mostra o entregável final quando presente no conteúdo', () => {
+      const trail: LearningTrail = {
+         ...TRAIL,
+         content: {
+            ...TRAIL.content,
+            final_deliverable:
+               'Ao final você terá FastAPI rodando em http://localhost:8000 com README documentado.',
+         },
+      };
+      render(<TrailHeader trail={trail} />);
+      expect(screen.getByText('Ao final você terá')).toBeInTheDocument();
+      expect(
+         screen.getByText(/FastAPI rodando em http:\/\/localhost:8000/i),
+      ).toBeInTheDocument();
+   });
+
+   it('omite a seção de entregável quando o conteúdo não tem final_deliverable', () => {
+      render(<TrailHeader trail={TRAIL} />);
+      expect(screen.queryByText('Ao final você terá')).not.toBeInTheDocument();
+   });
 });

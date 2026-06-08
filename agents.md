@@ -588,6 +588,16 @@ Checklist antes de migrar:
     API REST com FastAPI" sem antes garantir que ele consegue subir uma
     rota básica.
   - **Concepts curtos e citáveis**, porque eles viram skills do aluno na conclusão.
+  - **Encerramento obrigatório.** O ÚLTIMO ticket da trilha é a release
+    final: entrega o projeto descrito em `project_summary` de ponta a
+    ponta. Nada de terminar em "refatoração", "observabilidade" ou
+    "próximos passos". O título carrega palavra de fechamento (release,
+    entrega, capstone, demo, ponta a ponta, v1.0). Os
+    `acceptance_criteria` do último ticket validam o deliverable inteiro.
+  - **`final_deliverable` é parte do contrato.** Toda trilha expõe, no
+    nível raiz do `TrailContent`, o artefato concreto que o aluno terá
+    rodando ao fechar o último ticket (URL, comando, demo, repositório
+    taggeado). Sem isso, a trilha não fecha.
 - Resposta esperada: `choices[0].message.content` contendo o JSON; é validado contra `TopicQuestion`/`TrailContent`/`ConceptExplanation` antes de virar domínio.
 - Erros do provider viram `AIProviderError` com mensagem amigável; timeout cita o valor configurado e a env var a ajustar.
 - Streaming não é usado (sempre `"stream": false`).

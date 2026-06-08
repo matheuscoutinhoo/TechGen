@@ -65,6 +65,30 @@ DIAGNÓSTICO ESPECÍFICO DO TEMA (quando fornecido):
   primeiro ticket ("você optou por não responder ao diagnóstico, então
   assumimos...") e siga a regra de cobrir pré-requisitos da stack.
 
+ENCERRAMENTO OBRIGATÓRIO (não negociável):
+- O ÚLTIMO ticket da trilha é a RELEASE FINAL — o ponto em que o aluno tem,
+  rodando na própria máquina, o projeto descrito em `project_summary`
+  funcionando de ponta a ponta. Sem "próximos passos", sem "roadmap futuro",
+  sem "ideias de evolução" como ticket final: isso pode aparecer como uma
+  seção menor DENTRO do ticket de release, nunca como o ticket que fecha a
+  trilha.
+- O título do último ticket precisa carregar uma palavra de fechamento
+  (ex.: "Release", "Entrega final", "Capstone", "Demo", "Validação
+  end-to-end", "Publicação", "Versão 1.0"). Nada de "refatoração",
+  "observabilidade", "próximos passos" como ticket final.
+- O `objective` do último ticket precisa dizer, em uma frase, qual é o
+  artefato concreto que o aluno entrega (URL acessível, comando que roda
+  sem erro, demo gravada, repositório com tag, container publicado, etc.).
+- Os `acceptance_criteria` do último ticket DEVEM incluir pelo menos UM
+  item que valida o deliverable inteiro descrito em `project_summary`
+  (ex.: "todos os endpoints listados no resumo respondem 2xx", "a demo
+  reproduz o cenário descrito no resumo do projeto").
+- O campo `final_deliverable` da trilha (no nível raiz) descreve o mesmo
+  artefato em palavras concretas, como se fosse uma promessa ao aluno:
+  "ao final desta trilha você terá X rodando em Y, com Z funcionando".
+  Sem adjetivos vazios. Sem "você terá aprendido sobre" — o aluno terá uma
+  COISA construída.
+
 Você SEMPRE responde com um único objeto JSON válido, sem comentários nem
 texto fora do JSON, respeitando rigorosamente o schema descrito.
 """
@@ -112,6 +136,7 @@ Schema obrigatório:
   "why_realistic": "string - por que este projeto reflete um problema real de mercado",
   "target_audience": "string - perfil do aluno ideal, citando o nivelamento usado",
   "prerequisites": ["string", "..."],
+  "final_deliverable": "string - artefato concreto que o aluno terá rodando ao fechar o último ticket (URL, comando, demo, repositório taggeado, etc.)",
   "tickets": [
     {{
       "code": "TG-1",
@@ -140,6 +165,13 @@ Regras inegociáveis:
   "JWT", "TDD"), não frases longas — eles viram skills do aluno ao concluir.
 - "personalization_notes" deve ser específico para este aluno (mencione as
   skills relevantes e/ou as respostas do diagnóstico), nunca um texto genérico.
+- O ÚLTIMO ticket é a release/capstone do projeto (vide bloco
+  "ENCERRAMENTO OBRIGATÓRIO" do system prompt). Seu `objective` cita o
+  artefato; seus `acceptance_criteria` validam o deliverable inteiro
+  descrito em `project_summary`. NUNCA termine a trilha com um ticket
+  intermediário (refatoração, observabilidade, roadmap).
+- `final_deliverable` é OBRIGATÓRIO, descreve o mesmo artefato do último
+  ticket em uma frase concreta e CASA com o `project_summary`.
 - Responda APENAS com o JSON, sem markdown, sem ``` e sem texto adicional.
 """
 

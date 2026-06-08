@@ -108,6 +108,118 @@ class TestFakeAIProvider:
 
 
 @pytest.mark.unit
+class TestProjectDeliveryClosure:
+    """Invariante: a trilha SEMPRE termina entregando o projeto descrito."""
+
+    # Temas variados para exercitar diferentes seeds e contagens de tickets.
+    TOPICS = [
+        "FastAPI",
+        "Kubernetes",
+        "Rust",
+        "Streaming Kafka",
+        "Dashboard React",
+        "CLI em Go",
+    ]
+
+    # Heurística mínima: o ticket de fechamento precisa carregar uma palavra
+    # de release no título OU "Validação end-to-end" nos conceitos.
+    CLOSURE_KEYWORDS = (
+        "release",
+        "entrega",
+        "capstone",
+        "demo",
+        "ponta a ponta",
+        "end-to-end",
+        "versão 1.0",
+        "publica",
+    )
+
+    @pytest.mark.parametrize("topic", TOPICS)
+    def test_last_ticket_is_capstone_release(self, topic):
+        provider = FakeAIProvider()
+        content = provider.generate_learning_trail(topic)
+        last = content.tickets[-1]
+        title_lower = last.title.lower()
+        assert any(
+            keyword in title_lower for keyword in self.CLOSURE_KEYWORDS
+        ), f"Trilha de '{topic}' não termina em ticket de release. Último: {last.title!r}"
+
+    @pytest.mark.parametrize("topic", TOPICS)
+    def test_last_ticket_acceptance_validates_full_deliverable(self, topic):
+        """O último ticket precisa ter um acceptance criterion que valide o todo."""
+        provider = FakeAIProvider()
+        content = provider.generate_learning_trail(topic)
+        last = content.tickets[-1]
+        joined = " ".join(last.acceptance_criteria).lower()
+        # Pelo menos UM critério precisa amarrar a entrega ao project_summary
+        # OU exigir reprodutibilidade end-to-end.
+        assert (
+            "project_summary" in joined
+            or "resumo" in joined
+            or "end-to-end" in joined
+            or "ponta a ponta" in joined
+            or "reproduzir" in joined
+            or "outra pessoa" in joined
+        ), f"Acceptance do capstone para '{topic}' não valida a entrega: {last.acceptance_criteria}"
+
+    @pytest.mark.parametrize("topic", TOPICS)
+    def test_last_ticket_is_never_roadmap(self, topic):
+        """Anti-regressão: 'próximos passos' / 'roadmap' não pode ser o ticket final."""
+        provider = FakeAIProvider()
+        content = provider.generate_learning_trail(topic)
+        last = content.tickets[-1]
+        forbidden = ("próximos passos", "roadmap", "evolução futura", "ideias futuras")
+        title_lower = last.title.lower()
+        assert not any(
+            word in title_lower for word in forbidden
+        ), f"Ticket final virou roadmap em '{topic}': {last.title!r}"
+
+    @pytest.mark.parametrize("topic", TOPICS)
+    def test_final_deliverable_is_populated_and_concrete(self, topic):
+        provider = FakeAIProvider()
+        content = provider.generate_learning_trail(topic)
+        assert content.final_deliverable, "final_deliverable está vazio"
+        # Tem que citar o tema concreto, não pode ser texto genérico.
+        assert topic.lower() in content.final_deliverable.lower()
+
+    def test_capstone_present_even_when_foundation_path_triggers(self):
+        """Path fundacional (aluno iniciante) também termina em capstone."""
+        provider = FakeAIProvider()
+        content = provider.generate_learning_trail(
+            "API design com FastAPI",
+            assessment=[
+                TopicAnswer(
+                    question_id="q1",
+                    question="Você já trabalhou com FastAPI antes?",
+                    answer="Nunca usei FastAPI",
+                )
+            ],
+        )
+        # TG-1 é fundacional
+        assert "Primeiros passos" in content.tickets[0].title
+        # Último ainda é o capstone
+        last = content.tickets[-1]
+        assert any(k in last.title.lower() for k in self.CLOSURE_KEYWORDS)
+        assert content.final_deliverable
+        assert "FastAPI" in content.final_deliverable
+
+    def test_capstone_codes_are_sequential(self):
+        provider = FakeAIProvider()
+        content = provider.generate_learning_trail("FastAPI")
+        for i, ticket in enumerate(content.tickets, start=1):
+            assert ticket.code == f"TG-{i}"
+
+    def test_regenerate_preserves_capstone_invariant(self):
+        """Regerar a trilha (e.g., a IA reroda) ainda termina em capstone."""
+        provider = FakeAIProvider()
+        a = provider.generate_learning_trail("Docker")
+        b = provider.generate_learning_trail("Docker")
+        for content in (a, b):
+            last = content.tickets[-1]
+            assert any(k in last.title.lower() for k in self.CLOSURE_KEYWORDS)
+
+
+@pytest.mark.unit
 class TestAdaptiveQuestions:
     def test_first_question_is_familiarity(self):
         provider = FakeAIProvider()

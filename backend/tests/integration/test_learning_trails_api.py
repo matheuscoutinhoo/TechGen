@@ -189,6 +189,39 @@ class TestGetTrail:
         assert response.status_code == 200
         assert response.json()["id"] == created["id"]
 
+    def test_trail_response_exposes_project_closure(self, client, auth_headers):
+        """Contrato HTTP: a trilha sempre carrega final_deliverable e o último
+        ticket é o ticket de entrega — o aluno não fica sem saber onde para."""
+        created = client.post(
+            "/api/v1/learning-trails",
+            headers=auth_headers,
+            json={"topic": "Docker"},
+        ).json()
+        content = created["content"]
+
+        # final_deliverable está presente e cita o tema
+        assert content.get("final_deliverable"), "final_deliverable ausente no payload"
+        assert "docker" in content["final_deliverable"].lower()
+
+        # Último ticket é a release/capstone, não roadmap/refatoração
+        last = content["tickets"][-1]
+        title_lower = last["title"].lower()
+        assert any(
+            keyword in title_lower
+            for keyword in ("release", "entrega", "ponta a ponta", "end-to-end")
+        ), f"Último ticket não é o capstone: {last['title']!r}"
+        assert not any(
+            forbidden in title_lower
+            for forbidden in ("próximos passos", "roadmap")
+        )
+
+        # E os acceptance criteria validam o todo
+        joined = " ".join(last["acceptance_criteria"]).lower()
+        assert any(
+            sentinel in joined
+            for sentinel in ("resumo", "ponta a ponta", "outra pessoa", "reproduzir")
+        )
+
     def test_returns_404_for_unknown_id(self, client, auth_headers):
         response = client.get("/api/v1/learning-trails/99999", headers=auth_headers)
         assert response.status_code == 404

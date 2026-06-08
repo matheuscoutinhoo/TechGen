@@ -298,23 +298,46 @@ _TICKET_TEMPLATES = [
             "Tag v0.1.0 criada",
         ],
     },
-    {
-        "title_pattern": "Próximos passos e evolução",
-        "objective": (
-            "Mapear evoluções possíveis (escalabilidade, segurança, novas "
-            "funcionalidades) e priorizar o que faz sentido a seguir."
-        ),
-        "concepts": ["Roadmap", "Trade-offs", "Custos de evolução"],
-        "tasks": [
-            "Listar débitos técnicos conhecidos",
-            "Listar 3 melhorias com maior ROI",
-            "Documentar decisão de priorização",
-        ],
-        "acceptance": [
-            "Roadmap publicado no repositório",
-        ],
-    },
 ]
+
+
+# Template OBRIGATÓRIO do último ticket: realiza a entrega descrita em
+# `project_summary`. Tem placeholder {topic} para personalização.
+_CAPSTONE_TEMPLATE: dict = {
+    "title_pattern": "Release final: {topic} rodando de ponta a ponta",
+    "objective_pattern": (
+        "Validar que o projeto descrito no resumo está funcionando end-to-end "
+        "na sua máquina e que outra pessoa consegue reproduzir a demo a partir "
+        "do README. Nenhuma funcionalidade declarada no resumo pode estar "
+        "pendente — o que faltar precisa ser fechado neste ticket."
+    ),
+    "concepts": [
+        "Validação end-to-end",
+        "Definition of Done",
+        "Demo reprodutível",
+    ],
+    "tasks": [
+        "Executar o fluxo principal descrito no resumo do projeto, do início ao fim",
+        "Rodar a suite de testes completa e garantir tudo verde",
+        "Atualizar o README com os comandos para reproduzir a demo",
+        "Gravar (ou roteirizar) um walkthrough de 2 minutos cobrindo o cenário do resumo",
+        "Etiquetar o repositório com a tag v1.0",
+    ],
+    "acceptance": [
+        "Todos os cenários listados em `project_summary` rodam sem erro na sua máquina",
+        "Outra pessoa consegue subir o projeto seguindo o README em menos de 10 minutos",
+        "Tag v1.0 criada no repositório",
+        "Suite de testes 100% verde",
+    ],
+}
+
+
+def _capstone_deliverable_for(topic: str) -> str:
+    return (
+        f"Ao final desta trilha você terá **{topic}** rodando na sua máquina, "
+        "com README documentando como subir, suite de testes verde e tag v1.0 "
+        "no repositório — pronto para outra pessoa clonar e reproduzir."
+    )
 
 
 class FakeAIProvider(AIProvider):
@@ -397,10 +420,20 @@ class FakeAIProvider(AIProvider):
                 safe_topic, skills, assessment, ticket_count
             )
         else:
-            tickets = [
+            # Body = todos menos o último; o último é SEMPRE o capstone que
+            # entrega o projeto descrito em project_summary.
+            body_count = max(ticket_count - 1, 1)
+            body = [
                 self._make_ticket(i, safe_topic, skills, assessment)
-                for i in range(1, ticket_count + 1)
+                for i in range(1, body_count + 1)
             ]
+            capstone = self._make_capstone_ticket(
+                code=f"TG-{body_count + 1}",
+                topic=safe_topic,
+                skills=skills,
+                assessment=assessment,
+            )
+            tickets = [*body, capstone]
 
         audience_suffix = ""
         if skills:
@@ -441,6 +474,7 @@ class FakeAIProvider(AIProvider):
                 "Git básico (clone, branch, commit)",
                 "Linha de comando",
             ],
+            final_deliverable=_capstone_deliverable_for(safe_topic),
             tickets=tickets,
         )
 
@@ -498,14 +532,23 @@ class FakeAIProvider(AIProvider):
             estimated_effort="2h",
         )
 
-        rest_count = max(total - 1, 1)
-        rest = [
+        # Body intermediário: entre foundation (TG-1) e capstone (último).
+        # Garantimos pelo menos 1 body ticket para a progressão fazer sentido.
+        body_count = max(total - 2, 1)
+        body = [
             FakeAIProvider._make_ticket(
                 i + 1, topic, skills, assessment, foundation_anchor=anchor
             )
-            for i in range(rest_count)
+            for i in range(body_count)
         ]
-        return [foundation, *rest]
+        capstone = FakeAIProvider._make_capstone_ticket(
+            code=f"TG-{len(body) + 2}",
+            topic=topic,
+            skills=skills,
+            assessment=assessment,
+            foundation_anchor=anchor,
+        )
+        return [foundation, *body, capstone]
 
     def explain_concept(
         self,
@@ -645,6 +688,48 @@ class FakeAIProvider(AIProvider):
             tasks=[TicketTask(description=task) for task in spec["tasks"]],
             acceptance_criteria=list(spec["acceptance"]),
             estimated_effort="2h",
+        )
+
+    @staticmethod
+    def _make_capstone_ticket(
+        *,
+        code: str,
+        topic: str,
+        skills: Sequence[UserSkillInput],
+        assessment: Sequence[TopicAnswer] = (),
+        foundation_anchor: str | None = None,
+    ) -> Ticket:
+        """Cria o ticket OBRIGATÓRIO de encerramento: entrega o projeto.
+
+        Sempre o último ticket da trilha. Garante que o aluno realmente
+        finaliza no estágio de entrega definido em `project_summary`/
+        `final_deliverable`, ao invés de parar em refatoração/observabilidade
+        ou em "próximos passos".
+        """
+        spec = _CAPSTONE_TEMPLATE
+        concepts = list(spec["concepts"])
+        notes = _personalization_for(concepts, skills, assessment)
+        delivery_note = (
+            f"Este é o ticket de ENTREGA do projeto: ao fechá-lo, você terá "
+            f"{topic} rodando end-to-end exatamente como o resumo do projeto "
+            "descreve."
+        )
+        if foundation_anchor:
+            notes = (
+                f"{delivery_note} Sequência calibrada porque {foundation_anchor} "
+                f"no diagnóstico — {notes}"
+            )
+        else:
+            notes = f"{delivery_note} {notes}"
+        return Ticket(
+            code=code,
+            title=spec["title_pattern"].format(topic=topic),
+            objective=spec["objective_pattern"].format(topic=topic),
+            personalization_notes=notes,
+            concepts=concepts,
+            tasks=[TicketTask(description=task) for task in spec["tasks"]],
+            acceptance_criteria=list(spec["acceptance"]),
+            estimated_effort="3h",
         )
 
     @staticmethod
