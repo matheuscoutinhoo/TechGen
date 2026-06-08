@@ -61,7 +61,7 @@ export function DashboardPage() {
          {!isLoading && !error && trails.length > 0 && (
             <ul className={styles.list} role="list">
                {trails.map((trail) => (
-                  <li key={trail.id}>
+                  <li key={trail.id} className={styles.listItem}>
                      <Link to={`/trails/${trail.id}`} className={styles.trailLink}>
                         <article className={styles.trailCard}>
                            <div className={styles.cardHeader}>

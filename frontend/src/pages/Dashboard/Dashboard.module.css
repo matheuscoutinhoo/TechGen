@@ -12,17 +12,28 @@
 .list {
    display: grid;
    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+   grid-auto-rows: 1fr;
    gap: var(--space-5);
+   list-style: none;
+   padding-inline-start: 0;
+   margin: 0;
+}
+
+.listItem {
+   list-style: none;
+   display: flex;
 }
 
 .trailLink {
    text-decoration: none;
    color: inherit;
-   display: block;
+   display: flex;
+   width: 100%;
 }
 
 .trailCard {
-   height: 100%;
+   width: 100%;
+   min-height: 260px;
    display: flex;
    flex-direction: column;
    gap: var(--space-3);
@@ -73,6 +84,10 @@
    font-weight: 700;
    line-height: 1.25;
    letter-spacing: var(--letter-tight);
+   display: -webkit-box;
+   -webkit-line-clamp: 2;
+   -webkit-box-orient: vertical;
+   overflow: hidden;
 }
 
 .summary {
