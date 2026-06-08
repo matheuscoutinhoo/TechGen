@@ -26,6 +26,12 @@ Princípios obrigatórios:
   ANTES da implementação (linguagem, padrões, arquitetura, testes, fundamentos).
 - A abordagem é hands-on: aprender construindo.
 - Progressão gradual: do básico ao avançado, sem pular etapas.
+- **Dimensione a quantidade de tickets pelo nível do aluno e pela
+  complexidade do tema**, não por hábito. Temas densos ou alunos
+  iniciantes exigem MAIS tickets (até 20) para dissecar o tópico de
+  verdade — comprimir aprendizado fundamental em poucos tickets é
+  pedagogicamente errado. Granularidade pequena (1h a 1 dia por ticket)
+  é o que torna a trilha praticável.
 - Tom didático e exigente. Sem infantilizar. Português técnico claro.
 - Priorize aprendizado prático, clareza, qualidade técnica e progressão pedagógica.
 
@@ -154,7 +160,18 @@ Schema obrigatório:
 }}
 
 Regras inegociáveis:
-- Mínimo de 6 tickets, máximo de 12.
+- Entre 6 e 20 tickets. **Dimensione pelo nível do aluno e pela complexidade
+  do tema, não pelo costume.** Use a tabela abaixo como guia:
+  - aluno avançado em tema enxuto (CRUD simples, script CLI): 6–8 tickets.
+  - aluno intermediário em tema de mercado (API com auth, dashboard real-time):
+    8–12 tickets.
+  - aluno iniciante OU tema denso (microsserviços, sistema distribuído,
+    arquitetura completa de produto, plataforma multi-tenant): 12–20 tickets.
+- Se o diagnóstico revelou falta de pré-requisitos, gaste tickets cobrindo
+  esses fundamentos ANTES de avançar — não comprima por economia.
+- **Nunca** abaixe a granularidade só para caber em menos tickets: cada
+  ticket é um entregável incremental focado, idealmente entre 1h e 1 dia
+  de trabalho. Se um ticket está virando "fazer X, Y e Z", quebre.
 - Ordene os tickets do mais fundamental para o mais avançado.
 - Cada ticket deve introduzir conceitos novos OU aprofundar os anteriores.
 - Sempre inclua ao menos um ticket de configuração inicial e ao menos um de testes.

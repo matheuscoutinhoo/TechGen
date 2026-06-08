@@ -218,6 +218,36 @@ class TestProjectDeliveryClosure:
             last = content.tickets[-1]
             assert any(k in last.title.lower() for k in self.CLOSURE_KEYWORDS)
 
+    def test_low_familiarity_assessment_produces_longer_trail(self):
+        """Aluno iniciante recebe MAIS tickets para dissecar o tema."""
+        provider = FakeAIProvider()
+        topic = "API design com FastAPI"
+
+        baseline = provider.generate_learning_trail(topic)
+        with_low = provider.generate_learning_trail(
+            topic,
+            assessment=[
+                TopicAnswer(
+                    question_id="q1",
+                    question="Você já trabalhou com FastAPI antes?",
+                    answer="Nunca usei FastAPI",
+                )
+            ],
+        )
+
+        # Iniciante recebe pelo menos 50% mais tickets para cobrir fundamentos.
+        assert len(with_low.tickets) > len(baseline.tickets)
+        assert len(with_low.tickets) >= 12
+        # Mas ainda respeitando o teto duro de 20.
+        assert len(with_low.tickets) <= 20
+
+    @pytest.mark.parametrize("topic", TOPICS)
+    def test_trail_size_stays_within_contract_bounds(self, topic):
+        """Toda trilha gerada precisa caber entre 6 e 20 tickets."""
+        provider = FakeAIProvider()
+        content = provider.generate_learning_trail(topic)
+        assert 6 <= len(content.tickets) <= 20
+
 
 @pytest.mark.unit
 class TestAdaptiveQuestions:

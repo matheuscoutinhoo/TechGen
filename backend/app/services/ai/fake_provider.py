@@ -402,7 +402,6 @@ class FakeAIProvider(AIProvider):
     ) -> TrailContent:
         safe_topic = topic.strip().rstrip(".") or "Tecnologia"
         seed = int(hashlib.sha256(safe_topic.encode("utf-8")).hexdigest()[:6], 16)
-        ticket_count = 6 + (seed % 4)  # 6 a 9 tickets
 
         # Detecta se o diagnóstico revelou falta de pré-requisito da stack
         # principal — sinal que vamos enxergar mais à frente para enxertar
@@ -411,6 +410,14 @@ class FakeAIProvider(AIProvider):
             a for a in assessment if _looks_low_familiarity(a.answer)
         ]
         needs_foundation = bool(low_familiarity_signals)
+
+        # Dimensiona pelo nível: aluno iniciante recebe trilha mais granular
+        # (12–15 tickets) para dissecar o tema; aluno fluente recebe 6–9.
+        # Respeita o teto de 20 imposto pelo prompt.
+        if needs_foundation:
+            ticket_count = min(12 + (seed % 4), 20)  # 12 a 15
+        else:
+            ticket_count = 6 + (seed % 4)  # 6 a 9
 
         if needs_foundation:
             # Quando o aluno é iniciante no tema, montamos a trilha em modo
