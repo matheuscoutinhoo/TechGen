@@ -18,12 +18,12 @@ body,
    min-height: 100vh;
 }
 
-#root > main,
-#root > .app-main {
+#root>main,
+#root>.app-main {
    flex: 1 0 auto;
 }
 
-#root > footer {
+#root>footer {
    flex-shrink: 0;
 }
 

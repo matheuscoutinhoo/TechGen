@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useLearningTrails } from '../../hooks/useLearningTrails';
 import { useAuth } from '../../contexts/AuthContext';
 import { PageTitle } from '../../components/ui/PageTitle';
@@ -6,13 +7,77 @@ import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
+import { learningTrailsApi } from '../../api/learningTrails';
+import { ApiError } from '../../api/client';
 import { formatDate } from '../../utils/format';
 import styles from './Dashboard.module.css';
+
+function EditIcon() {
+   return (
+      <svg
+         viewBox="0 0 24 24"
+         fill="none"
+         stroke="currentColor"
+         strokeWidth="2"
+         strokeLinecap="round"
+         strokeLinejoin="round"
+         aria-hidden="true"
+         focusable="false"
+      >
+         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+         <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+      </svg>
+   );
+}
+
+function TrashIcon() {
+   return (
+      <svg
+         viewBox="0 0 24 24"
+         fill="none"
+         stroke="currentColor"
+         strokeWidth="2"
+         strokeLinecap="round"
+         strokeLinejoin="round"
+         aria-hidden="true"
+         focusable="false"
+      >
+         <polyline points="3 6 5 6 21 6" />
+         <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+         <path d="M10 11v6" />
+         <path d="M14 11v6" />
+         <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+      </svg>
+   );
+}
 
 export function DashboardPage() {
    const { user } = useAuth();
    const { trails, isLoading, error, refetch } = useLearningTrails();
    const navigate = useNavigate();
+   const [deletingId, setDeletingId] = useState<number | null>(null);
+   const [actionError, setActionError] = useState<string | null>(null);
+
+   async function handleDelete(trailId: number, title: string) {
+      const confirmed = window.confirm(
+         `Remover a trilha "${title}"? Esta ação não pode ser desfeita.`,
+      );
+      if (!confirmed) return;
+      setActionError(null);
+      setDeletingId(trailId);
+      try {
+         await learningTrailsApi.delete(trailId);
+         await refetch();
+      } catch (err) {
+         setActionError(
+            err instanceof ApiError
+               ? err.message
+               : 'Não foi possível remover a trilha. Tente novamente.',
+         );
+      } finally {
+         setDeletingId(null);
+      }
+   }
 
    return (
       <>
@@ -32,6 +97,12 @@ export function DashboardPage() {
                Nova trilha
             </Button>
          </div>
+
+         {actionError && (
+            <div className={styles.actionError} role="alert">
+               {actionError}
+            </div>
+         )}
 
          {isLoading && <Spinner label="Carregando suas trilhas..." />}
 
@@ -60,10 +131,14 @@ export function DashboardPage() {
 
          {!isLoading && !error && trails.length > 0 && (
             <ul className={styles.list} role="list">
-               {trails.map((trail) => (
-                  <li key={trail.id} className={styles.listItem}>
-                     <Link to={`/trails/${trail.id}`} className={styles.trailLink}>
-                        <article className={styles.trailCard}>
+               {trails.map((trail) => {
+                  const isDeleting = deletingId === trail.id;
+                  return (
+                     <li key={trail.id} className={styles.listItem}>
+                        <article
+                           className={styles.trailCard}
+                           aria-busy={isDeleting || undefined}
+                        >
                            <div className={styles.cardHeader}>
                               <span className={styles.topic}>{trail.topic}</span>
                               {trail.completed_at && (
@@ -72,15 +147,50 @@ export function DashboardPage() {
                                  </span>
                               )}
                            </div>
-                           <h2 className={styles.title}>{trail.title}</h2>
+                           <h2 className={styles.title}>
+                              <Link
+                                 to={`/trails/${trail.id}`}
+                                 className={styles.titleLink}
+                              >
+                                 {trail.title}
+                              </Link>
+                           </h2>
                            <p className={styles.summary}>{trail.summary}</p>
-                           <span className={styles.meta}>
-                              Atualizada em {formatDate(trail.updated_at)}
-                           </span>
+                           <div className={styles.cardFooter}>
+                              <span className={styles.meta}>
+                                 Atualizada em {formatDate(trail.updated_at)}
+                              </span>
+                              <div className={styles.actions}>
+                                 <button
+                                    type="button"
+                                    className={styles.iconButton}
+                                    onClick={() =>
+                                       navigate(`/trails/${trail.id}/edit`)
+                                    }
+                                    disabled={isDeleting}
+                                    aria-label={`Editar trilha ${trail.title}`}
+                                    title="Editar trilha"
+                                 >
+                                    <EditIcon />
+                                 </button>
+                                 <button
+                                    type="button"
+                                    className={`${styles.iconButton} ${styles.iconButtonDanger}`}
+                                    onClick={() =>
+                                       void handleDelete(trail.id, trail.title)
+                                    }
+                                    disabled={isDeleting}
+                                    aria-label={`Remover trilha ${trail.title}`}
+                                    title="Remover trilha"
+                                 >
+                                    <TrashIcon />
+                                 </button>
+                              </div>
+                           </div>
                         </article>
-                     </Link>
-                  </li>
-               ))}
+                     </li>
+                  );
+               })}
             </ul>
          )}
       </>

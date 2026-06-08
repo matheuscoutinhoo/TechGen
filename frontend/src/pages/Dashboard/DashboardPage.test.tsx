@@ -39,11 +39,21 @@ function renderDashboard() {
                <Route path="/dashboard" element={<DashboardPage />} />
                <Route path="/trails/new" element={<div>nova trilha ok</div>} />
                <Route path="/trails/:id" element={<div>detalhe ok</div>} />
+               <Route path="/trails/:id/edit" element={<div>editar trilha ok</div>} />
             </Routes>
          </AuthProvider>
       </MemoryRouter>,
    );
 }
+
+const TRAIL_FIXTURE = {
+   id: 7,
+   topic: 'FastAPI',
+   title: 'Projeto FastAPI',
+   summary: 'Resumo do projeto.',
+   created_at: '2025-01-01T00:00:00Z',
+   updated_at: '2025-01-02T00:00:00Z',
+};
 
 describe('<DashboardPage />', () => {
    beforeEach(() => {
@@ -108,5 +118,89 @@ describe('<DashboardPage />', () => {
          screen.getByRole('button', { name: 'Criar primeira trilha' }),
       );
       expect(screen.getByText('nova trilha ok')).toBeInTheDocument();
+   });
+
+   it('ícone de editar navega para /trails/:id/edit', async () => {
+      globalThis.fetch = buildFetch([TRAIL_FIXTURE]) as unknown as typeof fetch;
+
+      renderDashboard();
+      await waitFor(() => expect(screen.getByText('Projeto FastAPI')).toBeInTheDocument());
+
+      const user = userEvent.setup();
+      await user.click(
+         screen.getByRole('button', { name: 'Editar trilha Projeto FastAPI' }),
+      );
+      expect(screen.getByText('editar trilha ok')).toBeInTheDocument();
+   });
+
+   it('ícone de remover dispara confirm, chama DELETE e refaz fetch', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      let listResponse: unknown[] = [TRAIL_FIXTURE];
+      let deleteCalled = false;
+      const fetchSpy = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+         if (typeof url === 'string' && url.includes('/users/me')) {
+            return Promise.resolve(jsonResponse(USER));
+         }
+         if (init?.method === 'DELETE' && String(url).includes('/learning-trails/7')) {
+            deleteCalled = true;
+            listResponse = [];
+            return Promise.resolve(new Response(null, { status: 204 }));
+         }
+         if (typeof url === 'string' && url.endsWith('/learning-trails')) {
+            return Promise.resolve(jsonResponse(listResponse));
+         }
+         return Promise.resolve(jsonResponse({}));
+      });
+      globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+      renderDashboard();
+      await waitFor(() => expect(screen.getByText('Projeto FastAPI')).toBeInTheDocument());
+
+      const user = userEvent.setup();
+      await user.click(
+         screen.getByRole('button', { name: 'Remover trilha Projeto FastAPI' }),
+      );
+
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+
+      // após remoção + refetch, mostra empty state
+      await waitFor(() =>
+         expect(
+            screen.getByRole('heading', { name: 'Você ainda não criou nenhuma trilha' }),
+         ).toBeInTheDocument(),
+      );
+
+      expect(deleteCalled).toBe(true);
+   });
+
+   it('cancelar o confirm não remove a trilha', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      let deleteCalled = false;
+      const fetchSpy = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+         if (typeof url === 'string' && url.includes('/users/me')) {
+            return Promise.resolve(jsonResponse(USER));
+         }
+         if (init?.method === 'DELETE') {
+            deleteCalled = true;
+            return Promise.resolve(new Response(null, { status: 204 }));
+         }
+         if (typeof url === 'string' && url.endsWith('/learning-trails')) {
+            return Promise.resolve(jsonResponse([TRAIL_FIXTURE]));
+         }
+         return Promise.resolve(jsonResponse({}));
+      });
+      globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+      renderDashboard();
+      await waitFor(() => expect(screen.getByText('Projeto FastAPI')).toBeInTheDocument());
+
+      const user = userEvent.setup();
+      await user.click(
+         screen.getByRole('button', { name: 'Remover trilha Projeto FastAPI' }),
+      );
+
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(screen.getByText('Projeto FastAPI')).toBeInTheDocument();
+      expect(deleteCalled).toBe(false);
    });
 });
