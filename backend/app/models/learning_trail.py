@@ -28,6 +28,10 @@ class LearningTrail(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     summary: Mapped[str] = mapped_column(Text, nullable=False)
     content_json: Mapped[str] = mapped_column(Text, nullable=False)
+    # Respostas do diagnóstico inicial (lista de TopicAnswer serializada).
+    # Persistido para que ``regenerate`` use as mesmas respostas sem incomodar
+    # o aluno de novo.
+    assessment_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

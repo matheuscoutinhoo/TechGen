@@ -9,7 +9,12 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Sequence
 
-from app.schemas.learning_trail import ConceptExplanation, TrailContent
+from app.schemas.learning_trail import (
+    ConceptExplanation,
+    TopicAnswer,
+    TopicQuestionSet,
+    TrailContent,
+)
 
 
 @dataclass(frozen=True)
@@ -32,13 +37,33 @@ class AIProvider(ABC):
     """Contrato para provedores de IA usados na geração de trilhas."""
 
     @abstractmethod
+    def generate_topic_questions(
+        self,
+        topic: str,
+        *,
+        skills: Sequence[UserSkillInput] = (),
+    ) -> TopicQuestionSet:
+        """Gera até 5 perguntas de diagnóstico para calibrar a trilha.
+
+        As perguntas devem revelar o nível do aluno no tema E nos seus
+        pré-requisitos críticos (ex.: alguém que quer "API design com FastAPI"
+        precisa ser sondado sobre FastAPI em si).
+        """
+
+    @abstractmethod
     def generate_learning_trail(
         self,
         topic: str,
         *,
         skills: Sequence[UserSkillInput] = (),
+        assessment: Sequence[TopicAnswer] = (),
     ) -> TrailContent:
-        """Gera uma trilha estruturada para o tema e nivelamento fornecidos."""
+        """Gera uma trilha estruturada para o tema e nivelamento fornecidos.
+
+        ``assessment`` carrega as respostas do diagnóstico inicial. Quando
+        presente, deve ditar a decomposição em tickets e os pré-requisitos
+        cobertos.
+        """
 
     @abstractmethod
     def explain_concept(
@@ -49,3 +74,4 @@ class AIProvider(ABC):
         skills: Sequence[UserSkillInput] = (),
     ) -> ConceptExplanation:
         """Gera uma explicação aprofundada de um conceito no contexto de um ticket."""
+

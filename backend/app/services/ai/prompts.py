@@ -5,7 +5,9 @@ histórico. Mudanças aqui são tratadas como mudança de comportamento.
 """
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Iterable, Sequence
+
+from app.schemas.learning_trail import TopicAnswer
 
 SYSTEM_PROMPT = """\
 Você é um Staff Software Engineer e mentor técnico de alto nível.
@@ -42,6 +44,20 @@ Use as skills assim:
 - Cada ticket deve declarar explicitamente como ele se conecta ao nível atual
   do aluno (campo "personalization_notes").
 
+DIAGNÓSTICO ESPECÍFICO DO TEMA (quando fornecido):
+- O bloco "Respostas do diagnóstico inicial" carrega o que o aluno acabou de
+  responder sobre ESTE tema. Trate como autoridade máxima sobre o nível
+  específico no tema solicitado.
+- Se o diagnóstico revela que o aluno NÃO conhece um pré-requisito da stack
+  (ex.: quer aprender "API design com FastAPI" mas marcou "nunca usei
+  FastAPI"), inclua tickets fundacionais cobrindo esse pré-requisito ANTES
+  dos tickets avançados. É ilógico mandar alguém projetar API REST sem antes
+  garantir que ele consegue subir uma rota básica.
+- Quando o diagnóstico revela fluência em algo, pule a explicação desse
+  fundamento e mire em decisões de arquitetura/qualidade.
+- Mencione no `personalization_notes` de cada ticket QUAL resposta do
+  diagnóstico justifica a decisão ("você respondeu que nunca usou X, então...").
+
 Você SEMPRE responde com um único objeto JSON válido, sem comentários nem
 texto fora do JSON, respeitando rigorosamente o schema descrito.
 """
@@ -50,6 +66,11 @@ NO_SKILLS_HINT = (
     "O aluno NÃO declarou skills. Trate como iniciante geral, mas evite "
     "trilhas genéricas: escolha um projeto concreto e desafiador, e ensine "
     "tudo do zero com profundidade."
+)
+
+NO_ASSESSMENT_HINT = (
+    "O aluno NÃO respondeu ao diagnóstico inicial. Trate como desconhecimento "
+    "do tema específico e inclua tickets fundacionais de pré-requisitos da stack."
 )
 
 
@@ -61,10 +82,19 @@ def _format_skills(skills: Iterable[tuple[str, int, str]]) -> str:
     return "Skills declaradas pelo aluno:\n" + "\n".join(lines)
 
 
+def _format_assessment(assessment: Sequence[TopicAnswer]) -> str:
+    if not assessment:
+        return NO_ASSESSMENT_HINT
+    lines = [f'- "{a.question}" → "{a.answer}"' for a in assessment]
+    return "Respostas do diagnóstico inicial sobre ESTE tema:\n" + "\n".join(lines)
+
+
 USER_PROMPT_TEMPLATE = """\
 Tema solicitado pelo aluno: "{topic}"
 
 {skills_block}
+
+{assessment_block}
 
 Gere uma trilha de aprendizado completa, seguindo o schema JSON abaixo.
 
@@ -80,7 +110,7 @@ Schema obrigatório:
       "code": "TG-1",
       "title": "string",
       "objective": "string - o entregável claro ao final deste ticket",
-      "personalization_notes": "string - como este ticket leva em conta o nível atual do aluno",
+      "personalization_notes": "string - como este ticket leva em conta o nível atual do aluno e as respostas do diagnóstico",
       "concepts": ["conceito 1", "conceito 2"],
       "tasks": [
         {{ "description": "tarefa pontual e executável" }}
@@ -96,19 +126,104 @@ Regras inegociáveis:
 - Ordene os tickets do mais fundamental para o mais avançado.
 - Cada ticket deve introduzir conceitos novos OU aprofundar os anteriores.
 - Sempre inclua ao menos um ticket de configuração inicial e ao menos um de testes.
+- Quando o diagnóstico mostrar lacunas em pré-requisitos, inclua tickets
+  fundacionais cobrindo essas lacunas ANTES dos tickets avançados.
 - Use código de ticket no formato TG-1, TG-2, ... TG-N.
 - "concepts" devem ser termos curtos e citáveis (ex.: "Repository Pattern",
   "JWT", "TDD"), não frases longas — eles viram skills do aluno ao concluir.
 - "personalization_notes" deve ser específico para este aluno (mencione as
-  skills relevantes), nunca um texto genérico.
+  skills relevantes e/ou as respostas do diagnóstico), nunca um texto genérico.
 - Responda APENAS com o JSON, sem markdown, sem ``` e sem texto adicional.
 """
 
 
 def build_user_prompt(
-    topic: str, skills: Iterable[tuple[str, int, str]] = ()
+    topic: str,
+    skills: Iterable[tuple[str, int, str]] = (),
+    assessment: Sequence[TopicAnswer] = (),
 ) -> str:
     return USER_PROMPT_TEMPLATE.format(
+        topic=topic.strip(),
+        skills_block=_format_skills(skills),
+        assessment_block=_format_assessment(assessment),
+    )
+
+
+# ====================================================================== #
+# Diagnóstico inicial (perguntas de calibragem)
+# ====================================================================== #
+QUESTIONS_SYSTEM_PROMPT = """\
+Você é um Staff Software Engineer entrevistando rapidamente um aluno antes
+de montar uma trilha de aprendizado para ele. Sua única tarefa agora é
+elaborar PERGUNTAS DE DIAGNÓSTICO sobre o tema específico que ele acabou
+de escolher.
+
+Objetivo das perguntas:
+- Descobrir o nível real do aluno NESTE tema (não em programação em geral).
+- Verificar pré-requisitos críticos da stack (é ilógico alguém querer
+  "API design com FastAPI" sem nunca ter usado FastAPI — esse tipo de
+  lacuna precisa aparecer).
+- Identificar foco e contexto do aluno (uso pessoal, trabalho, preparação
+  para entrevista, etc.) quando isso mudar a forma como a trilha deve ser
+  desenhada.
+
+Regras inegociáveis:
+- Gere ENTRE 3 e 5 perguntas — nunca mais. Menos é melhor que muito.
+- Cada pergunta tem 3 a 4 alternativas curtas, ordenadas do "sei pouco" ao
+  "domino" (ou em ordem natural). NUNCA inclua "prefiro não responder" — a
+  UI cuida disso.
+- Alternativas são ESPECÍFICAS do tema, não genéricas. Ex.: para FastAPI,
+  use "Nunca usei FastAPI", "Já segui um tutorial de hello world", "Já criei
+  rotas e Depends", "Uso FastAPI em produção há mais de 1 ano".
+- Cada pergunta tem um `rationale` curto explicando o que ela diagnostica
+  (esse texto NÃO aparece para o aluno; é documentação interna).
+- Tom direto e cordial, 2ª pessoa do singular ("Você já...").
+- Português brasileiro.
+- Se o aluno tem skills declaradas que cobrem parte do tema, evite
+  perguntar de novo o que já está declarado em nível intermediate/advanced.
+
+Você SEMPRE responde com um único objeto JSON válido, sem comentários nem
+texto fora do JSON, respeitando rigorosamente o schema descrito.
+"""
+
+QUESTIONS_USER_TEMPLATE = """\
+Tema escolhido pelo aluno: "{topic}"
+
+{skills_block}
+
+Gere o conjunto de perguntas de diagnóstico. Schema JSON obrigatório:
+
+{{
+  "topic": "{topic}",
+  "questions": [
+    {{
+      "id": "q1",
+      "question": "string - pergunta direta ao aluno",
+      "rationale": "string curta - o que esta pergunta diagnostica (interno)",
+      "options": [
+        {{ "id": "a", "label": "string curta especifica do tema" }},
+        {{ "id": "b", "label": "string" }},
+        {{ "id": "c", "label": "string" }},
+        {{ "id": "d", "label": "string opcional" }}
+      ]
+    }}
+  ]
+}}
+
+Regras:
+- Entre 3 e 5 perguntas no total.
+- IDs sequenciais "q1", "q2", ... "qN".
+- Cada pergunta tem entre 3 e 4 opções; IDs "a", "b", "c", "d".
+- Sempre que o tema citar uma stack/tecnologia, inclua pelo menos UMA
+  pergunta verificando familiaridade com ela.
+- Responda APENAS com o JSON puro, sem markdown ao redor, sem ```.
+"""
+
+
+def build_questions_prompt(
+    topic: str, skills: Iterable[tuple[str, int, str]] = ()
+) -> str:
+    return QUESTIONS_USER_TEMPLATE.format(
         topic=topic.strip(),
         skills_block=_format_skills(skills),
     )

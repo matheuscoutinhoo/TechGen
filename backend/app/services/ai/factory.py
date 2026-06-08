@@ -15,6 +15,7 @@ def get_ai_provider() -> AIProvider:
             api_url=settings.abacus_api_url,
             api_key=settings.abacus_api_key,
             model=settings.abacus_model,
+            questions_model=settings.abacus_questions_model or None,
             timeout_seconds=settings.abacus_timeout_seconds,
         )
     return FakeAIProvider()

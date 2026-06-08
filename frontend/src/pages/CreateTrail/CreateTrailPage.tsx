@@ -2,10 +2,12 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { learningTrailsApi } from '../../api/learningTrails';
 import { ApiError } from '../../api/client';
+import { AssessmentModal } from '../../components/learning/AssessmentModal';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { PageTitle } from '../../components/ui/PageTitle';
 import { Spinner } from '../../components/ui/Spinner';
+import type { TopicAnswer, TopicQuestion } from '../../types/api';
 import styles from './CreateTrail.module.css';
 
 const SUGGESTIONS = [
@@ -17,11 +19,35 @@ const SUGGESTIONS = [
    'Observabilidade em produção',
 ];
 
+type Phase = 'idle' | 'loading-questions' | 'answering' | 'generating';
+
 export function CreateTrailPage() {
    const navigate = useNavigate();
    const [topic, setTopic] = useState('');
-   const [isSubmitting, setSubmitting] = useState(false);
+   const [phase, setPhase] = useState<Phase>('idle');
+   const [questions, setQuestions] = useState<TopicQuestion[]>([]);
    const [error, setError] = useState<string | null>(null);
+
+   const isBusy = phase !== 'idle';
+
+   const generateTrail = async (assessment: TopicAnswer[]) => {
+      setPhase('generating');
+      try {
+         const trail = await learningTrailsApi.create({
+            topic: topic.trim(),
+            assessment,
+         });
+         navigate(`/trails/${trail.id}`, { replace: true });
+      } catch (err) {
+         setPhase('idle');
+         setQuestions([]);
+         if (err instanceof ApiError) {
+            setError(err.message);
+         } else {
+            setError('Não conseguimos gerar a trilha agora. Tente novamente.');
+         }
+      }
+   };
 
    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -29,21 +55,41 @@ export function CreateTrailPage() {
          setError('Descreva o tema com pelo menos 3 caracteres.');
          return;
       }
-      setSubmitting(true);
       setError(null);
+      setPhase('loading-questions');
       try {
-         const trail = await learningTrailsApi.create({ topic: topic.trim() });
-         navigate(`/trails/${trail.id}`, { replace: true });
+         const result = await learningTrailsApi.buildAssessment(topic.trim());
+         if (result.questions.length === 0) {
+            await generateTrail([]);
+            return;
+         }
+         setQuestions(result.questions);
+         setPhase('answering');
       } catch (err) {
+         setPhase('idle');
          if (err instanceof ApiError) {
             setError(err.message);
          } else {
-            setError('Não conseguimos gerar a trilha agora. Tente novamente.');
+            setError('Não conseguimos preparar o diagnóstico. Tente novamente.');
          }
-      } finally {
-         setSubmitting(false);
       }
    };
+
+   const handleCancelAssessment = () => {
+      if (phase === 'generating') return;
+      setPhase('idle');
+      setQuestions([]);
+   };
+
+   const showLoadingPanel = phase === 'loading-questions' || phase === 'generating';
+   const loadingLabel =
+      phase === 'loading-questions'
+         ? 'O mentor está preparando perguntas para entender seu nível...'
+         : 'O mentor está desenhando o projeto e os tickets...';
+   const loadingHint =
+      phase === 'loading-questions'
+         ? 'A IA vai te fazer até 5 perguntas curtas para calibrar a profundidade da trilha.'
+         : 'Suas respostas estão guiando a quebra dos tickets, os conceitos abordados e os pré-requisitos cobertos. Isso pode levar alguns segundos.';
 
    return (
       <>
@@ -71,6 +117,7 @@ export function CreateTrailPage() {
                      minLength={3}
                      maxLength={200}
                      autoFocus
+                     disabled={isBusy}
                   />
 
                   <div className={styles.suggestionList} role="list" aria-label="Sugestões de tema">
@@ -80,6 +127,7 @@ export function CreateTrailPage() {
                            type="button"
                            className={styles.suggestion}
                            onClick={() => setTopic(suggestion)}
+                           disabled={isBusy}
                            role="listitem"
                         >
                            {suggestion}
@@ -88,19 +136,20 @@ export function CreateTrailPage() {
                   </div>
 
                   <div>
-                     <Button type="submit" variant="primary" disabled={isSubmitting}>
-                        {isSubmitting ? 'Gerando...' : 'Gerar trilha'}
+                     <Button type="submit" variant="primary" disabled={isBusy}>
+                        {phase === 'loading-questions'
+                           ? 'Preparando perguntas...'
+                           : phase === 'generating'
+                              ? 'Gerando...'
+                              : 'Continuar'}
                      </Button>
                   </div>
                </form>
 
-               {isSubmitting && (
+               {showLoadingPanel && (
                   <div className={styles.loadingPanel}>
-                     <Spinner label="O mentor está desenhando o projeto e os tickets..." />
-                     <p>
-                        A IA está estruturando um projeto realista, definindo conceitos
-                        e ordenando os tickets. Isso pode levar alguns segundos.
-                     </p>
+                     <Spinner label={loadingLabel} />
+                     <p>{loadingHint}</p>
                   </div>
                )}
             </section>
@@ -118,6 +167,18 @@ export function CreateTrailPage() {
                </ul>
             </aside>
          </div>
+
+         {(phase === 'answering' || phase === 'generating') && questions.length > 0 && (
+            <AssessmentModal
+               topic={topic.trim()}
+               questions={questions}
+               isSubmitting={phase === 'generating'}
+               onSubmit={(answers) => {
+                  void generateTrail(answers);
+               }}
+               onCancel={handleCancelAssessment}
+            />
+         )}
       </>
    );
 }

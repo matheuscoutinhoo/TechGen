@@ -104,6 +104,29 @@ export interface CompleteTrailResponse {
    upgraded_concepts: string[];
 }
 
+export interface TopicQuestionOption {
+   id: string;
+   label: string;
+}
+
+export interface TopicQuestion {
+   id: string;
+   question: string;
+   rationale: string;
+   options: TopicQuestionOption[];
+}
+
+export interface TopicQuestionSet {
+   topic: string;
+   questions: TopicQuestion[];
+}
+
+export interface TopicAnswer {
+   question_id: string;
+   question: string;
+   answer: string;
+}
+
 export interface ApiErrorPayload {
    error: {
       code: string;

@@ -17,37 +17,104 @@ from app.schemas.learning_trail import (
     GlossaryEntry,
     Ticket,
     TicketTask,
+    TopicAnswer,
+    TopicQuestion,
+    TopicQuestionOption,
+    TopicQuestionSet,
     TrailContent,
 )
 from app.services.ai.base import AIProvider, ConceptContext, UserSkillInput
 
 
 def _personalization_for(
-    concepts: Sequence[str], skills: Sequence[UserSkillInput]
+    concepts: Sequence[str],
+    skills: Sequence[UserSkillInput],
+    assessment: Sequence[TopicAnswer] = (),
 ) -> str:
+    parts: list[str] = []
     if not skills:
-        return (
+        parts.append(
             "Sem skills declaradas: este ticket parte do zero e explica todos "
             "os conceitos envolvidos."
         )
-    by_name = {skill.name.lower(): skill for skill in skills}
-    notes: list[str] = []
-    for concept in concepts:
-        match = by_name.get(concept.lower())
-        if match is None:
-            notes.append(f"'{concept}' será apresentado do zero.")
-        elif match.level >= 3:
-            notes.append(
-                f"Você já usa '{concept}' confortavelmente — vamos focar em "
-                "trade-offs e otimizações."
-            )
-        elif match.level == 2:
-            notes.append(
-                f"Você já mexeu em '{concept}'; revisaremos rápido e iremos ao uso real."
-            )
-        else:
-            notes.append(f"Você ouviu falar de '{concept}'; explicaremos com calma.")
-    return " ".join(notes)
+    else:
+        by_name = {skill.name.lower(): skill for skill in skills}
+        for concept in concepts:
+            match = by_name.get(concept.lower())
+            if match is None:
+                parts.append(f"'{concept}' será apresentado do zero.")
+            elif match.level >= 3:
+                parts.append(
+                    f"Você já usa '{concept}' confortavelmente — vamos focar em "
+                    "trade-offs e otimizações."
+                )
+            elif match.level == 2:
+                parts.append(
+                    f"Você já mexeu em '{concept}'; revisaremos rápido e iremos ao uso real."
+                )
+            else:
+                parts.append(
+                    f"Você ouviu falar de '{concept}'; explicaremos com calma."
+                )
+    if assessment:
+        first = assessment[0]
+        parts.append(
+            f"No diagnóstico, você respondeu '{first.answer}' — calibramos o "
+            "ticket por isso."
+        )
+    return " ".join(parts)
+
+
+_QUESTION_TEMPLATES = [
+    {
+        "question": "Você já trabalhou com {topic} antes?",
+        "rationale": "Mede familiaridade direta com o tema.",
+        "options": [
+            {"id": "a", "label": "Nunca ouvi falar a fundo"},
+            {"id": "b", "label": "Já li sobre, mas nunca usei"},
+            {"id": "c", "label": "Já fiz um projeto pequeno usando {topic}"},
+            {"id": "d", "label": "Uso {topic} no dia a dia"},
+        ],
+    },
+    {
+        "question": "Qual é seu objetivo principal aprendendo {topic}?",
+        "rationale": "Calibra o cenário do projeto (estudo, trabalho, entrevista).",
+        "options": [
+            {"id": "a", "label": "Curiosidade pessoal"},
+            {"id": "b", "label": "Aplicar em um projeto real do trabalho"},
+            {"id": "c", "label": "Preparar para entrevista técnica"},
+            {"id": "d", "label": "Liderar um time que usa {topic}"},
+        ],
+    },
+    {
+        "question": "Você está confortável com testes automatizados ao construir {topic}?",
+        "rationale": "Decide se cobrimos TDD do zero ou só citamos.",
+        "options": [
+            {"id": "a", "label": "Nunca escrevi um teste"},
+            {"id": "b", "label": "Já escrevi alguns, mas sem disciplina"},
+            {"id": "c", "label": "Escrevo testes para o caminho feliz"},
+            {"id": "d", "label": "Pratico TDD com frequência"},
+        ],
+    },
+    {
+        "question": "Como você prefere aprender {topic}?",
+        "rationale": "Define equilíbrio entre fundamentos teóricos e prática.",
+        "options": [
+            {"id": "a", "label": "Direto na prática, ajustando depois"},
+            {"id": "b", "label": "Fundamentos primeiro, prática depois"},
+            {"id": "c", "label": "Misto, alternando rápido"},
+        ],
+    },
+    {
+        "question": "Você consegue subir um ambiente mínimo de {topic} sozinho?",
+        "rationale": "Verifica se podemos pular o ticket de setup ou não.",
+        "options": [
+            {"id": "a", "label": "Não, preciso de passo a passo"},
+            {"id": "b", "label": "Com algum esforço, sim"},
+            {"id": "c", "label": "Sim, faço rapidamente"},
+        ],
+    },
+]
 
 
 _TICKET_TEMPLATES = [
@@ -207,18 +274,33 @@ _TICKET_TEMPLATES = [
 
 
 class FakeAIProvider(AIProvider):
+    def generate_topic_questions(
+        self,
+        topic: str,
+        *,
+        skills: Sequence[UserSkillInput] = (),
+    ) -> TopicQuestionSet:
+        safe_topic = topic.strip() or "Tecnologia"
+        seed = int(hashlib.sha256(safe_topic.encode("utf-8")).hexdigest()[:6], 16)
+        question_count = 3 + (seed % 3)  # 3 a 5 perguntas
+        questions = [
+            self._make_question(i, safe_topic) for i in range(1, question_count + 1)
+        ]
+        return TopicQuestionSet(topic=safe_topic, questions=questions)
+
     def generate_learning_trail(
         self,
         topic: str,
         *,
         skills: Sequence[UserSkillInput] = (),
+        assessment: Sequence[TopicAnswer] = (),
     ) -> TrailContent:
         safe_topic = topic.strip().rstrip(".") or "Tecnologia"
         seed = int(hashlib.sha256(safe_topic.encode("utf-8")).hexdigest()[:6], 16)
         ticket_count = 6 + (seed % 4)  # 6 a 9 tickets
 
         tickets = [
-            self._make_ticket(i, safe_topic, skills)
+            self._make_ticket(i, safe_topic, skills, assessment)
             for i in range(1, ticket_count + 1)
         ]
 
@@ -229,6 +311,10 @@ class FakeAIProvider(AIProvider):
                 for s in sorted(skills, key=lambda s: -s.level)[:3]
             )
             audience_suffix = f" Calibrada para um perfil com: {top}."
+        if assessment:
+            audience_suffix += (
+                f" Diagnóstico inicial considerou {len(assessment)} resposta(s)."
+            )
 
         return TrailContent(
             project_title=f"Plataforma prática de {safe_topic}",
@@ -373,6 +459,7 @@ class FakeAIProvider(AIProvider):
         index: int,
         topic: str,
         skills: Sequence[UserSkillInput],
+        assessment: Sequence[TopicAnswer] = (),
     ) -> Ticket:
         spec = _TICKET_TEMPLATES[(index - 1) % len(_TICKET_TEMPLATES)]
         concepts = list(spec["concepts"])
@@ -380,9 +467,23 @@ class FakeAIProvider(AIProvider):
             code=f"TG-{index}",
             title=spec["title_pattern"].format(topic=topic),
             objective=spec["objective"],
-            personalization_notes=_personalization_for(concepts, skills),
+            personalization_notes=_personalization_for(concepts, skills, assessment),
             concepts=concepts,
             tasks=[TicketTask(description=task) for task in spec["tasks"]],
             acceptance_criteria=list(spec["acceptance"]),
             estimated_effort="2h",
+        )
+
+    @staticmethod
+    def _make_question(index: int, topic: str) -> TopicQuestion:
+        spec = _QUESTION_TEMPLATES[(index - 1) % len(_QUESTION_TEMPLATES)]
+        options = [
+            TopicQuestionOption(id=opt["id"], label=opt["label"].format(topic=topic))
+            for opt in spec["options"]
+        ]
+        return TopicQuestion(
+            id=f"q{index}",
+            question=spec["question"].format(topic=topic),
+            rationale=spec["rationale"],
+            options=options,
         )

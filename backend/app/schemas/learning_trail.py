@@ -1,10 +1,51 @@
 """Schemas Pydantic relacionados a trilhas de aprendizado.
 
 Representam a estrutura pedagógica obrigatória: projeto + tickets estilo Jira.
+Inclui também o diagnóstico inicial: a IA pergunta ao aluno para calibrar
+profundidade, pré-requisitos e ordem dos tickets antes de gerar a trilha.
 """
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
+
+
+# ====================================================================== #
+# Diagnóstico inicial (pré-trilha)
+# ====================================================================== #
+class TopicQuestionOption(BaseModel):
+    """Alternativa de uma pergunta de diagnóstico."""
+    id: str = Field(min_length=1, max_length=10, description="Ex.: 'a', 'b', 'c'")
+    label: str = Field(min_length=1, max_length=200)
+
+
+class TopicQuestion(BaseModel):
+    """Pergunta de múltipla escolha que diagnostica o nível do aluno no tema."""
+    id: str = Field(min_length=1, max_length=20, description="Ex.: 'q1'")
+    question: str = Field(min_length=5, max_length=500)
+    rationale: str = Field(min_length=5, max_length=400)
+    options: list[TopicQuestionOption] = Field(min_length=2, max_length=5)
+
+
+class TopicQuestionSet(BaseModel):
+    """Conjunto de perguntas gerado para um tema."""
+    topic: str = Field(min_length=3, max_length=200)
+    questions: list[TopicQuestion] = Field(min_length=1, max_length=5)
+
+
+class TopicAnswer(BaseModel):
+    """Resposta do aluno a uma pergunta do diagnóstico.
+
+    Carregamos o texto da pergunta + texto da alternativa escolhida para que
+    o prompt da trilha receba contexto humano (não só ids).
+    """
+    question_id: str = Field(min_length=1, max_length=20)
+    question: str = Field(min_length=1, max_length=500)
+    answer: str = Field(min_length=1, max_length=500)
+
+
+class TopicAssessmentRequest(BaseModel):
+    """Entrada para pedir o conjunto de perguntas de diagnóstico."""
+    topic: str = Field(min_length=3, max_length=200)
 
 
 class TicketTask(BaseModel):
@@ -35,8 +76,14 @@ class TrailContent(BaseModel):
 
 
 class LearningTrailCreate(BaseModel):
-    """Entrada para criar uma trilha — usuário só informa o tema."""
+    """Entrada para criar uma trilha.
+
+    O ``topic`` é o tema bruto do aluno. ``assessment`` é a lista de respostas
+    do diagnóstico inicial (vazia quando o aluno pulou todas as perguntas),
+    usada pela IA para calibrar profundidade e pré-requisitos.
+    """
     topic: str = Field(min_length=3, max_length=200)
+    assessment: list[TopicAnswer] = Field(default_factory=list, max_length=10)
 
 
 class LearningTrailUpdate(BaseModel):

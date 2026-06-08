@@ -10,6 +10,8 @@ from app.schemas.learning_trail import (
     LearningTrailListItem,
     LearningTrailRead,
     LearningTrailUpdate,
+    TopicAssessmentRequest,
+    TopicQuestionSet,
 )
 from app.services.learning_trail_service import LearningTrailService
 
@@ -30,6 +32,19 @@ def list_trails(
 
 
 @router.post(
+    "/assessment",
+    response_model=TopicQuestionSet,
+    summary="Gera perguntas de diagnóstico para calibrar a trilha",
+)
+def build_assessment(
+    payload: TopicAssessmentRequest,
+    current_user: User = Depends(get_current_user),
+    service: LearningTrailService = Depends(get_learning_trail_service),
+) -> TopicQuestionSet:
+    return service.build_assessment_for_user(current_user, topic=payload.topic)
+
+
+@router.post(
     "",
     response_model=LearningTrailRead,
     status_code=status.HTTP_201_CREATED,
@@ -40,7 +55,11 @@ def create_trail(
     current_user: User = Depends(get_current_user),
     service: LearningTrailService = Depends(get_learning_trail_service),
 ) -> LearningTrailRead:
-    trail = service.create_for_user(current_user, topic=payload.topic)
+    trail = service.create_for_user(
+        current_user,
+        topic=payload.topic,
+        assessment=payload.assessment,
+    )
     return service.to_read_model(trail)
 
 

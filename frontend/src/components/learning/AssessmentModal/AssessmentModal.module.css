@@ -1,0 +1,337 @@
+.backdrop {
+   position: fixed;
+   inset: 0;
+   background-color: rgba(15, 23, 42, 0.55);
+   backdrop-filter: blur(4px);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   padding: var(--space-4);
+   z-index: 1000;
+   animation: backdropIn 200ms ease-out;
+}
+
+@keyframes backdropIn {
+   from {
+      opacity: 0;
+   }
+   to {
+      opacity: 1;
+   }
+}
+
+.dialog {
+   position: relative;
+   background-color: var(--color-bg);
+   border-radius: var(--radius-xl);
+   box-shadow: var(--shadow-lg);
+   width: min(100%, 600px);
+   max-height: calc(100vh - var(--space-7));
+   overflow: hidden;
+   display: grid;
+   grid-template-rows: auto 1fr auto;
+   outline: none;
+   animation: dialogIn 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dialogIn {
+   from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.985);
+   }
+   to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+   }
+}
+
+.header {
+   padding: var(--space-6) var(--space-6) var(--space-5);
+   border-bottom: 1px solid var(--color-border);
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-2);
+}
+
+.eyebrow {
+   display: inline-flex;
+   align-items: center;
+   gap: var(--space-2);
+   font-size: 0.7rem;
+   text-transform: uppercase;
+   letter-spacing: 0.12em;
+   color: var(--color-primary);
+   font-weight: 700;
+}
+
+.eyebrowBar {
+   width: 1.25rem;
+   height: 2px;
+   background-color: var(--color-primary);
+   border-radius: 1px;
+}
+
+.title {
+   font-size: var(--font-size-xl);
+   font-weight: 700;
+   letter-spacing: var(--letter-tight);
+   line-height: 1.2;
+   color: var(--color-text);
+}
+
+.subtitle {
+   font-size: var(--font-size-sm);
+   color: var(--color-text-muted);
+   line-height: var(--line-height-loose);
+}
+
+.subtitle strong {
+   color: var(--color-text);
+   font-weight: 600;
+}
+
+.progress {
+   list-style: none;
+   margin: var(--space-3) 0 0;
+   padding: 0;
+   display: flex;
+   gap: var(--space-2);
+   align-items: center;
+}
+
+.progressDot {
+   width: 1.75rem;
+   height: 1.75rem;
+   border-radius: 999px;
+   border: 1px solid var(--color-border-strong);
+   color: var(--color-text-muted);
+   background-color: var(--color-bg);
+   font-size: 0.75rem;
+   font-weight: 600;
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   transition: all 180ms ease-out;
+}
+
+.progressDotActive {
+   background-color: var(--color-primary);
+   border-color: var(--color-primary);
+   color: #fff;
+   transform: scale(1.08);
+}
+
+.progressDotAnswered {
+   background-color: var(--color-primary-soft);
+   border-color: var(--color-primary);
+   color: var(--color-primary-strong);
+}
+
+.stage {
+   padding: var(--space-6);
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-4);
+   min-height: 280px;
+   animation: slideIn 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.leavingForward {
+   animation: slideOutLeft 180ms ease-in forwards;
+}
+
+.leavingBackward {
+   animation: slideOutRight 180ms ease-in forwards;
+}
+
+@keyframes slideIn {
+   from {
+      opacity: 0;
+      transform: translateX(28px);
+   }
+   to {
+      opacity: 1;
+      transform: translateX(0);
+   }
+}
+
+@keyframes slideOutLeft {
+   from {
+      opacity: 1;
+      transform: translateX(0);
+   }
+   to {
+      opacity: 0;
+      transform: translateX(-28px);
+   }
+}
+
+@keyframes slideOutRight {
+   from {
+      opacity: 1;
+      transform: translateX(0);
+   }
+   to {
+      opacity: 0;
+      transform: translateX(28px);
+   }
+}
+
+.questionMeta {
+   font-size: 0.75rem;
+   text-transform: uppercase;
+   letter-spacing: 0.1em;
+   color: var(--color-text-muted);
+   font-weight: 600;
+}
+
+.question {
+   font-size: var(--font-size-lg);
+   font-weight: 600;
+   letter-spacing: var(--letter-tight);
+   line-height: 1.35;
+   color: var(--color-text);
+}
+
+.options {
+   border: none;
+   margin: 0;
+   padding: 0;
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-2);
+}
+
+.option {
+   display: flex;
+   align-items: center;
+   gap: var(--space-3);
+   padding: var(--space-3) var(--space-4);
+   border: 1px solid var(--color-border-strong);
+   border-radius: var(--radius-md);
+   cursor: pointer;
+   font-size: var(--font-size-sm);
+   color: var(--color-text);
+   background-color: var(--color-bg);
+   transition: border-color 140ms ease, background-color 140ms ease,
+      transform 140ms ease;
+}
+
+.option:hover {
+   border-color: var(--color-primary);
+   background-color: var(--color-primary-soft);
+}
+
+.optionSelected {
+   border-color: var(--color-primary);
+   background-color: var(--color-primary-soft);
+   color: var(--color-primary-strong);
+   font-weight: 600;
+}
+
+.optionRadio {
+   appearance: none;
+   width: 1.1rem;
+   height: 1.1rem;
+   border: 2px solid var(--color-border-strong);
+   border-radius: 50%;
+   flex-shrink: 0;
+   transition: border-color 140ms ease;
+   position: relative;
+}
+
+.optionSelected .optionRadio {
+   border-color: var(--color-primary);
+}
+
+.optionSelected .optionRadio::after {
+   content: '';
+   position: absolute;
+   inset: 3px;
+   border-radius: 50%;
+   background-color: var(--color-primary);
+}
+
+.optionLabel {
+   line-height: 1.4;
+}
+
+.footer {
+   padding: var(--space-4) var(--space-6) var(--space-5);
+   border-top: 1px solid var(--color-border);
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   gap: var(--space-3);
+   background-color: var(--color-surface);
+}
+
+.skip {
+   background: none;
+   border: none;
+   color: var(--color-text-muted);
+   font-size: var(--font-size-sm);
+   cursor: pointer;
+   text-decoration: underline;
+   text-underline-offset: 3px;
+   padding: var(--space-1) var(--space-2);
+}
+
+.skip:hover {
+   color: var(--color-text);
+}
+
+.skip:disabled {
+   opacity: 0.5;
+   cursor: not-allowed;
+}
+
+.actions {
+   display: flex;
+   gap: var(--space-2);
+}
+
+.cancel {
+   position: absolute;
+   top: var(--space-3);
+   right: var(--space-3);
+   background: none;
+   border: 1px solid transparent;
+   border-radius: var(--radius-md);
+   padding: var(--space-1) var(--space-2);
+   font-size: 0.75rem;
+   color: var(--color-text-muted);
+   cursor: pointer;
+   transition: all 140ms ease;
+}
+
+.cancel:hover {
+   color: var(--color-text);
+   border-color: var(--color-border);
+}
+
+.visuallyHidden {
+   position: absolute;
+   width: 1px;
+   height: 1px;
+   padding: 0;
+   margin: -1px;
+   overflow: hidden;
+   clip: rect(0, 0, 0, 0);
+   white-space: nowrap;
+   border: 0;
+}
+
+@media (max-width: 600px) {
+   .header,
+   .stage {
+      padding: var(--space-5);
+   }
+   .footer {
+      padding: var(--space-3) var(--space-5);
+      flex-wrap: wrap;
+   }
+   .title {
+      font-size: var(--font-size-lg);
+   }
+}

@@ -16,12 +16,19 @@ import httpx
 from pydantic import ValidationError
 
 from app.exceptions import AIProviderError
-from app.schemas.learning_trail import ConceptExplanation, TrailContent
+from app.schemas.learning_trail import (
+    ConceptExplanation,
+    TopicAnswer,
+    TopicQuestionSet,
+    TrailContent,
+)
 from app.services.ai.base import AIProvider, ConceptContext, UserSkillInput
 from app.services.ai.prompts import (
     CONCEPT_SYSTEM_PROMPT,
+    QUESTIONS_SYSTEM_PROMPT,
     SYSTEM_PROMPT,
     build_concept_prompt,
+    build_questions_prompt,
     build_user_prompt,
 )
 
@@ -43,6 +50,7 @@ class AbacusAIProvider(AIProvider):
         api_url: str,
         api_key: str,
         model: str,
+        questions_model: str | None = None,
         timeout_seconds: int = 60,
         http_client: httpx.Client | None = None,
     ) -> None:
@@ -60,16 +68,43 @@ class AbacusAIProvider(AIProvider):
         self.api_url = base
         self.api_key = api_key
         self.model = model
+        # Modelo dedicado para perguntas de diagnóstico (mais leve/barato).
+        # Fallback transparente no ``model`` principal quando não configurado.
+        self.questions_model = (questions_model or "").strip() or model
         self.timeout_seconds = timeout_seconds
         self._client = http_client
+
+    def generate_topic_questions(
+        self,
+        topic: str,
+        *,
+        skills: Sequence[UserSkillInput] = (),
+    ) -> TopicQuestionSet:
+        payload = self._build_questions_payload(topic, skills)
+        raw = self._call_api(payload)
+        text = self._extract_text(raw)
+        data = self._parse_json(text)
+        # Garante o tema correto (alguns modelos repetem o tema literal e
+        # tornam o payload redundante, mas é o aluno quem manda).
+        data["topic"] = topic.strip()
+        try:
+            return TopicQuestionSet.model_validate(data)
+        except ValidationError as exc:
+            logger.warning(
+                "Resposta da Abacus não casou com o schema de perguntas: %s", exc
+            )
+            raise AIProviderError(
+                "A IA retornou perguntas em formato inesperado. Tente novamente."
+            ) from exc
 
     def generate_learning_trail(
         self,
         topic: str,
         *,
         skills: Sequence[UserSkillInput] = (),
+        assessment: Sequence[TopicAnswer] = (),
     ) -> TrailContent:
-        payload = self._build_trail_payload(topic, skills)
+        payload = self._build_trail_payload(topic, skills, assessment)
         raw = self._call_api(payload)
         text = self._extract_text(raw)
         data = self._parse_json(text)
@@ -104,7 +139,10 @@ class AbacusAIProvider(AIProvider):
     # Payload builders
     # ------------------------------------------------------------------ #
     def _build_trail_payload(
-        self, topic: str, skills: Sequence[UserSkillInput]
+        self,
+        topic: str,
+        skills: Sequence[UserSkillInput],
+        assessment: Sequence[TopicAnswer],
     ) -> dict[str, Any]:
         return {
             "model": self.model,
@@ -113,7 +151,26 @@ class AbacusAIProvider(AIProvider):
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {
                     "role": "user",
-                    "content": build_user_prompt(topic, _serialize_skills(skills)),
+                    "content": build_user_prompt(
+                        topic, _serialize_skills(skills), assessment
+                    ),
+                },
+            ],
+        }
+
+    def _build_questions_payload(
+        self, topic: str, skills: Sequence[UserSkillInput]
+    ) -> dict[str, Any]:
+        return {
+            "model": self.questions_model,
+            "stream": False,
+            "messages": [
+                {"role": "system", "content": QUESTIONS_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": build_questions_prompt(
+                        topic, _serialize_skills(skills)
+                    ),
                 },
             ],
         }

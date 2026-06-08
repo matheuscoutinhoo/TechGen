@@ -4,11 +4,14 @@ import type {
    ConceptExplanation,
    LearningTrail,
    LearningTrailSummary,
+   TopicAnswer,
+   TopicQuestionSet,
    TrailContent,
 } from '../types/api';
 
 export interface CreateTrailPayload {
    topic: string;
+   assessment?: TopicAnswer[];
 }
 
 export interface UpdateTrailPayload {
@@ -21,7 +24,12 @@ export const learningTrailsApi = {
    list: () => apiClient.get<LearningTrailSummary[]>('/learning-trails'),
    get: (id: number) => apiClient.get<LearningTrail>(`/learning-trails/${id}`),
    create: (payload: CreateTrailPayload) =>
-      apiClient.post<LearningTrail>('/learning-trails', payload),
+      apiClient.post<LearningTrail>('/learning-trails', {
+         topic: payload.topic,
+         assessment: payload.assessment ?? [],
+      }),
+   buildAssessment: (topic: string) =>
+      apiClient.post<TopicQuestionSet>('/learning-trails/assessment', { topic }),
    update: (id: number, payload: UpdateTrailPayload) =>
       apiClient.patch<LearningTrail>(`/learning-trails/${id}`, payload),
    regenerate: (id: number) =>

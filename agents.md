@@ -559,16 +559,33 @@ Checklist antes de migrar:
 - Configuração por variáveis de ambiente:
   - `ABACUS_API_URL` (padrão `https://routellm.abacus.ai`)
   - `ABACUS_API_KEY` (header `Authorization: Bearer <key>`)
-  - `ABACUS_MODEL` (ex.: `gpt-5`, `claude-sonnet-4`, etc.)
+  - `ABACUS_MODEL` (ex.: `gpt-5`, `claude-sonnet-4`, etc.) — modelo das
+    chamadas pesadas (geração de trilha e explicação de conceito).
+  - `ABACUS_QUESTIONS_MODEL` (ex.: `gemini-3.5-flash`) — modelo dedicado
+    às perguntas de diagnóstico inicial. Curtas, baratas, mais rápidas.
+    Quando vazio, faz fallback transparente em `ABACUS_MODEL`.
   - `ABACUS_TIMEOUT_SECONDS` (padrão 180; modelos top-tier exigem +60s)
-- A interface `AIProvider` expõe dois métodos obrigatórios:
-  - `generate_learning_trail(topic, *, skills)` — gera a trilha personalizada pelas skills do aluno.
-  - `explain_concept(concept, *, context, skills)` — gera uma explicação aprofundada de um conceito específico, calibrada pelo nível do aluno.
+- A interface `AIProvider` expõe três métodos obrigatórios:
+  - `generate_topic_questions(topic, *, skills)` — gera até 5 perguntas de
+    diagnóstico para calibrar a trilha. Usa `questions_model`.
+  - `generate_learning_trail(topic, *, skills, assessment)` — gera a trilha
+    personalizada pelas skills do aluno e pelas respostas do diagnóstico.
+    Usa `model`.
+  - `explain_concept(concept, *, context, skills)` — gera uma explicação
+    aprofundada de um conceito específico, calibrada pelo nível do aluno.
+    Usa `model`.
 - Prompts ficam em `app/services/ai/prompts.py` — versionados, revisados via PR. Princípios não-negociáveis:
   - **Sem conteúdo genérico.** O modelo é instruído a sempre escolher um cenário concreto.
-  - **Personalização explícita por skill.** Cada ticket precisa expor `personalization_notes` referenciando o nível atual do aluno.
+  - **Personalização explícita por skill E pelo diagnóstico.** Cada ticket
+    precisa expor `personalization_notes` referenciando o nível atual do
+    aluno e/ou a resposta do diagnóstico que justificou a decisão.
+  - **Pré-requisitos cobertos.** Quando o diagnóstico revela que o aluno
+    não conhece a stack solicitada, a trilha **precisa** incluir tickets
+    fundacionais antes dos avançados — é ilógico mandar alguém "projetar
+    API REST com FastAPI" sem antes garantir que ele consegue subir uma
+    rota básica.
   - **Concepts curtos e citáveis**, porque eles viram skills do aluno na conclusão.
-- Resposta esperada: `choices[0].message.content` contendo o JSON; é validado contra `TrailContent`/`ConceptExplanation` antes de virar domínio.
+- Resposta esperada: `choices[0].message.content` contendo o JSON; é validado contra `TopicQuestionSet`/`TrailContent`/`ConceptExplanation` antes de virar domínio.
 - Erros do provider viram `AIProviderError` com mensagem amigável; timeout cita o valor configurado e a env var a ajustar.
 - Streaming não é usado (sempre `"stream": false`).
 - Em ambiente de teste, usar `FakeAIProvider` determinístico — a API real **nunca** é chamada nos testes.
@@ -602,18 +619,21 @@ Checklist antes de migrar:
 A experiência de gerar uma trilha deve transmitir intenção pedagógica clara:
 
 1. **Coleta de tema**: campo amplo, exemplos sugeridos, dica visível sobre o que torna um tema bom.
-2. **Loading explícito**: durante a geração (que pode levar dezenas de segundos), mostrar mensagem como _"O mentor está desenhando o projeto e os tickets..."_, com indicador de progresso.
-3. **Resultado estruturado**:
+2. **Diagnóstico inicial obrigatório (modal sobreposto)**: ao continuar, a IA
+   gera até 5 perguntas curtas de múltipla escolha para calibrar nível,
+   contexto e pré-requisitos sobre o tema. Detalhes em §39.
+3. **Loading explícito**: durante a geração (que pode levar dezenas de segundos), mostrar mensagem como _"O mentor está desenhando o projeto e os tickets..."_, com indicador de progresso.
+4. **Resultado estruturado**:
    - Título do projeto proposto.
    - Resumo do projeto e por que ele é realista.
    - Lista ordenada de tickets, cada um expansível.
    - Cada ticket mostra: título, objetivo, **nota de personalização**, conceitos abordados (clicáveis), tarefas e critérios de aceite.
-4. **Conceitos aprofundáveis**: cada chip de conceito abre um modal com definição, padrões, armadilhas, dicas, exemplo de código e leituras complementares — também gerados por IA e calibrados pelo nível do aluno.
-5. **Conclusão + progressão**: ao concluir uma trilha, os conceitos cobertos viram skills (ou são elevados) automaticamente, e a UI mostra o que foi adicionado/elevado.
-6. **Tom**: didático e exigente. Sem infantilizar. Sem encher de emoji.
-7. **Edição**: usuário pode editar título, descrição e tickets manualmente.
-8. **Regeneração**: pode pedir nova versão; isso zera `completed_at` para reforçar que é uma nova jornada.
-9. **Leitura confortável**: largura controlada, contraste alto, espaçamento generoso.
+5. **Conceitos aprofundáveis**: cada chip de conceito abre uma página dedicada com definição, padrões, armadilhas, dicas, exemplo de código e leituras complementares — também gerados por IA e calibrados pelo nível do aluno.
+6. **Conclusão + progressão**: ao concluir uma trilha, os conceitos cobertos viram skills (ou são elevados) automaticamente, e a UI mostra o que foi adicionado/elevado.
+7. **Tom**: didático e exigente. Sem infantilizar. Sem encher de emoji.
+8. **Edição**: usuário pode editar título, descrição e tickets manualmente.
+9. **Regeneração**: pode pedir nova versão; isso zera `completed_at` para reforçar que é uma nova jornada. As respostas do diagnóstico **são reaproveitadas** — o aluno não responde tudo de novo.
+10. **Leitura confortável**: largura controlada, contraste alto, espaçamento generoso.
 
 ---
 
@@ -746,6 +766,82 @@ gerada por IA.
   8. **Para ir além** — termos em pills para pesquisar.
 - Botão discreto "Atualizar" no header dispara nova geração (cache bypass)
   para casos em que o usuário evoluiu de nível e quer recalibrar.
+
+---
+
+## 39. Diagnóstico Inicial Antes da Trilha
+
+Toda trilha nova passa por um **diagnóstico curto** antes da geração. O
+objetivo é evitar trilhas ilógicas (alguém querendo "API design com FastAPI"
+sem nunca ter usado FastAPI) e calibrar profundidade, ordem dos tickets e
+pré-requisitos cobertos.
+
+### Schemas
+- `TopicQuestion`: `{ id, question, rationale, options[] }`. `rationale` é
+  documentação interna sobre o que a pergunta diagnostica — não aparece para
+  o aluno.
+- `TopicQuestionOption`: `{ id, label }`. IDs `a`/`b`/`c`/`d`. Alternativas
+  específicas do tema, ordenadas do "sei pouco" ao "domino".
+- `TopicQuestionSet`: `{ topic, questions[] }`. Entre 3 e 5 perguntas.
+- `TopicAnswer`: `{ question_id, question, answer }`. Carregamos o texto da
+  pergunta + texto da alternativa escolhida (não só ids) para que o prompt
+  da trilha receba contexto humano.
+
+### Endpoint
+- `POST /api/v1/learning-trails/assessment` com `{ topic }` → `TopicQuestionSet`.
+  Autenticado. Não persiste nada — só consulta a IA. O usuário pode
+  abandonar o modal sem efeito colateral.
+- `POST /api/v1/learning-trails` aceita `assessment: TopicAnswer[]` (lista
+  pode estar vazia se o aluno pulou tudo). É persistido em `assessment_json`
+  na tabela `learning_trails`.
+
+### Modelo de IA
+- Perguntas usam `ABACUS_QUESTIONS_MODEL` (ex.: `gemini-3.5-flash`) — modelo
+  leve e barato, geralmente devolve em poucos segundos.
+- Trilha + explicação de conceito usam `ABACUS_MODEL` (mais denso).
+- Quando `ABACUS_QUESTIONS_MODEL` está vazio, o provider faz fallback
+  transparente em `ABACUS_MODEL`.
+
+### Reaproveitamento em regenerate
+- `regenerate_for_user` lê `assessment_json` salvo e passa de volta ao
+  provider. **O aluno não responde o diagnóstico de novo.**
+- Edições manuais (`update_for_user(content=...)`) não afetam o assessment
+  — apenas o cache de explicações.
+
+### UX (frontend)
+- O fluxo em `/trails/new` tem três fases: `idle` → `loading-questions` →
+  `answering` → `generating`.
+- Botão principal mostra **"Continuar"** (não "Gerar trilha"). A geração
+  acontece dentro do modal.
+- `AssessmentModal` é fullscreen sobreposto:
+  - Backdrop com blur, animação de entrada suave.
+  - Header com eyebrow "Diagnóstico inicial" + título + subtítulo citando o
+    tema em **negrito**.
+  - Indicador de progresso em pílulas numeradas (active = primary,
+    answered = primary-soft).
+  - **Apenas uma pergunta por vez.** Transição entre perguntas usa animação
+    de slide horizontal (200ms): forward = saída para a esquerda, backward
+    = saída para a direita. O `key` no `.stage` força remount limpo.
+  - Alternativas como `<label>` envolvendo `<input type="radio">` com
+    estado `optionSelected` realçado em primary-soft.
+  - Botão "Pular pergunta" registra um sentinela `__skip__` que é
+    convertido em `"Prefiro não responder"` no payload final.
+  - Botão "Anterior" navega para trás sem perder respostas já dadas.
+  - "Cancelar" (canto superior direito) e tecla **Esc** fecham o modal e
+    voltam ao formulário sem submeter — cancelar durante `generating` é
+    bloqueado para não deixar a IA sem contexto no meio do caminho.
+  - Acessibilidade: `role="dialog" aria-modal="true"`, `aria-live="polite"`
+    no stage, foco programático no card a cada troca de pergunta.
+
+### Princípio pedagógico no prompt da trilha
+- O bloco "Respostas do diagnóstico inicial" no prompt é **autoridade
+  máxima** sobre o nível do aluno NO TEMA solicitado (skills declaradas
+  cobrem o resto).
+- Quando uma resposta revela falta de pré-requisito da stack pedida, o
+  modelo é instruído a incluir tickets fundacionais cobrindo essa lacuna
+  ANTES dos tickets avançados.
+- Cada `personalization_notes` deve mencionar QUAL resposta justificou a
+  decisão ("você respondeu que nunca usou X, então...").
 
 ---
 

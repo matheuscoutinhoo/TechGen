@@ -20,6 +20,30 @@ class TestCreateTrail:
         assert first_ticket["objective"]
         assert first_ticket["acceptance_criteria"]
 
+    def test_create_with_assessment_propagates_answers_to_personalization(
+        self, client, auth_headers
+    ):
+        response = client.post(
+            "/api/v1/learning-trails",
+            headers=auth_headers,
+            json={
+                "topic": "API design com FastAPI",
+                "assessment": [
+                    {
+                        "question_id": "q1",
+                        "question": "Você já usou FastAPI?",
+                        "answer": "Nunca usei FastAPI",
+                    }
+                ],
+            },
+        )
+        assert response.status_code == 201
+        body = response.json()
+        notes = " ".join(
+            t.get("personalization_notes") or "" for t in body["content"]["tickets"]
+        )
+        assert "Nunca usei FastAPI" in notes
+
     def test_rejects_empty_topic(self, client, auth_headers):
         response = client.post(
             "/api/v1/learning-trails", headers=auth_headers, json={"topic": "a"}
@@ -28,6 +52,39 @@ class TestCreateTrail:
 
     def test_rejects_unauthenticated(self, client):
         response = client.post("/api/v1/learning-trails", json={"topic": "FastAPI"})
+        assert response.status_code == 401
+
+
+@pytest.mark.integration
+class TestAssessmentEndpoint:
+    def test_returns_question_set_for_topic(self, client, auth_headers):
+        response = client.post(
+            "/api/v1/learning-trails/assessment",
+            headers=auth_headers,
+            json={"topic": "FastAPI"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["topic"] == "FastAPI"
+        assert 3 <= len(body["questions"]) <= 5
+        first = body["questions"][0]
+        assert first["id"].startswith("q")
+        assert first["question"]
+        assert first["options"]
+        assert 2 <= len(first["options"]) <= 5
+
+    def test_rejects_short_topic(self, client, auth_headers):
+        response = client.post(
+            "/api/v1/learning-trails/assessment",
+            headers=auth_headers,
+            json={"topic": "a"},
+        )
+        assert response.status_code == 422
+
+    def test_rejects_unauthenticated(self, client):
+        response = client.post(
+            "/api/v1/learning-trails/assessment", json={"topic": "FastAPI"}
+        )
         assert response.status_code == 401
 
 

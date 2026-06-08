@@ -131,6 +131,45 @@ class TestRegenerate:
         assert regenerated.id == original_id
         assert regenerated.topic == "Kubernetes"
 
+    def test_regenerate_reuses_stored_assessment(self, service, user_a):
+        from app.schemas.learning_trail import TopicAnswer
+
+        answers = [
+            TopicAnswer(
+                question_id="q1",
+                question="Você já usou FastAPI?",
+                answer="Nunca usei FastAPI",
+            )
+        ]
+        trail = service.create_for_user(
+            user_a, topic="API design com FastAPI", assessment=answers
+        )
+        # primeiro create já deixou marca da resposta no personalization
+        original_notes = " ".join(
+            t.personalization_notes or ""
+            for t in service.to_read_model(trail).content.tickets
+        )
+        assert "Nunca usei FastAPI" in original_notes
+
+        regenerated = service.regenerate_for_user(user_a, trail.id)
+        regenerated_notes = " ".join(
+            t.personalization_notes or ""
+            for t in service.to_read_model(regenerated).content.tickets
+        )
+        # regenerate deve reaproveitar o assessment armazenado
+        assert "Nunca usei FastAPI" in regenerated_notes
+
+
+@pytest.mark.unit
+class TestAssessment:
+    def test_build_assessment_returns_questions_for_topic(self, service, user_a):
+        from app.schemas.learning_trail import TopicQuestionSet
+
+        result = service.build_assessment_for_user(user_a, topic="FastAPI")
+        assert isinstance(result, TopicQuestionSet)
+        assert result.topic == "FastAPI"
+        assert 3 <= len(result.questions) <= 5
+
 
 @pytest.mark.unit
 class TestDelete:
