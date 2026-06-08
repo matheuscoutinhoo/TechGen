@@ -827,8 +827,9 @@ cada vez, sondando lacunas ou subindo o nível conforme o aluno responde.
 ### Reaproveitamento em regenerate
 - `regenerate_for_user` lê `assessment_json` salvo e passa de volta ao
   provider. **O aluno não responde o diagnóstico de novo.**
-- Edições manuais (`update_for_user(content=...)`) não afetam o assessment
-  — apenas o cache de explicações.
+- O conteúdo gerado **não é editável** pelo usuário — para mudar a trilha,
+  basta regenerar (mesmo diagnóstico) ou criar uma nova. A regeneração
+  invalida o cache de explicações associado.
 
 ### UX (frontend)
 - O fluxo em `/trails/new` tem quatro fases: `idle` → `loading-questions` →

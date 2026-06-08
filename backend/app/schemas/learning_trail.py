@@ -97,13 +97,6 @@ class LearningTrailCreate(BaseModel):
     assessment: list[TopicAnswer] = Field(default_factory=list, max_length=10)
 
 
-class LearningTrailUpdate(BaseModel):
-    """Edição manual da trilha pelo usuário."""
-    title: str | None = Field(default=None, min_length=3, max_length=200)
-    summary: str | None = Field(default=None, min_length=10, max_length=4000)
-    content: TrailContent | None = None
-
-
 class LearningTrailRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

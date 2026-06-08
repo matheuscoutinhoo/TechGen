@@ -140,30 +140,6 @@ class LearningTrailService:
         self.concept_cache.delete_for_trail(trail.id)
         return updated
 
-    def update_for_user(
-        self,
-        user: User,
-        trail_id: int,
-        *,
-        title: str | None = None,
-        summary: str | None = None,
-        content: TrailContent | None = None,
-    ) -> LearningTrail:
-        trail = self.get_for_user(user, trail_id)
-        if title is not None:
-            trail.title = title
-        if summary is not None:
-            trail.summary = summary
-        if content is not None:
-            trail.content_json = content.model_dump_json()
-            if title is None:
-                trail.title = content.project_title
-            if summary is None:
-                trail.summary = content.project_summary
-            # Edição manual do conteúdo também invalida o cache.
-            self.concept_cache.delete_for_trail(trail.id)
-        return self.repository.update(trail)
-
     def delete_for_user(self, user: User, trail_id: int) -> None:
         trail = self.get_for_user(user, trail_id)
         self.repository.delete(trail)

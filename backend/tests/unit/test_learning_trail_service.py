@@ -75,43 +75,6 @@ class TestAccessControl:
 
 
 @pytest.mark.unit
-class TestUpdate:
-    def test_partial_update_changes_only_provided_fields(self, service, user_a):
-        trail = service.create_for_user(user_a, topic="Go")
-        old_summary = trail.summary
-        updated = service.update_for_user(user_a, trail.id, title="Novo título")
-        assert updated.title == "Novo título"
-        assert updated.summary == old_summary
-
-    def test_update_with_content_overwrites_and_syncs_title_summary(self, service, user_a):
-        from app.schemas.learning_trail import Ticket, TicketTask, TrailContent
-
-        trail = service.create_for_user(user_a, topic="Java")
-        new_content = TrailContent(
-            project_title="Projeto refeito",
-            project_summary="Resumo refeito do projeto.",
-            why_realistic="Porque o aluno editou manualmente.",
-            target_audience="Devs experientes.",
-            prerequisites=["Git"],
-            tickets=[
-                Ticket(
-                    code="TG-1",
-                    title="Novo ticket",
-                    objective="Objetivo claro do ticket editado.",
-                    concepts=["edição"],
-                    tasks=[TicketTask(description="Tarefa única")],
-                    acceptance_criteria=["Critério único"],
-                )
-            ],
-        )
-        updated = service.update_for_user(user_a, trail.id, content=new_content)
-        assert updated.title == "Projeto refeito"
-        assert updated.summary == "Resumo refeito do projeto."
-        read = service.to_read_model(updated)
-        assert read.content.tickets[0].title == "Novo ticket"
-
-
-@pytest.mark.unit
 class TestToReadModel:
     def test_raises_when_content_json_is_corrupted(self, service, user_a):
         from app.exceptions import ValidationError as DomainValidationError
@@ -373,41 +336,6 @@ class TestExplainConceptCache:
         service.explain_concept_for_user(
             user_a, trail.id, regenerated_ticket.code, regenerated_ticket.concepts[0]
         )
-        assert calls["count"] == 2
-
-    def test_manual_content_update_invalidates_cache(
-        self, service, user_a, fake_ai_provider
-    ):
-        from app.schemas.learning_trail import Ticket, TicketTask, TrailContent
-
-        calls = self._spy_provider(fake_ai_provider)
-        trail = service.create_for_user(user_a, topic="Erlang")
-        original = service.to_read_model(trail).content
-        ticket = original.tickets[0]
-        concept = ticket.concepts[0]
-        service.explain_concept_for_user(user_a, trail.id, ticket.code, concept)
-        assert calls["count"] == 1
-
-        new_content = TrailContent(
-            project_title=original.project_title,
-            project_summary=original.project_summary,
-            why_realistic=original.why_realistic,
-            target_audience=original.target_audience,
-            prerequisites=list(original.prerequisites),
-            tickets=[
-                Ticket(
-                    code=ticket.code,
-                    title="Novo título",
-                    objective=ticket.objective,
-                    concepts=list(ticket.concepts),
-                    tasks=[TicketTask(description="Nova tarefa")],
-                    acceptance_criteria=list(ticket.acceptance_criteria),
-                )
-            ],
-        )
-        service.update_for_user(user_a, trail.id, content=new_content)
-
-        service.explain_concept_for_user(user_a, trail.id, ticket.code, concept)
         assert calls["count"] == 2
 
     def test_cache_isolated_per_trail(self, service, user_a, fake_ai_provider):

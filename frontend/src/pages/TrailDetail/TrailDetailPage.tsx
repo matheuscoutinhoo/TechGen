@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useLearningTrail } from '../../hooks/useLearningTrail';
+import { useSkills } from '../../hooks/useSkills';
 import { learningTrailsApi } from '../../api/learningTrails';
 import { ApiError } from '../../api/client';
 import { Button } from '../../components/ui/Button';
@@ -8,6 +9,7 @@ import { Spinner } from '../../components/ui/Spinner';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { TrailHeader } from '../../components/learning/TrailHeader';
 import { TicketCard } from '../../components/learning/TicketCard';
+import { EarnedSkillsCard } from '../../components/learning/EarnedSkillsCard';
 import { formatDate } from '../../utils/format';
 import type { CompleteTrailResponse } from '../../types/api';
 import styles from './TrailDetail.module.css';
@@ -19,6 +21,7 @@ export function TrailDetailPage() {
    const trailId = id ? Number(id) : null;
    const navigate = useNavigate();
    const { trail, isLoading, error, refetch, setTrail } = useLearningTrail(trailId);
+   const { skills, refetch: refetchSkills } = useSkills();
    const [actionInFlight, setActionInFlight] = useState<Action | null>(null);
    const [actionError, setActionError] = useState<string | null>(null);
    const [completion, setCompletion] = useState<CompleteTrailResponse | null>(null);
@@ -69,6 +72,8 @@ export function TrailDetailPage() {
          const response = await learningTrailsApi.complete(trailId);
          setTrail(response.trail);
          setCompletion(response);
+         // refresh do perfil de skills para refletir o que entrou agora
+         void refetchSkills();
       } catch (err) {
          setActionError(
             err instanceof ApiError ? err.message : 'Não foi possível concluir agora.',
@@ -114,23 +119,13 @@ export function TrailDetailPage() {
             </div>
          )}
 
-         {completion && (completion.added_concepts.length > 0 || completion.upgraded_concepts.length > 0) && (
-            <div className={styles.progress}>
-               <strong>Progressão registrada</strong>
-               {completion.added_concepts.length > 0 && (
-                  <p>
-                     Novas skills:{' '}
-                     <em>{completion.added_concepts.join(', ')}</em>
-                  </p>
-               )}
-               {completion.upgraded_concepts.length > 0 && (
-                  <p>
-                     Skills elevadas:{' '}
-                     <em>{completion.upgraded_concepts.join(', ')}</em>
-                  </p>
-               )}
-            </div>
-         )}
+         <EarnedSkillsCard
+            tickets={trail.content.tickets}
+            currentSkills={skills}
+            completed={isCompleted && completion !== null}
+            addedConcepts={completion?.added_concepts ?? []}
+            upgradedConcepts={completion?.upgraded_concepts ?? []}
+         />
 
          <div className={styles.toolbar} style={{ marginTop: 'var(--space-6)' }}>
             <span className={styles.sectionTitle}>
@@ -146,9 +141,6 @@ export function TrailDetailPage() {
                      Concluir trilha
                   </Button>
                )}
-               <Link to={`/trails/${trail.id}/edit`}>
-                  <Button variant="secondary">Editar</Button>
-               </Link>
                <Button
                   variant="secondary"
                   onClick={() => void handleRegenerate()}

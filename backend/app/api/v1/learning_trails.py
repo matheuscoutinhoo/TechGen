@@ -9,7 +9,6 @@ from app.schemas.learning_trail import (
     LearningTrailCreate,
     LearningTrailListItem,
     LearningTrailRead,
-    LearningTrailUpdate,
     TopicNextQuestionRequest,
     TopicNextQuestionResponse,
 )
@@ -78,27 +77,6 @@ def get_trail(
     service: LearningTrailService = Depends(get_learning_trail_service),
 ) -> LearningTrailRead:
     trail = service.get_for_user(current_user, trail_id)
-    return service.to_read_model(trail)
-
-
-@router.patch(
-    "/{trail_id}",
-    response_model=LearningTrailRead,
-    summary="Edita manualmente uma trilha",
-)
-def update_trail(
-    trail_id: int,
-    payload: LearningTrailUpdate,
-    current_user: User = Depends(get_current_user),
-    service: LearningTrailService = Depends(get_learning_trail_service),
-) -> LearningTrailRead:
-    trail = service.update_for_user(
-        current_user,
-        trail_id,
-        title=payload.title,
-        summary=payload.summary,
-        content=payload.content,
-    )
     return service.to_read_model(trail)
 
 

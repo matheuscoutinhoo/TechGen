@@ -242,21 +242,6 @@ class TestGetTrail:
 
 
 @pytest.mark.integration
-class TestUpdateTrail:
-    def test_updates_title(self, client, auth_headers):
-        created = client.post(
-            "/api/v1/learning-trails", headers=auth_headers, json={"topic": "Golang"}
-        ).json()
-        response = client.patch(
-            f"/api/v1/learning-trails/{created['id']}",
-            headers=auth_headers,
-            json={"title": "Minha trilha de Go"},
-        )
-        assert response.status_code == 200
-        assert response.json()["title"] == "Minha trilha de Go"
-
-
-@pytest.mark.integration
 class TestRegenerateTrail:
     def test_regenerates_keeping_topic(self, client, auth_headers):
         created = client.post(

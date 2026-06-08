@@ -55,7 +55,6 @@ function renderDetail() {
       <MemoryRouter initialEntries={['/trails/7']}>
          <Routes>
             <Route path="/trails/:id" element={<TrailDetailPage />} />
-            <Route path="/trails/:id/edit" element={<div>edit ok</div>} />
             <Route path="/dashboard" element={<div>dashboard ok</div>} />
          </Routes>
       </MemoryRouter>,
@@ -75,7 +74,14 @@ describe('<TrailDetailPage />', () => {
    });
 
    it('renderiza cabeçalho da trilha e lista de tickets', async () => {
-      globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse(TRAIL)) as unknown as typeof fetch;
+      globalThis.fetch = vi
+         .fn()
+         .mockImplementation((url: string) => {
+            if (typeof url === 'string' && url.includes('/skills')) {
+               return Promise.resolve(jsonResponse([]));
+            }
+            return Promise.resolve(jsonResponse(TRAIL));
+         }) as unknown as typeof fetch;
 
       renderDetail();
       await waitFor(() =>
@@ -88,13 +94,18 @@ describe('<TrailDetailPage />', () => {
 
    it('botão Excluir confirma e navega para o dashboard', async () => {
       let deleted = false;
-      globalThis.fetch = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
-         if (init?.method === 'DELETE') {
-            deleted = true;
-            return Promise.resolve(new Response(null, { status: 204 }));
-         }
-         return Promise.resolve(jsonResponse(TRAIL));
-      }) as unknown as typeof fetch;
+      globalThis.fetch = vi
+         .fn()
+         .mockImplementation((url: string, init?: RequestInit) => {
+            if (init?.method === 'DELETE') {
+               deleted = true;
+               return Promise.resolve(new Response(null, { status: 204 }));
+            }
+            if (typeof url === 'string' && url.includes('/skills')) {
+               return Promise.resolve(jsonResponse([]));
+            }
+            return Promise.resolve(jsonResponse(TRAIL));
+         }) as unknown as typeof fetch;
 
       renderDetail();
       await waitFor(() => expect(screen.getByText('Plataforma FastAPI')).toBeInTheDocument());
@@ -107,9 +118,19 @@ describe('<TrailDetailPage />', () => {
    });
 
    it('mostra erro quando trilha não é encontrada', async () => {
-      globalThis.fetch = vi.fn().mockResolvedValue(
-         jsonResponse({ error: { code: 'NOT_FOUND', message: 'Trilha não encontrada' } }, 404),
-      ) as unknown as typeof fetch;
+      globalThis.fetch = vi
+         .fn()
+         .mockImplementation((url: string) => {
+            if (typeof url === 'string' && url.includes('/skills')) {
+               return Promise.resolve(jsonResponse([]));
+            }
+            return Promise.resolve(
+               jsonResponse(
+                  { error: { code: 'NOT_FOUND', message: 'Trilha não encontrada' } },
+                  404,
+               ),
+            );
+         }) as unknown as typeof fetch;
 
       renderDetail();
       await waitFor(() => expect(screen.getByText('Trilha não encontrada')).toBeInTheDocument());

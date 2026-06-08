@@ -39,7 +39,6 @@ function renderDashboard() {
                <Route path="/dashboard" element={<DashboardPage />} />
                <Route path="/trails/new" element={<div>nova trilha ok</div>} />
                <Route path="/trails/:id" element={<div>detalhe ok</div>} />
-               <Route path="/trails/:id/edit" element={<div>editar trilha ok</div>} />
             </Routes>
          </AuthProvider>
       </MemoryRouter>,
@@ -118,19 +117,6 @@ describe('<DashboardPage />', () => {
          screen.getByRole('button', { name: 'Criar primeira trilha' }),
       );
       expect(screen.getByText('nova trilha ok')).toBeInTheDocument();
-   });
-
-   it('ícone de editar navega para /trails/:id/edit', async () => {
-      globalThis.fetch = buildFetch([TRAIL_FIXTURE]) as unknown as typeof fetch;
-
-      renderDashboard();
-      await waitFor(() => expect(screen.getByText('Projeto FastAPI')).toBeInTheDocument());
-
-      const user = userEvent.setup();
-      await user.click(
-         screen.getByRole('button', { name: 'Editar trilha Projeto FastAPI' }),
-      );
-      expect(screen.getByText('editar trilha ok')).toBeInTheDocument();
    });
 
    it('ícone de remover dispara confirm, chama DELETE e refaz fetch', async () => {

@@ -6,18 +6,11 @@ import type {
    LearningTrailSummary,
    TopicAnswer,
    TopicNextQuestionResponse,
-   TrailContent,
 } from '../types/api';
 
 export interface CreateTrailPayload {
    topic: string;
    assessment?: TopicAnswer[];
-}
-
-export interface UpdateTrailPayload {
-   title?: string;
-   summary?: string;
-   content?: TrailContent;
 }
 
 export const learningTrailsApi = {
@@ -37,8 +30,6 @@ export const learningTrailsApi = {
          '/learning-trails/assessment/next',
          { topic, previous_answers: previousAnswers },
       ),
-   update: (id: number, payload: UpdateTrailPayload) =>
-      apiClient.patch<LearningTrail>(`/learning-trails/${id}`, payload),
    regenerate: (id: number) =>
       apiClient.post<LearningTrail>(`/learning-trails/${id}/regenerate`),
    delete: (id: number) => apiClient.del<void>(`/learning-trails/${id}`),

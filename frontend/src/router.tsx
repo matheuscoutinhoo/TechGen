@@ -8,7 +8,6 @@ import { RegisterPage } from './pages/Register';
 import { DashboardPage } from './pages/Dashboard';
 import { CreateTrailPage } from './pages/CreateTrail';
 import { TrailDetailPage } from './pages/TrailDetail';
-import { EditTrailPage } from './pages/EditTrail';
 import { AccountPage } from './pages/Account';
 import { ConceptExplanationPage } from './pages/ConceptExplanation';
 import { NotFoundPage } from './pages/NotFound';
@@ -81,16 +80,6 @@ export function AppRoutes() {
                <ProtectedRoute>
                   <PageContainer width="base">
                      <TrailDetailPage />
-                  </PageContainer>
-               </ProtectedRoute>
-            }
-         />
-         <Route
-            path="/trails/:id/edit"
-            element={
-               <ProtectedRoute>
-                  <PageContainer width="base">
-                     <EditTrailPage />
                   </PageContainer>
                </ProtectedRoute>
             }
