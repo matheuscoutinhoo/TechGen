@@ -25,7 +25,7 @@ export function CreateTrailPage() {
    const navigate = useNavigate();
    const [topic, setTopic] = useState('');
    const [phase, setPhase] = useState<Phase>('idle');
-   const [questions, setQuestions] = useState<TopicQuestion[]>([]);
+   const [firstQuestion, setFirstQuestion] = useState<TopicQuestion | null>(null);
    const [error, setError] = useState<string | null>(null);
 
    const isBusy = phase !== 'idle';
@@ -40,7 +40,7 @@ export function CreateTrailPage() {
          navigate(`/trails/${trail.id}`, { replace: true });
       } catch (err) {
          setPhase('idle');
-         setQuestions([]);
+         setFirstQuestion(null);
          if (err instanceof ApiError) {
             setError(err.message);
          } else {
@@ -58,12 +58,16 @@ export function CreateTrailPage() {
       setError(null);
       setPhase('loading-questions');
       try {
-         const result = await learningTrailsApi.buildAssessment(topic.trim());
-         if (result.questions.length === 0) {
+         const result = await learningTrailsApi.nextAssessmentQuestion(
+            topic.trim(),
+            [],
+         );
+         if (result.done || !result.question) {
+            // IA decidiu pular o diagnóstico (caso raro) → gera direto.
             await generateTrail([]);
             return;
          }
-         setQuestions(result.questions);
+         setFirstQuestion(result.question);
          setPhase('answering');
       } catch (err) {
          setPhase('idle');
@@ -78,17 +82,17 @@ export function CreateTrailPage() {
    const handleCancelAssessment = () => {
       if (phase === 'generating') return;
       setPhase('idle');
-      setQuestions([]);
+      setFirstQuestion(null);
    };
 
    const showLoadingPanel = phase === 'loading-questions' || phase === 'generating';
    const loadingLabel =
       phase === 'loading-questions'
-         ? 'O mentor está preparando perguntas para entender seu nível...'
+         ? 'O mentor está preparando a primeira pergunta...'
          : 'O mentor está desenhando o projeto e os tickets...';
    const loadingHint =
       phase === 'loading-questions'
-         ? 'A IA vai te fazer até 5 perguntas curtas para calibrar a profundidade da trilha.'
+         ? 'A IA vai te entrevistar de forma adaptativa — cada resposta calibra a próxima pergunta.'
          : 'Suas respostas estão guiando a quebra dos tickets, os conceitos abordados e os pré-requisitos cobertos. Isso pode levar alguns segundos.';
 
    return (
@@ -168,10 +172,13 @@ export function CreateTrailPage() {
             </aside>
          </div>
 
-         {(phase === 'answering' || phase === 'generating') && questions.length > 0 && (
+         {(phase === 'answering' || phase === 'generating') && firstQuestion && (
             <AssessmentModal
                topic={topic.trim()}
-               questions={questions}
+               firstQuestion={firstQuestion}
+               loadNextQuestion={(history) =>
+                  learningTrailsApi.nextAssessmentQuestion(topic.trim(), history)
+               }
                isSubmitting={phase === 'generating'}
                onSubmit={(answers) => {
                   void generateTrail(answers);

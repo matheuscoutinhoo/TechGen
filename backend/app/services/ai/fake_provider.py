@@ -20,10 +20,31 @@ from app.schemas.learning_trail import (
     TopicAnswer,
     TopicQuestion,
     TopicQuestionOption,
-    TopicQuestionSet,
     TrailContent,
 )
 from app.services.ai.base import AIProvider, ConceptContext, UserSkillInput
+
+
+# Sinais textuais que indicam baixa familiaridade na resposta — usados pelo
+# FakeProvider para escolher o próximo template adaptativo e para enriquecer
+# as trilhas com pré-requisitos.
+_LOW_FAMILIARITY_SIGNALS = (
+    "nunca",
+    "não usei",
+    "nao usei",
+    "não conheço",
+    "nao conheco",
+    "primeira vez",
+    "pouca",
+    "pouco",
+    "iniciante",
+    "passo a passo",
+)
+
+
+def _looks_low_familiarity(text: str) -> bool:
+    lowered = text.lower()
+    return any(signal in lowered for signal in _LOW_FAMILIARITY_SIGNALS)
 
 
 def _personalization_for(
@@ -65,18 +86,57 @@ def _personalization_for(
     return " ".join(parts)
 
 
-_QUESTION_TEMPLATES = [
+# Cada template tem um "trigger" — uma função que decide se ele é a melhor
+# próxima pergunta dado o histórico. Ordem importa: o primeiro template cujo
+# trigger casar e que ainda não foi usado é o escolhido.
+_QUESTION_TEMPLATES: list[dict] = [
     {
+        "key": "familiarity",
+        "trigger": lambda history: len(history) == 0,
         "question": "Você já trabalhou com {topic} antes?",
-        "rationale": "Mede familiaridade direta com o tema.",
+        "rationale": "Mede familiaridade direta com o tema (primeiro eixo).",
         "options": [
-            {"id": "a", "label": "Nunca ouvi falar a fundo"},
-            {"id": "b", "label": "Já li sobre, mas nunca usei"},
+            {"id": "a", "label": "Nunca usei {topic}"},
+            {"id": "b", "label": "Já li sobre, mas nunca apliquei"},
             {"id": "c", "label": "Já fiz um projeto pequeno usando {topic}"},
             {"id": "d", "label": "Uso {topic} no dia a dia"},
         ],
     },
     {
+        "key": "fundamentals",
+        # Disparado quando a resposta anterior indica baixa familiaridade.
+        "trigger": lambda history: bool(history)
+        and _looks_low_familiarity(history[-1].answer),
+        "question": "Você se sente confortável com a linguagem/base necessária para {topic}?",
+        "rationale": (
+            "Aluno sinalizou pouca familiaridade — preciso verificar o pré-requisito "
+            "fundacional antes de subir o nível."
+        ),
+        "options": [
+            {"id": "a", "label": "Estou começando do zero"},
+            {"id": "b", "label": "Já fiz alguns exercícios"},
+            {"id": "c", "label": "Já tenho prática consolidada"},
+        ],
+    },
+    {
+        "key": "advanced",
+        # Quando a resposta anterior indica fluência, subimos o nível.
+        "trigger": lambda history: bool(history)
+        and not _looks_low_familiarity(history[-1].answer),
+        "question": "Quando você usa {topic}, você costuma pensar em quais trade-offs?",
+        "rationale": (
+            "Aluno mostrou domínio — calibro o nível subindo para decisões de "
+            "arquitetura."
+        ),
+        "options": [
+            {"id": "a", "label": "Sigo o padrão da equipe sem questionar"},
+            {"id": "b", "label": "Penso em performance e legibilidade"},
+            {"id": "c", "label": "Avalio trade-offs entre acoplamento, performance e custo"},
+        ],
+    },
+    {
+        "key": "goal",
+        "trigger": lambda history: len(history) >= 1,
         "question": "Qual é seu objetivo principal aprendendo {topic}?",
         "rationale": "Calibra o cenário do projeto (estudo, trabalho, entrevista).",
         "options": [
@@ -87,6 +147,8 @@ _QUESTION_TEMPLATES = [
         ],
     },
     {
+        "key": "testing",
+        "trigger": lambda history: len(history) >= 2,
         "question": "Você está confortável com testes automatizados ao construir {topic}?",
         "rationale": "Decide se cobrimos TDD do zero ou só citamos.",
         "options": [
@@ -94,24 +156,6 @@ _QUESTION_TEMPLATES = [
             {"id": "b", "label": "Já escrevi alguns, mas sem disciplina"},
             {"id": "c", "label": "Escrevo testes para o caminho feliz"},
             {"id": "d", "label": "Pratico TDD com frequência"},
-        ],
-    },
-    {
-        "question": "Como você prefere aprender {topic}?",
-        "rationale": "Define equilíbrio entre fundamentos teóricos e prática.",
-        "options": [
-            {"id": "a", "label": "Direto na prática, ajustando depois"},
-            {"id": "b", "label": "Fundamentos primeiro, prática depois"},
-            {"id": "c", "label": "Misto, alternando rápido"},
-        ],
-    },
-    {
-        "question": "Você consegue subir um ambiente mínimo de {topic} sozinho?",
-        "rationale": "Verifica se podemos pular o ticket de setup ou não.",
-        "options": [
-            {"id": "a", "label": "Não, preciso de passo a passo"},
-            {"id": "b", "label": "Com algum esforço, sim"},
-            {"id": "c", "label": "Sim, faço rapidamente"},
         ],
     },
 ]
@@ -274,19 +318,57 @@ _TICKET_TEMPLATES = [
 
 
 class FakeAIProvider(AIProvider):
-    def generate_topic_questions(
+    # Teto duro de perguntas no fake provider — service também limita.
+    MAX_QUESTIONS = 5
+
+    def generate_next_topic_question(
         self,
         topic: str,
         *,
         skills: Sequence[UserSkillInput] = (),
-    ) -> TopicQuestionSet:
+        previous_answers: Sequence[TopicAnswer] = (),
+    ) -> TopicQuestion | None:
         safe_topic = topic.strip() or "Tecnologia"
-        seed = int(hashlib.sha256(safe_topic.encode("utf-8")).hexdigest()[:6], 16)
-        question_count = 3 + (seed % 3)  # 3 a 5 perguntas
-        questions = [
-            self._make_question(i, safe_topic) for i in range(1, question_count + 1)
-        ]
-        return TopicQuestionSet(topic=safe_topic, questions=questions)
+        asked_count = len(previous_answers)
+
+        if asked_count >= self.MAX_QUESTIONS:
+            return None
+
+        # Decisão de parar antecipadamente baseada no histórico:
+        # se a primeira resposta indica fluência alta E a segunda confirma,
+        # 3 perguntas são suficientes.
+        if asked_count >= 3:
+            return None
+
+        used_keys = {self._template_key_for(a, i) for i, a in enumerate(previous_answers)}
+        history = list(previous_answers)
+
+        chosen = None
+        for template in _QUESTION_TEMPLATES:
+            if template["key"] in used_keys:
+                continue
+            if template["trigger"](history):
+                chosen = template
+                break
+        if chosen is None:
+            # Sem trigger compatível e ainda abaixo do teto → encerra.
+            return None
+
+        return self._make_question(asked_count + 1, safe_topic, chosen)
+
+    @staticmethod
+    def _template_key_for(answer: TopicAnswer, index: int) -> str:
+        """Heurística para descobrir qual template gerou cada resposta passada.
+
+        O FakeProvider é determinístico, então usamos a posição + o sinal de
+        baixa familiaridade para reconstruir a chave. Suficiente para evitar
+        repetição em testes; o provider real recebe a chave direto da IA.
+        """
+        if index == 0:
+            return "familiarity"
+        if _looks_low_familiarity(answer.answer):
+            return "fundamentals"
+        return "advanced"
 
     def generate_learning_trail(
         self,
@@ -299,10 +381,26 @@ class FakeAIProvider(AIProvider):
         seed = int(hashlib.sha256(safe_topic.encode("utf-8")).hexdigest()[:6], 16)
         ticket_count = 6 + (seed % 4)  # 6 a 9 tickets
 
-        tickets = [
-            self._make_ticket(i, safe_topic, skills, assessment)
-            for i in range(1, ticket_count + 1)
+        # Detecta se o diagnóstico revelou falta de pré-requisito da stack
+        # principal — sinal que vamos enxergar mais à frente para enxertar
+        # tickets fundacionais ANTES dos avançados.
+        low_familiarity_signals = [
+            a for a in assessment if _looks_low_familiarity(a.answer)
         ]
+        needs_foundation = bool(low_familiarity_signals)
+
+        if needs_foundation:
+            # Quando o aluno é iniciante no tema, montamos a trilha em modo
+            # fundacional: tickets extras de pré-requisito antes dos templates
+            # genéricos, e quase todos os notes citam a resposta do aluno.
+            tickets = self._build_foundation_first_tickets(
+                safe_topic, skills, assessment, ticket_count
+            )
+        else:
+            tickets = [
+                self._make_ticket(i, safe_topic, skills, assessment)
+                for i in range(1, ticket_count + 1)
+            ]
 
         audience_suffix = ""
         if skills:
@@ -315,6 +413,10 @@ class FakeAIProvider(AIProvider):
             audience_suffix += (
                 f" Diagnóstico inicial considerou {len(assessment)} resposta(s)."
             )
+            if needs_foundation:
+                audience_suffix += (
+                    " Pré-requisitos da stack estão cobertos nos primeiros tickets."
+                )
 
         return TrailContent(
             project_title=f"Plataforma prática de {safe_topic}",
@@ -341,6 +443,69 @@ class FakeAIProvider(AIProvider):
             ],
             tickets=tickets,
         )
+
+    @staticmethod
+    def _build_foundation_first_tickets(
+        topic: str,
+        skills: Sequence[UserSkillInput],
+        assessment: Sequence[TopicAnswer],
+        total: int,
+    ) -> list[Ticket]:
+        """Monta tickets com fundação extra quando o diagnóstico revela lacunas.
+
+        Diferenças observáveis em relação à versão "normal":
+        - Adiciona um ticket TG-1 **explicitamente** fundacional ("primeiros
+          passos com {topic}") que cita a resposta do aluno;
+        - Acrescenta o conceito "Pré-requisitos da stack" no segundo ticket;
+        - Todos os tickets ganham `personalization_notes` mencionando a
+          resposta de baixa familiaridade.
+        """
+        low_answer = next(
+            (a for a in assessment if _looks_low_familiarity(a.answer)), None
+        )
+        anchor = (
+            f"você respondeu \"{low_answer.answer}\""
+            if low_answer is not None
+            else "diagnóstico inicial"
+        )
+
+        foundation = Ticket(
+            code="TG-1",
+            title=f"Primeiros passos guiados com {topic}",
+            objective=(
+                f"Cobrir os pré-requisitos mínimos de {topic} com um exercício "
+                "linear, do zero, antes de partir para arquitetura."
+            ),
+            personalization_notes=(
+                f"Adicionado porque, no diagnóstico, {anchor} — então este "
+                "ticket existe SÓ para garantir que você tem base suficiente "
+                "para os próximos passos."
+            ),
+            concepts=[
+                f"Fundamentos de {topic}",
+                "Pré-requisitos da stack",
+                "Setup guiado",
+            ],
+            tasks=[
+                TicketTask(description=f"Subir o ambiente mínimo de {topic} seguindo a documentação oficial"),
+                TicketTask(description="Rodar o exemplo 'hello world' canônico"),
+                TicketTask(description="Anotar dúvidas para revisitar nos próximos tickets"),
+            ],
+            acceptance_criteria=[
+                "Exemplo canônico roda sem erros no seu ambiente",
+                "Você consegue explicar em 3 frases o que esse exemplo faz",
+            ],
+            estimated_effort="2h",
+        )
+
+        rest_count = max(total - 1, 1)
+        rest = [
+            FakeAIProvider._make_ticket(
+                i + 1, topic, skills, assessment, foundation_anchor=anchor
+            )
+            for i in range(rest_count)
+        ]
+        return [foundation, *rest]
 
     def explain_concept(
         self,
@@ -460,14 +625,22 @@ class FakeAIProvider(AIProvider):
         topic: str,
         skills: Sequence[UserSkillInput],
         assessment: Sequence[TopicAnswer] = (),
+        *,
+        foundation_anchor: str | None = None,
     ) -> Ticket:
         spec = _TICKET_TEMPLATES[(index - 1) % len(_TICKET_TEMPLATES)]
         concepts = list(spec["concepts"])
+        notes = _personalization_for(concepts, skills, assessment)
+        if foundation_anchor:
+            notes = (
+                f"Sequência calibrada porque {foundation_anchor} no diagnóstico — "
+                f"{notes}"
+            )
         return Ticket(
             code=f"TG-{index}",
             title=spec["title_pattern"].format(topic=topic),
             objective=spec["objective"],
-            personalization_notes=_personalization_for(concepts, skills, assessment),
+            personalization_notes=notes,
             concepts=concepts,
             tasks=[TicketTask(description=task) for task in spec["tasks"]],
             acceptance_criteria=list(spec["acceptance"]),
@@ -475,8 +648,7 @@ class FakeAIProvider(AIProvider):
         )
 
     @staticmethod
-    def _make_question(index: int, topic: str) -> TopicQuestion:
-        spec = _QUESTION_TEMPLATES[(index - 1) % len(_QUESTION_TEMPLATES)]
+    def _make_question(index: int, topic: str, spec: dict) -> TopicQuestion:
         options = [
             TopicQuestionOption(id=opt["id"], label=opt["label"].format(topic=topic))
             for opt in spec["options"]

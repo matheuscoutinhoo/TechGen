@@ -26,12 +26,6 @@ class TopicQuestion(BaseModel):
     options: list[TopicQuestionOption] = Field(min_length=2, max_length=5)
 
 
-class TopicQuestionSet(BaseModel):
-    """Conjunto de perguntas gerado para um tema."""
-    topic: str = Field(min_length=3, max_length=200)
-    questions: list[TopicQuestion] = Field(min_length=1, max_length=5)
-
-
 class TopicAnswer(BaseModel):
     """Resposta do aluno a uma pergunta do diagnóstico.
 
@@ -43,9 +37,21 @@ class TopicAnswer(BaseModel):
     answer: str = Field(min_length=1, max_length=500)
 
 
-class TopicAssessmentRequest(BaseModel):
-    """Entrada para pedir o conjunto de perguntas de diagnóstico."""
+class TopicNextQuestionRequest(BaseModel):
+    """Entrada para pedir a PRÓXIMA pergunta do diagnóstico adaptativo.
+
+    O cliente envia o que já foi respondido até agora; a IA decide a próxima
+    pergunta com base nesse histórico, sondando lacunas reais. Quando a IA
+    decide que já tem contexto suficiente, retorna ``done=True``.
+    """
     topic: str = Field(min_length=3, max_length=200)
+    previous_answers: list[TopicAnswer] = Field(default_factory=list, max_length=10)
+
+
+class TopicNextQuestionResponse(BaseModel):
+    """Resposta do endpoint adaptativo: próxima pergunta ou sinal de fim."""
+    question: TopicQuestion | None = None
+    done: bool = False
 
 
 class TicketTask(BaseModel):

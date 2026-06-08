@@ -566,8 +566,11 @@ Checklist antes de migrar:
     Quando vazio, faz fallback transparente em `ABACUS_MODEL`.
   - `ABACUS_TIMEOUT_SECONDS` (padrão 180; modelos top-tier exigem +60s)
 - A interface `AIProvider` expõe três métodos obrigatórios:
-  - `generate_topic_questions(topic, *, skills)` — gera até 5 perguntas de
-    diagnóstico para calibrar a trilha. Usa `questions_model`.
+  - `generate_next_topic_question(topic, *, skills, previous_answers)` —
+    gera a **próxima** pergunta de diagnóstico levando em conta o histórico
+    de respostas. Retorna `None` quando a IA decide que já tem contexto
+    suficiente. Usa `questions_model`. Teto rígido de 5 perguntas aplicado
+    no service.
   - `generate_learning_trail(topic, *, skills, assessment)` — gera a trilha
     personalizada pelas skills do aluno e pelas respostas do diagnóstico.
     Usa `model`.
@@ -585,7 +588,7 @@ Checklist antes de migrar:
     API REST com FastAPI" sem antes garantir que ele consegue subir uma
     rota básica.
   - **Concepts curtos e citáveis**, porque eles viram skills do aluno na conclusão.
-- Resposta esperada: `choices[0].message.content` contendo o JSON; é validado contra `TopicQuestionSet`/`TrailContent`/`ConceptExplanation` antes de virar domínio.
+- Resposta esperada: `choices[0].message.content` contendo o JSON; é validado contra `TopicQuestion`/`TrailContent`/`ConceptExplanation` antes de virar domínio.
 - Erros do provider viram `AIProviderError` com mensagem amigável; timeout cita o valor configurado e a env var a ajustar.
 - Streaming não é usado (sempre `"stream": false`).
 - Em ambiente de teste, usar `FakeAIProvider` determinístico — a API real **nunca** é chamada nos testes.
@@ -769,12 +772,16 @@ gerada por IA.
 
 ---
 
-## 39. Diagnóstico Inicial Antes da Trilha
+## 39. Diagnóstico Inicial Adaptativo (Antes da Trilha)
 
-Toda trilha nova passa por um **diagnóstico curto** antes da geração. O
-objetivo é evitar trilhas ilógicas (alguém querendo "API design com FastAPI"
-sem nunca ter usado FastAPI) e calibrar profundidade, ordem dos tickets e
-pré-requisitos cobertos.
+Toda trilha nova passa por um **diagnóstico adaptativo curto** antes da
+geração. O objetivo é evitar trilhas ilógicas (alguém querendo "API design
+com FastAPI" sem nunca ter usado FastAPI) e calibrar profundidade, ordem
+dos tickets e pré-requisitos cobertos.
+
+**Princípio central:** cada resposta é contexto para a **próxima** pergunta.
+Não geramos um set fixo upfront — a IA conduz a entrevista uma pergunta de
+cada vez, sondando lacunas ou subindo o nível conforme o aluno responde.
 
 ### Schemas
 - `TopicQuestion`: `{ id, question, rationale, options[] }`. `rationale` é
@@ -782,15 +789,20 @@ pré-requisitos cobertos.
   o aluno.
 - `TopicQuestionOption`: `{ id, label }`. IDs `a`/`b`/`c`/`d`. Alternativas
   específicas do tema, ordenadas do "sei pouco" ao "domino".
-- `TopicQuestionSet`: `{ topic, questions[] }`. Entre 3 e 5 perguntas.
+- `TopicNextQuestionRequest`: `{ topic, previous_answers: TopicAnswer[] }`.
+  Histórico crescente que o cliente envia a cada chamada.
+- `TopicNextQuestionResponse`: `{ question: TopicQuestion | null, done: bool }`.
+  Quando `done=true`, o cliente para de perguntar e dispara o create.
 - `TopicAnswer`: `{ question_id, question, answer }`. Carregamos o texto da
   pergunta + texto da alternativa escolhida (não só ids) para que o prompt
   da trilha receba contexto humano.
 
-### Endpoint
-- `POST /api/v1/learning-trails/assessment` com `{ topic }` → `TopicQuestionSet`.
-  Autenticado. Não persiste nada — só consulta a IA. O usuário pode
-  abandonar o modal sem efeito colateral.
+### Endpoints
+- `POST /api/v1/learning-trails/assessment/next` com
+  `{ topic, previous_answers }` → `TopicNextQuestionResponse`. Autenticado.
+  Não persiste nada — só consulta a IA. Chamado N vezes (até 5) durante a
+  entrevista. O service impõe teto rígido de 5 perguntas independente do
+  que a IA retornar.
 - `POST /api/v1/learning-trails` aceita `assessment: TopicAnswer[]` (lista
   pode estar vazia se o aluno pulou tudo). É persistido em `assessment_json`
   na tabela `learning_trails`.
@@ -809,29 +821,48 @@ pré-requisitos cobertos.
   — apenas o cache de explicações.
 
 ### UX (frontend)
-- O fluxo em `/trails/new` tem três fases: `idle` → `loading-questions` →
+- O fluxo em `/trails/new` tem quatro fases: `idle` → `loading-questions` →
   `answering` → `generating`.
-- Botão principal mostra **"Continuar"** (não "Gerar trilha"). A geração
-  acontece dentro do modal.
-- `AssessmentModal` é fullscreen sobreposto:
+- A página dispara `assessment/next` com `previous_answers: []` para obter
+  a **primeira** pergunta antes de abrir o modal. As próximas são pedidas
+  pelo próprio modal via callback `loadNextQuestion(history)`.
+- Botão principal mostra **"Continuar"**. Vira **"Gerar trilha"** apenas
+  quando o teto duro (5) é atingido.
+- `AssessmentModal` é fullscreen sobreposto e mantém o histórico internamente:
   - Backdrop com blur, animação de entrada suave.
-  - Header com eyebrow "Diagnóstico inicial" + título + subtítulo citando o
-    tema em **negrito**.
-  - Indicador de progresso em pílulas numeradas (active = primary,
-    answered = primary-soft).
-  - **Apenas uma pergunta por vez.** Transição entre perguntas usa animação
-    de slide horizontal (200ms): forward = saída para a esquerda, backward
-    = saída para a direita. O `key` no `.stage` força remount limpo.
-  - Alternativas como `<label>` envolvendo `<input type="radio">` com
-    estado `optionSelected` realçado em primary-soft.
-  - Botão "Pular pergunta" registra um sentinela `__skip__` que é
-    convertido em `"Prefiro não responder"` no payload final.
-  - Botão "Anterior" navega para trás sem perder respostas já dadas.
+  - Header com eyebrow "Diagnóstico inicial" + título + subtítulo lembrando
+    que cada resposta calibra a próxima pergunta sobre o tema em **negrito**.
+  - Indicador de progresso em pílulas numeradas: respondidas em primary-soft,
+    atual em primary, e **pílulas pontilhadas** sinalizam "podem vir mais"
+    até o teto duro de 5.
+  - **Uma pergunta por vez** carregada sob demanda. Entre perguntas, o stage
+    mostra `Spinner` com mensagem "A IA está usando suas respostas anteriores
+    para escolher a próxima sondagem." Falha de rede expõe `ErrorState` inline
+    com botão "Tentar novamente".
+  - Transição forward usa slide horizontal (200ms) ANTES do fetch, dando
+    sensação de continuidade.
+  - Alternativas como `<label>` envolvendo `<input type="radio">` com estado
+    `optionSelected` realçado em primary-soft.
+  - Botão "Pular pergunta" registra um sentinela `__skip__` convertido em
+    `"Prefiro não responder"` no payload e dispara o fetch da próxima.
+  - Botão "Anterior" navega para trás entre perguntas já carregadas sem
+    refazer fetch.
   - "Cancelar" (canto superior direito) e tecla **Esc** fecham o modal e
     voltam ao formulário sem submeter — cancelar durante `generating` é
-    bloqueado para não deixar a IA sem contexto no meio do caminho.
+    bloqueado.
   - Acessibilidade: `role="dialog" aria-modal="true"`, `aria-live="polite"`
     no stage, foco programático no card a cada troca de pergunta.
+
+### Princípio adaptativo no prompt das perguntas
+- `NEXT_QUESTION_SYSTEM_PROMPT` instrui a IA a tratar o diagnóstico como
+  uma **entrevista**: cada nova pergunta tem que se basear no que já foi
+  respondido, nunca repetir um tópico, e descer em pré-requisitos quando a
+  resposta anterior revelar lacuna fundacional.
+- Eixos cobertos ao longo da entrevista (sem repetir): familiaridade com a
+  stack principal, pré-requisitos fundacionais, objetivo/contexto, práticas
+  auxiliares — sempre que relevantes.
+- A IA pode sinalizar `done=true` quando tiver contexto suficiente; o service
+  ainda valida o teto rígido (5).
 
 ### Princípio pedagógico no prompt da trilha
 - O bloco "Respostas do diagnóstico inicial" no prompt é **autoridade
@@ -840,8 +871,21 @@ pré-requisitos cobertos.
 - Quando uma resposta revela falta de pré-requisito da stack pedida, o
   modelo é instruído a incluir tickets fundacionais cobrindo essa lacuna
   ANTES dos tickets avançados.
+- **Mais da metade** dos `personalization_notes` precisa citar, em palavras
+  concretas, alguma das respostas — não basta dizer "ajustado ao seu nível".
 - Cada `personalization_notes` deve mencionar QUAL resposta justificou a
   decisão ("você respondeu que nunca usou X, então...").
+
+### Validação automatizada
+- Teste de integração
+  (`test_assessment_actually_changes_generated_trail`) prova
+  end-to-end que respostas diferentes produzem TG-1 com **título e
+  conteúdo distintos**, e que o ticket fundacional cita literalmente a
+  resposta do aluno.
+- O `FakeAIProvider` aplica a mesma regra: quando uma resposta indica baixa
+  familiaridade, monta um TG-1 "Primeiros passos guiados com {topic}" com
+  o conceito "Pré-requisitos da stack" e cita a resposta no
+  `personalization_notes`.
 
 ---
 

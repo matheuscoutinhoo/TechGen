@@ -162,13 +162,80 @@ class TestRegenerate:
 
 @pytest.mark.unit
 class TestAssessment:
-    def test_build_assessment_returns_questions_for_topic(self, service, user_a):
-        from app.schemas.learning_trail import TopicQuestionSet
+    def test_build_next_question_returns_first_for_empty_history(self, service, user_a):
+        result = service.build_next_question_for_user(user_a, topic="FastAPI")
+        assert result.done is False
+        assert result.question is not None
+        assert result.question.id == "q1"
 
-        result = service.build_assessment_for_user(user_a, topic="FastAPI")
-        assert isinstance(result, TopicQuestionSet)
-        assert result.topic == "FastAPI"
-        assert 3 <= len(result.questions) <= 5
+    def test_build_next_question_adapts_to_previous_answer(self, service, user_a):
+        from app.schemas.learning_trail import TopicAnswer
+
+        low = service.build_next_question_for_user(
+            user_a,
+            topic="FastAPI",
+            previous_answers=[
+                TopicAnswer(
+                    question_id="q1",
+                    question="Você já trabalhou com FastAPI antes?",
+                    answer="Nunca usei FastAPI",
+                )
+            ],
+        )
+        high = service.build_next_question_for_user(
+            user_a,
+            topic="FastAPI",
+            previous_answers=[
+                TopicAnswer(
+                    question_id="q1",
+                    question="Você já trabalhou com FastAPI antes?",
+                    answer="Uso FastAPI no dia a dia",
+                )
+            ],
+        )
+        assert low.question is not None and high.question is not None
+        assert low.question.question != high.question.question
+
+    def test_build_next_question_returns_done_when_history_full(self, service, user_a):
+        from app.schemas.learning_trail import TopicAnswer
+
+        answers = [
+            TopicAnswer(question_id=f"q{i}", question=f"P{i}?", answer=f"R{i}")
+            for i in range(1, 6)
+        ]
+        result = service.build_next_question_for_user(
+            user_a, topic="FastAPI", previous_answers=answers
+        )
+        assert result.done is True
+        assert result.question is None
+
+    def test_assessment_changes_generated_trail(self, service, user_a):
+        """Garante que o assessment realmente afeta a trilha gerada — não decorativo."""
+        from app.schemas.learning_trail import TopicAnswer
+
+        topic = "API design com FastAPI"
+        without = service.create_for_user(user_a, topic=topic)
+        with_assessment = service.create_for_user(
+            user_a,
+            topic=topic,
+            assessment=[
+                TopicAnswer(
+                    question_id="q1",
+                    question="Você já trabalhou com FastAPI antes?",
+                    answer="Nunca usei FastAPI",
+                )
+            ],
+        )
+
+        without_content = service.to_read_model(without).content
+        with_content = service.to_read_model(with_assessment).content
+
+        # A trilha com diagnóstico de baixa familiaridade DEVE ter outro TG-1.
+        assert without_content.tickets[0].title != with_content.tickets[0].title
+        # O ticket fundacional cita a resposta do aluno.
+        assert "Nunca usei FastAPI" in (
+            with_content.tickets[0].personalization_notes or ""
+        )
 
 
 @pytest.mark.unit

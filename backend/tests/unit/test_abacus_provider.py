@@ -215,3 +215,125 @@ class TestAbacusAIProvider:
                     ticket_objective="Z",
                 ),
             )
+
+    # ------------------------------------------------------------------ #
+    # Diagnóstico adaptativo
+    # ------------------------------------------------------------------ #
+    @respx.mock
+    def test_next_question_uses_questions_model(self):
+        provider = AbacusAIProvider(
+            api_url=API_URL,
+            api_key="fake",
+            model="claude-sonnet-4",
+            questions_model="gemini-3.5-flash",
+            timeout_seconds=5,
+        )
+        payload = {
+            "done": False,
+            "question": {
+                "id": "q1",
+                "question": "Você já trabalhou com FastAPI antes?",
+                "rationale": "Mede familiaridade.",
+                "options": [
+                    {"id": "a", "label": "Nunca usei FastAPI"},
+                    {"id": "b", "label": "Uso no dia a dia"},
+                ],
+            },
+        }
+        route = respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(200, json=_openai_response(json.dumps(payload)))
+        )
+        question = provider.generate_next_topic_question("FastAPI")
+        assert question is not None
+        assert question.id == "q1"
+        # confirma que mandou o modelo de questões (não o pesado)
+        sent = json.loads(route.calls.last.request.content)
+        assert sent["model"] == "gemini-3.5-flash"
+
+    @respx.mock
+    def test_next_question_includes_previous_answers_in_prompt(self):
+        """O prompt enviado precisa carregar o histórico — é isso que torna a pergunta adaptativa."""
+        from app.schemas.learning_trail import TopicAnswer
+
+        payload = {
+            "done": False,
+            "question": {
+                "id": "q2",
+                "question": "Você se sente confortável com Python?",
+                "rationale": "Sondar pré-requisito.",
+                "options": [
+                    {"id": "a", "label": "Não"},
+                    {"id": "b", "label": "Sim"},
+                ],
+            },
+        }
+        route = respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(200, json=_openai_response(json.dumps(payload)))
+        )
+        _provider().generate_next_topic_question(
+            "FastAPI",
+            previous_answers=[
+                TopicAnswer(
+                    question_id="q1",
+                    question="Você já trabalhou com FastAPI antes?",
+                    answer="Nunca usei FastAPI",
+                )
+            ],
+        )
+        body = json.loads(route.calls.last.request.content)
+        user_content = body["messages"][1]["content"]
+        # Histórico literalmente injetado no prompt:
+        assert "Nunca usei FastAPI" in user_content
+        assert "Você já trabalhou com FastAPI antes?" in user_content
+        assert "Número de perguntas já feitas: 1" in user_content
+
+    @respx.mock
+    def test_next_question_returns_none_when_done_true(self):
+        respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(
+                200,
+                json=_openai_response(json.dumps({"done": True, "question": None})),
+            )
+        )
+        assert _provider().generate_next_topic_question("FastAPI") is None
+
+    @respx.mock
+    def test_next_question_raises_when_payload_invalid(self):
+        respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(
+                200,
+                json=_openai_response(json.dumps({"done": False, "question": {}})),
+            )
+        )
+        with pytest.raises(AIProviderError):
+            _provider().generate_next_topic_question("FastAPI")
+
+    @respx.mock
+    def test_next_question_overrides_question_id_to_keep_sequence(self):
+        """Mesmo se a IA repetir o id, o provider força sequência correta."""
+        from app.schemas.learning_trail import TopicAnswer
+
+        payload = {
+            "done": False,
+            "question": {
+                "id": "q99",
+                "question": "Pergunta nova?",
+                "rationale": "Algo útil.",
+                "options": [
+                    {"id": "a", "label": "Opção A"},
+                    {"id": "b", "label": "Opção B"},
+                ],
+            },
+        }
+        respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(200, json=_openai_response(json.dumps(payload)))
+        )
+        result = _provider().generate_next_topic_question(
+            "X",
+            previous_answers=[
+                TopicAnswer(question_id="q1", question="?", answer="!"),
+                TopicAnswer(question_id="q2", question="?", answer="!"),
+            ],
+        )
+        assert result is not None
+        assert result.id == "q3"  # forçado pelo provider

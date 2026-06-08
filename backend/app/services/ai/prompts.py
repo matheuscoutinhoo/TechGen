@@ -57,6 +57,13 @@ DIAGNÓSTICO ESPECÍFICO DO TEMA (quando fornecido):
   fundamento e mire em decisões de arquitetura/qualidade.
 - Mencione no `personalization_notes` de cada ticket QUAL resposta do
   diagnóstico justifica a decisão ("você respondeu que nunca usou X, então...").
+- Se houver pelo menos UMA resposta no diagnóstico, MAIS DA METADE dos
+  `personalization_notes` precisa citar, em palavras concretas, alguma das
+  respostas — não basta dizer "ajustado ao seu nível". Reproduza o trecho
+  ou parafraseie a alternativa marcada.
+- Se o diagnóstico está vazio, declare isso em `personalization_notes` do
+  primeiro ticket ("você optou por não responder ao diagnóstico, então
+  assumimos...") e siga a regra de cobrir pré-requisitos da stack.
 
 Você SEMPRE responde com um único objeto JSON válido, sem comentários nem
 texto fora do JSON, respeitando rigorosamente o schema descrito.
@@ -150,82 +157,124 @@ def build_user_prompt(
 
 
 # ====================================================================== #
-# Diagnóstico inicial (perguntas de calibragem)
+# Diagnóstico inicial (perguntas adaptativas, uma por vez)
 # ====================================================================== #
-QUESTIONS_SYSTEM_PROMPT = """\
+NEXT_QUESTION_SYSTEM_PROMPT = """\
 Você é um Staff Software Engineer entrevistando rapidamente um aluno antes
-de montar uma trilha de aprendizado para ele. Sua única tarefa agora é
-elaborar PERGUNTAS DE DIAGNÓSTICO sobre o tema específico que ele acabou
-de escolher.
+de montar uma trilha de aprendizado. Sua tarefa AGORA é escolher a PRÓXIMA
+pergunta de diagnóstico, levando em conta o que ele já respondeu.
 
-Objetivo das perguntas:
-- Descobrir o nível real do aluno NESTE tema (não em programação em geral).
-- Verificar pré-requisitos críticos da stack (é ilógico alguém querer
-  "API design com FastAPI" sem nunca ter usado FastAPI — esse tipo de
-  lacuna precisa aparecer).
-- Identificar foco e contexto do aluno (uso pessoal, trabalho, preparação
-  para entrevista, etc.) quando isso mudar a forma como a trilha deve ser
-  desenhada.
+Princípios da entrevista adaptativa:
+- Trate a entrevista como um Staff faria com um colega novo: cada nova
+  pergunta deve **se basear no que já foi respondido**, não repetir tópicos
+  e não soar genérica.
+- Se a primeira resposta revelou desconhecimento de um pré-requisito da
+  stack pedida (ex.: aluno quer "API design com FastAPI" mas marcou "nunca
+  usei FastAPI"), a próxima pergunta deve aprofundar nesse buraco
+  fundacional (ex.: sondar Python, HTTP) — NÃO seguir adiante para
+  arquitetura avançada.
+- Se uma resposta revelou domínio sólido em algo, a próxima deve subir o
+  nível (perguntar sobre trade-offs, casos edge, decisões de arquitetura)
+  OU mudar de eixo (objetivo, contexto, restrições).
+- Cubra estes eixos ao longo das perguntas, sem repetir:
+  1. **Familiaridade** com a tecnologia/stack principal do tema.
+  2. **Pré-requisitos fundacionais** (linguagem, paradigma, ferramentas base).
+  3. **Objetivo/contexto** do aluno (entrevista, trabalho, curiosidade) —
+     mas só pergunte isso quando mudar materialmente a trilha.
+  4. **Práticas auxiliares** (testes, controle de versão, debug) — só
+     pergunte se for relevante para o tema.
 
-Regras inegociáveis:
-- Gere ENTRE 3 e 5 perguntas — nunca mais. Menos é melhor que muito.
-- Cada pergunta tem 3 a 4 alternativas curtas, ordenadas do "sei pouco" ao
-  "domino" (ou em ordem natural). NUNCA inclua "prefiro não responder" — a
-  UI cuida disso.
-- Alternativas são ESPECÍFICAS do tema, não genéricas. Ex.: para FastAPI,
-  use "Nunca usei FastAPI", "Já segui um tutorial de hello world", "Já criei
-  rotas e Depends", "Uso FastAPI em produção há mais de 1 ano".
-- Cada pergunta tem um `rationale` curto explicando o que ela diagnostica
-  (esse texto NÃO aparece para o aluno; é documentação interna).
-- Tom direto e cordial, 2ª pessoa do singular ("Você já...").
-- Português brasileiro.
-- Se o aluno tem skills declaradas que cobrem parte do tema, evite
-  perguntar de novo o que já está declarado em nível intermediate/advanced.
+Quando parar:
+- Você deve sinalizar `done=true` quando tiver contexto SUFICIENTE para
+  desenhar uma trilha calibrada. Não force 5 perguntas se 3 já bastam.
+- O service também impõe um teto rígido de 5 perguntas; quando este teto
+  for atingido o cliente nem vai pedir mais.
+
+Regras das alternativas:
+- 3 ou 4 opções por pergunta. IDs `a`, `b`, `c`, `d`.
+- Ordenadas do "sei pouco" ao "domino" (ou em ordem natural quando não for
+  escala de nível).
+- ESPECÍFICAS do tema, NUNCA genéricas. Ex.: para FastAPI use
+  "Nunca usei FastAPI", "Segui só um hello world", "Já criei rotas com
+  Depends e Pydantic", "Uso em produção há mais de 1 ano".
+- NUNCA inclua "prefiro não responder" — a UI já oferece "Pular pergunta".
+
+Tom: 2ª pessoa do singular, português brasileiro, direto e cordial.
 
 Você SEMPRE responde com um único objeto JSON válido, sem comentários nem
 texto fora do JSON, respeitando rigorosamente o schema descrito.
 """
 
-QUESTIONS_USER_TEMPLATE = """\
+NEXT_QUESTION_USER_TEMPLATE = """\
 Tema escolhido pelo aluno: "{topic}"
 
 {skills_block}
 
-Gere o conjunto de perguntas de diagnóstico. Schema JSON obrigatório:
+{history_block}
+
+Número de perguntas já feitas: {asked_count}. Teto rígido: 5.
+
+Decida a PRÓXIMA pergunta. Responda com este schema JSON exato:
 
 {{
-  "topic": "{topic}",
-  "questions": [
-    {{
-      "id": "q1",
-      "question": "string - pergunta direta ao aluno",
-      "rationale": "string curta - o que esta pergunta diagnostica (interno)",
-      "options": [
-        {{ "id": "a", "label": "string curta especifica do tema" }},
-        {{ "id": "b", "label": "string" }},
-        {{ "id": "c", "label": "string" }},
-        {{ "id": "d", "label": "string opcional" }}
-      ]
-    }}
-  ]
+  "done": false,
+  "question": {{
+    "id": "{next_id}",
+    "question": "string - pergunta direta ao aluno",
+    "rationale": "string curta - o que esta pergunta diagnostica (interno)",
+    "options": [
+      {{ "id": "a", "label": "string específica do tema" }},
+      {{ "id": "b", "label": "string" }},
+      {{ "id": "c", "label": "string" }},
+      {{ "id": "d", "label": "string opcional" }}
+    ]
+  }}
 }}
 
-Regras:
-- Entre 3 e 5 perguntas no total.
-- IDs sequenciais "q1", "q2", ... "qN".
-- Cada pergunta tem entre 3 e 4 opções; IDs "a", "b", "c", "d".
-- Sempre que o tema citar uma stack/tecnologia, inclua pelo menos UMA
-  pergunta verificando familiaridade com ela.
+OU, se você já tem contexto suficiente para gerar a trilha:
+
+{{
+  "done": true,
+  "question": null
+}}
+
+Regras inegociáveis:
+- A pergunta DEVE ser diferente de todas as anteriores e DEVE fazer sentido
+  como continuação do que foi respondido. Se a resposta anterior já indicou
+  pouca familiaridade com um pré-requisito, a próxima deve descer mais
+  fundo nesse pré-requisito — não subir para um tópico avançado.
+- Nunca repita perguntas anteriores (mesmo conceito, mesmas alternativas).
+- `done=true` só quando pelo menos uma pergunta já foi feita E você tem
+  contexto suficiente. Se `asked_count == 0`, NUNCA retorne `done=true`.
 - Responda APENAS com o JSON puro, sem markdown ao redor, sem ```.
 """
 
 
-def build_questions_prompt(
-    topic: str, skills: Iterable[tuple[str, int, str]] = ()
+def build_next_question_prompt(
+    topic: str,
+    *,
+    skills: Iterable[tuple[str, int, str]] = (),
+    previous_answers: Sequence[TopicAnswer] = (),
 ) -> str:
-    return QUESTIONS_USER_TEMPLATE.format(
+    if previous_answers:
+        history_lines = [
+            f"{i + 1}. \"{a.question}\" → \"{a.answer}\""
+            for i, a in enumerate(previous_answers)
+        ]
+        history_block = "Respostas já dadas pelo aluno:\n" + "\n".join(history_lines)
+    else:
+        history_block = (
+            "Esta é a PRIMEIRA pergunta. Comece pelo eixo mais central do "
+            "tema (familiaridade com a tecnologia/stack principal)."
+        )
+    asked_count = len(previous_answers)
+    next_id = f"q{asked_count + 1}"
+    return NEXT_QUESTION_USER_TEMPLATE.format(
         topic=topic.strip(),
         skills_block=_format_skills(skills),
+        history_block=history_block,
+        asked_count=asked_count,
+        next_id=next_id,
     )
 
 

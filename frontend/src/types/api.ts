@@ -116,15 +116,15 @@ export interface TopicQuestion {
    options: TopicQuestionOption[];
 }
 
-export interface TopicQuestionSet {
-   topic: string;
-   questions: TopicQuestion[];
-}
-
 export interface TopicAnswer {
    question_id: string;
    question: string;
    answer: string;
+}
+
+export interface TopicNextQuestionResponse {
+   question: TopicQuestion | null;
+   done: boolean;
 }
 
 export interface ApiErrorPayload {

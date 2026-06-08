@@ -12,7 +12,7 @@ from typing import Sequence
 from app.schemas.learning_trail import (
     ConceptExplanation,
     TopicAnswer,
-    TopicQuestionSet,
+    TopicQuestion,
     TrailContent,
 )
 
@@ -37,17 +37,22 @@ class AIProvider(ABC):
     """Contrato para provedores de IA usados na geração de trilhas."""
 
     @abstractmethod
-    def generate_topic_questions(
+    def generate_next_topic_question(
         self,
         topic: str,
         *,
         skills: Sequence[UserSkillInput] = (),
-    ) -> TopicQuestionSet:
-        """Gera até 5 perguntas de diagnóstico para calibrar a trilha.
+        previous_answers: Sequence[TopicAnswer] = (),
+    ) -> TopicQuestion | None:
+        """Gera a PRÓXIMA pergunta de diagnóstico (adaptativa).
 
-        As perguntas devem revelar o nível do aluno no tema E nos seus
-        pré-requisitos críticos (ex.: alguém que quer "API design com FastAPI"
-        precisa ser sondado sobre FastAPI em si).
+        A IA recebe o histórico de respostas e decide a próxima sondagem com
+        base nelas: confirma uma hipótese, esclarece uma ambiguidade ou cobre
+        um pré-requisito ainda não tocado. Retorna ``None`` quando considera
+        que já tem contexto suficiente para gerar a trilha.
+
+        O service garante um teto rígido de 5 perguntas independentemente do
+        que a IA retornar.
         """
 
     @abstractmethod

@@ -57,25 +57,99 @@ class TestCreateTrail:
 
 @pytest.mark.integration
 class TestAssessmentEndpoint:
-    def test_returns_question_set_for_topic(self, client, auth_headers):
+    def test_returns_first_question_for_empty_history(self, client, auth_headers):
         response = client.post(
-            "/api/v1/learning-trails/assessment",
+            "/api/v1/learning-trails/assessment/next",
             headers=auth_headers,
-            json={"topic": "FastAPI"},
+            json={"topic": "FastAPI", "previous_answers": []},
         )
         assert response.status_code == 200
         body = response.json()
-        assert body["topic"] == "FastAPI"
-        assert 3 <= len(body["questions"]) <= 5
-        first = body["questions"][0]
-        assert first["id"].startswith("q")
-        assert first["question"]
-        assert first["options"]
-        assert 2 <= len(first["options"]) <= 5
+        assert body["done"] is False
+        question = body["question"]
+        assert question["id"] == "q1"
+        assert question["question"]
+        assert 2 <= len(question["options"]) <= 5
+        # alternativas devem ser específicas do tema
+        assert any("FastAPI" in opt["label"] for opt in question["options"])
+
+    def test_next_question_depends_on_previous_answer(self, client, auth_headers):
+        """Caminhos opostos de resposta devem gerar perguntas diferentes."""
+        low = client.post(
+            "/api/v1/learning-trails/assessment/next",
+            headers=auth_headers,
+            json={
+                "topic": "FastAPI",
+                "previous_answers": [
+                    {
+                        "question_id": "q1",
+                        "question": "Você já trabalhou com FastAPI antes?",
+                        "answer": "Nunca usei FastAPI",
+                    }
+                ],
+            },
+        ).json()
+        high = client.post(
+            "/api/v1/learning-trails/assessment/next",
+            headers=auth_headers,
+            json={
+                "topic": "FastAPI",
+                "previous_answers": [
+                    {
+                        "question_id": "q1",
+                        "question": "Você já trabalhou com FastAPI antes?",
+                        "answer": "Uso FastAPI no dia a dia",
+                    }
+                ],
+            },
+        ).json()
+        assert low["question"]["question"] != high["question"]["question"]
+        assert low["question"]["id"] == "q2"
+
+    def test_returns_done_when_history_full(self, client, auth_headers):
+        previous = [
+            {"question_id": f"q{i}", "question": f"P{i}?", "answer": f"R{i}"}
+            for i in range(1, 6)
+        ]
+        response = client.post(
+            "/api/v1/learning-trails/assessment/next",
+            headers=auth_headers,
+            json={"topic": "FastAPI", "previous_answers": previous},
+        )
+        body = response.json()
+        assert body["done"] is True
+        assert body["question"] is None
+
+    def test_assessment_actually_changes_generated_trail(self, client, auth_headers):
+        """End-to-end: respostas precisam afetar o conteúdo da trilha gerada."""
+        without = client.post(
+            "/api/v1/learning-trails",
+            headers=auth_headers,
+            json={"topic": "API design com FastAPI", "assessment": []},
+        ).json()
+        with_assessment = client.post(
+            "/api/v1/learning-trails",
+            headers=auth_headers,
+            json={
+                "topic": "API design com FastAPI",
+                "assessment": [
+                    {
+                        "question_id": "q1",
+                        "question": "Você já trabalhou com FastAPI antes?",
+                        "answer": "Nunca usei FastAPI",
+                    }
+                ],
+            },
+        ).json()
+        without_first = without["content"]["tickets"][0]
+        with_first = with_assessment["content"]["tickets"][0]
+        # Mudança observável no conteúdo gerado:
+        assert without_first["title"] != with_first["title"]
+        assert "Nunca usei FastAPI" in (with_first["personalization_notes"] or "")
 
     def test_rejects_short_topic(self, client, auth_headers):
         response = client.post(
-            "/api/v1/learning-trails/assessment",
+            "/api/v1/learning-trails/assessment/next",
             headers=auth_headers,
             json={"topic": "a"},
         )
@@ -83,7 +157,7 @@ class TestAssessmentEndpoint:
 
     def test_rejects_unauthenticated(self, client):
         response = client.post(
-            "/api/v1/learning-trails/assessment", json={"topic": "FastAPI"}
+            "/api/v1/learning-trails/assessment/next", json={"topic": "FastAPI"}
         )
         assert response.status_code == 401
 

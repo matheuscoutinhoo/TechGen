@@ -19,16 +19,16 @@ from app.exceptions import AIProviderError
 from app.schemas.learning_trail import (
     ConceptExplanation,
     TopicAnswer,
-    TopicQuestionSet,
+    TopicQuestion,
     TrailContent,
 )
 from app.services.ai.base import AIProvider, ConceptContext, UserSkillInput
 from app.services.ai.prompts import (
     CONCEPT_SYSTEM_PROMPT,
-    QUESTIONS_SYSTEM_PROMPT,
+    NEXT_QUESTION_SYSTEM_PROMPT,
     SYSTEM_PROMPT,
     build_concept_prompt,
-    build_questions_prompt,
+    build_next_question_prompt,
     build_user_prompt,
 )
 
@@ -74,27 +74,37 @@ class AbacusAIProvider(AIProvider):
         self.timeout_seconds = timeout_seconds
         self._client = http_client
 
-    def generate_topic_questions(
+    def generate_next_topic_question(
         self,
         topic: str,
         *,
         skills: Sequence[UserSkillInput] = (),
-    ) -> TopicQuestionSet:
-        payload = self._build_questions_payload(topic, skills)
+        previous_answers: Sequence[TopicAnswer] = (),
+    ) -> TopicQuestion | None:
+        payload = self._build_next_question_payload(topic, skills, previous_answers)
         raw = self._call_api(payload)
         text = self._extract_text(raw)
         data = self._parse_json(text)
-        # Garante o tema correto (alguns modelos repetem o tema literal e
-        # tornam o payload redundante, mas é o aluno quem manda).
-        data["topic"] = topic.strip()
+
+        if data.get("done") is True:
+            # IA decidiu encerrar; sem pergunta. Service garante teto também.
+            return None
+
+        question_data = data.get("question")
+        if not isinstance(question_data, dict):
+            raise AIProviderError(
+                "A IA não retornou nem uma pergunta nem o sinal de encerramento."
+            )
+        # Garante id sequencial mesmo se a IA repetir/errar a numeração.
+        question_data["id"] = f"q{len(previous_answers) + 1}"
         try:
-            return TopicQuestionSet.model_validate(data)
+            return TopicQuestion.model_validate(question_data)
         except ValidationError as exc:
             logger.warning(
-                "Resposta da Abacus não casou com o schema de perguntas: %s", exc
+                "Resposta da Abacus não casou com o schema de pergunta: %s", exc
             )
             raise AIProviderError(
-                "A IA retornou perguntas em formato inesperado. Tente novamente."
+                "A IA retornou uma pergunta em formato inesperado. Tente novamente."
             ) from exc
 
     def generate_learning_trail(
@@ -158,18 +168,23 @@ class AbacusAIProvider(AIProvider):
             ],
         }
 
-    def _build_questions_payload(
-        self, topic: str, skills: Sequence[UserSkillInput]
+    def _build_next_question_payload(
+        self,
+        topic: str,
+        skills: Sequence[UserSkillInput],
+        previous_answers: Sequence[TopicAnswer],
     ) -> dict[str, Any]:
         return {
             "model": self.questions_model,
             "stream": False,
             "messages": [
-                {"role": "system", "content": QUESTIONS_SYSTEM_PROMPT},
+                {"role": "system", "content": NEXT_QUESTION_SYSTEM_PROMPT},
                 {
                     "role": "user",
-                    "content": build_questions_prompt(
-                        topic, _serialize_skills(skills)
+                    "content": build_next_question_prompt(
+                        topic,
+                        skills=_serialize_skills(skills),
+                        previous_answers=previous_answers,
                     ),
                 },
             ],

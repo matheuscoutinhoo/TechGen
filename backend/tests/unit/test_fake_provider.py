@@ -4,7 +4,7 @@ import pytest
 from app.schemas.learning_trail import (
     ConceptExplanation,
     TopicAnswer,
-    TopicQuestionSet,
+    TopicQuestion,
     TrailContent,
 )
 from app.services.ai.base import ConceptContext, UserSkillInput
@@ -65,32 +65,123 @@ class TestFakeAIProvider:
         assert "Nunca usei FastAPI" in joined
         assert "diagnóstico" in content.target_audience.lower() or "1 resposta" in content.target_audience
 
+    def test_low_familiarity_assessment_forces_foundational_first_ticket(self):
+        """Prova que o assessment muda a trilha: aluno iniciante recebe ticket fundacional."""
+        provider = FakeAIProvider()
+        topic = "API design com FastAPI"
+
+        # Sem assessment: TG-1 é o ticket genérico "Setup do ambiente".
+        without = provider.generate_learning_trail(topic)
+        # Com assessment indicando "Nunca usei FastAPI": TG-1 vira fundacional.
+        with_assessment = provider.generate_learning_trail(
+            topic,
+            assessment=[
+                TopicAnswer(
+                    question_id="q1",
+                    question="Você já trabalhou com FastAPI antes?",
+                    answer="Nunca usei FastAPI",
+                )
+            ],
+        )
+
+        assert without.tickets[0].title != with_assessment.tickets[0].title
+        assert "Primeiros passos" in with_assessment.tickets[0].title
+        assert "Pré-requisitos da stack" in with_assessment.tickets[0].concepts
+        assert "Nunca usei FastAPI" in (
+            with_assessment.tickets[0].personalization_notes or ""
+        )
+
+    def test_advanced_assessment_keeps_normal_progression(self):
+        """Aluno fluente NÃO recebe ticket fundacional — só a sequência padrão."""
+        provider = FakeAIProvider()
+        content = provider.generate_learning_trail(
+            "API design com FastAPI",
+            assessment=[
+                TopicAnswer(
+                    question_id="q1",
+                    question="Você já trabalhou com FastAPI antes?",
+                    answer="Uso FastAPI no dia a dia",
+                )
+            ],
+        )
+        assert "Primeiros passos" not in content.tickets[0].title
+
 
 @pytest.mark.unit
-class TestTopicQuestions:
-    def test_returns_between_3_and_5_questions(self):
+class TestAdaptiveQuestions:
+    def test_first_question_is_familiarity(self):
         provider = FakeAIProvider()
-        result = provider.generate_topic_questions("FastAPI")
-        assert isinstance(result, TopicQuestionSet)
-        assert 3 <= len(result.questions) <= 5
-        assert result.topic == "FastAPI"
+        question = provider.generate_next_topic_question("FastAPI")
+        assert isinstance(question, TopicQuestion)
+        assert question.id == "q1"
+        # primeira pergunta sempre sonda familiaridade
+        assert "trabalhou" in question.question.lower() or "usou" in question.question.lower()
+        # alternativas devem citar o tema explicitamente em pelo menos uma opção
+        joined = " ".join(opt.label for opt in question.options)
+        assert "FastAPI" in joined
 
-    def test_questions_have_options_with_unique_ids(self):
+    def test_second_question_changes_based_on_previous_answer(self):
+        """Pergunta seguinte deve ser DIFERENTE conforme a resposta anterior."""
         provider = FakeAIProvider()
-        result = provider.generate_topic_questions("Kubernetes")
-        for question in result.questions:
-            assert question.id.startswith("q")
-            assert question.question
-            assert question.rationale
-            ids = [opt.id for opt in question.options]
-            assert len(ids) == len(set(ids))
-            assert 2 <= len(ids) <= 5
+        topic = "FastAPI"
 
-    def test_is_deterministic_per_topic(self):
+        # Caminho A: aluno marcou "Nunca usei FastAPI" → next deve sondar
+        # fundamento (pré-requisito).
+        low_path = provider.generate_next_topic_question(
+            topic,
+            previous_answers=[
+                TopicAnswer(
+                    question_id="q1",
+                    question="Você já trabalhou com FastAPI antes?",
+                    answer="Nunca usei FastAPI",
+                )
+            ],
+        )
+
+        # Caminho B: aluno marcou "Uso FastAPI no dia a dia" → next deve
+        # sondar trade-offs (nível avançado).
+        high_path = provider.generate_next_topic_question(
+            topic,
+            previous_answers=[
+                TopicAnswer(
+                    question_id="q1",
+                    question="Você já trabalhou com FastAPI antes?",
+                    answer="Uso FastAPI no dia a dia",
+                )
+            ],
+        )
+
+        assert low_path is not None
+        assert high_path is not None
+        # IDs sequenciais
+        assert low_path.id == "q2"
+        assert high_path.id == "q2"
+        # E são perguntas diferentes!
+        assert low_path.question != high_path.question
+        assert "linguagem" in low_path.question.lower() or "base" in low_path.question.lower()
+        assert "trade" in high_path.question.lower() or "trade-off" in high_path.question.lower()
+
+    def test_provider_returns_none_after_max_questions(self):
         provider = FakeAIProvider()
-        a = provider.generate_topic_questions("Rust")
-        b = provider.generate_topic_questions("Rust")
-        assert a.model_dump() == b.model_dump()
+        # 5 respostas variadas → próximo deve ser None (teto duro)
+        previous = [
+            TopicAnswer(question_id=f"q{i}", question=f"P{i}?", answer=f"R{i}")
+            for i in range(1, 6)
+        ]
+        result = provider.generate_next_topic_question("X", previous_answers=previous)
+        assert result is None
+
+    def test_provider_stops_when_context_is_sufficient(self):
+        """Após 3 respostas, o fake provider encerra."""
+        provider = FakeAIProvider()
+        previous = [
+            TopicAnswer(question_id=f"q{i}", question=f"P{i}?", answer=f"R{i}")
+            for i in range(1, 4)
+        ]
+        assert (
+            provider.generate_next_topic_question("X", previous_answers=previous)
+            is None
+        )
 
 
 @pytest.mark.unit

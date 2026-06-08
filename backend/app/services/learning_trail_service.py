@@ -20,7 +20,8 @@ from app.schemas.learning_trail import (
     ConceptExplanation,
     LearningTrailRead,
     TopicAnswer,
-    TopicQuestionSet,
+    TopicNextQuestionResponse,
+    TopicQuestion,
     TrailContent,
 )
 from app.services.ai.base import AIProvider, ConceptContext, UserSkillInput
@@ -28,6 +29,10 @@ from app.services.skill_service import SkillService
 
 
 _ASSESSMENT_LIST_ADAPTER = TypeAdapter(list[TopicAnswer])
+
+# Teto rígido de perguntas de diagnóstico independente do que a IA retornar.
+# Mantém a UX previsível e barra qualquer loop infinito.
+MAX_ASSESSMENT_QUESTIONS = 5
 
 
 def _to_skill_inputs(user: User) -> list[UserSkillInput]:
@@ -69,11 +74,32 @@ class LearningTrailService:
             raise ForbiddenError("Você não tem acesso a esta trilha")
         return trail
 
-    def build_assessment_for_user(self, user: User, *, topic: str) -> TopicQuestionSet:
-        """Pede à IA o conjunto de perguntas de diagnóstico para o tema."""
-        return self.ai_provider.generate_topic_questions(
-            topic, skills=_to_skill_inputs(user)
+    def build_next_question_for_user(
+        self,
+        user: User,
+        *,
+        topic: str,
+        previous_answers: Sequence[TopicAnswer] = (),
+    ) -> TopicNextQuestionResponse:
+        """Pede à IA a PRÓXIMA pergunta do diagnóstico, dado o histórico.
+
+        Aplica o teto rígido de ``MAX_ASSESSMENT_QUESTIONS`` antes mesmo de
+        chamar a IA — se o cliente já passou esse limite, encerra direto.
+        """
+        answers = list(previous_answers)
+        if len(answers) >= MAX_ASSESSMENT_QUESTIONS:
+            return TopicNextQuestionResponse(question=None, done=True)
+
+        next_question: TopicQuestion | None = (
+            self.ai_provider.generate_next_topic_question(
+                topic,
+                skills=_to_skill_inputs(user),
+                previous_answers=answers,
+            )
         )
+        if next_question is None:
+            return TopicNextQuestionResponse(question=None, done=True)
+        return TopicNextQuestionResponse(question=next_question, done=False)
 
     # ------------------------------------------------------------------ #
     # Commands

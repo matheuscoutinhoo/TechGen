@@ -1,86 +1,187 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { TopicAnswer, TopicQuestion } from '../../../types/api';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type {
+   TopicAnswer,
+   TopicNextQuestionResponse,
+   TopicQuestion,
+} from '../../../types/api';
 import { Button } from '../../ui/Button';
+import { Spinner } from '../../ui/Spinner';
 import styles from './AssessmentModal.module.css';
 
 export interface AssessmentModalProps {
    topic: string;
-   questions: TopicQuestion[];
-   isSubmitting?: boolean;
+   firstQuestion: TopicQuestion;
+   /**
+    * Busca a próxima pergunta com o histórico atual. Retorna `done=true`
+    * quando a IA decide que já tem contexto suficiente.
+    */
+   loadNextQuestion: (
+      previousAnswers: TopicAnswer[],
+   ) => Promise<TopicNextQuestionResponse>;
+   /** Disparado quando o aluno termina e a trilha pode ser gerada. */
    onSubmit: (answers: TopicAnswer[]) => void;
    onCancel: () => void;
+   isSubmitting?: boolean;
+   /** Teto rígido para a UI exibir o progresso. */
+   maxQuestions?: number;
 }
 
-type Phase = 'idle' | 'leaving';
+type Phase =
+   | 'idle'
+   | 'leaving-forward'
+   | 'leaving-backward'
+   | 'loading-next';
 
 const TRANSITION_MS = 200;
+const SKIP_SENTINEL = '__skip__';
+const SKIP_LABEL = 'Prefiro não responder';
 
 export function AssessmentModal({
    topic,
-   questions,
-   isSubmitting = false,
+   firstQuestion,
+   loadNextQuestion,
    onSubmit,
    onCancel,
+   isSubmitting = false,
+   maxQuestions = 5,
 }: AssessmentModalProps) {
+   const [questions, setQuestions] = useState<TopicQuestion[]>([firstQuestion]);
+   const [answers, setAnswers] = useState<Record<string, string>>({});
    const [index, setIndex] = useState(0);
    const [phase, setPhase] = useState<Phase>('idle');
-   const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
-   const [answers, setAnswers] = useState<Record<string, string>>({});
+   const [errorMessage, setErrorMessage] = useState<string | null>(null);
    const dialogRef = useRef<HTMLDivElement | null>(null);
 
    const total = questions.length;
    const current = questions[index];
-   const isLast = index === total - 1;
-
    const selectedId = current ? answers[current.id] : undefined;
-
-   const goTo = useCallback(
-      (nextIndex: number, dir: 'forward' | 'backward') => {
-         if (nextIndex < 0 || nextIndex >= total) return;
-         setDirection(dir);
-         setPhase('leaving');
-         window.setTimeout(() => {
-            setIndex(nextIndex);
-            setPhase('idle');
-         }, TRANSITION_MS);
-      },
-      [total],
-   );
-
-   const collectAnswers = useCallback((): TopicAnswer[] => {
-      return questions
-         .filter((q) => Boolean(answers[q.id]))
-         .map((q) => {
-            const optionId = answers[q.id];
-            const option = q.options.find((opt) => opt.id === optionId);
-            return {
-               question_id: q.id,
-               question: q.question,
-               answer: option?.label ?? 'Prefiro não responder',
-            };
-         });
-   }, [questions, answers]);
-
-   const handleNext = useCallback(() => {
-      if (isLast) {
-         onSubmit(collectAnswers());
-         return;
-      }
-      goTo(index + 1, 'forward');
-   }, [isLast, index, goTo, onSubmit, collectAnswers]);
-
-   const handlePrev = () => goTo(index - 1, 'backward');
-
-   const handleSkip = () => {
-      if (current) {
-         setAnswers((prev) => ({ ...prev, [current.id]: '__skip__' }));
-      }
-      handleNext();
-   };
+   const isReviewing = index < total - 1;
+   const reachedCeiling = total >= maxQuestions;
 
    const handleSelect = (optionId: string) => {
       if (!current) return;
       setAnswers((prev) => ({ ...prev, [current.id]: optionId }));
+   };
+
+   const collectAnswers = useCallback(
+      (
+         allQuestions: TopicQuestion[],
+         allAnswers: Record<string, string>,
+      ): TopicAnswer[] => {
+         const result: TopicAnswer[] = [];
+         for (const q of allQuestions) {
+            const optionId = allAnswers[q.id];
+            if (!optionId) continue;
+            const label =
+               optionId === SKIP_SENTINEL
+                  ? SKIP_LABEL
+                  : q.options.find((opt) => opt.id === optionId)?.label ?? SKIP_LABEL;
+            result.push({
+               question_id: q.id,
+               question: q.question,
+               answer: label,
+            });
+         }
+         return result;
+      },
+      [],
+   );
+
+   const fetchNext = useCallback(
+      async (latestAnswers: Record<string, string>) => {
+         setErrorMessage(null);
+         setPhase('loading-next');
+         const history = collectAnswers(questions, latestAnswers);
+         try {
+            const result = await loadNextQuestion(history);
+            if (result.done || !result.question) {
+               onSubmit(history);
+               return;
+            }
+            const nextQuestion = result.question;
+            setQuestions((prev) => [...prev, nextQuestion]);
+            setIndex(questions.length);
+            setPhase('idle');
+         } catch (err) {
+            setPhase('idle');
+            const message =
+               err instanceof Error
+                  ? err.message
+                  : 'Não conseguimos carregar a próxima pergunta.';
+            setErrorMessage(message);
+         }
+      },
+      [collectAnswers, loadNextQuestion, onSubmit, questions],
+   );
+
+   const handleContinue = useCallback(() => {
+      if (!current || !selectedId || isSubmitting) return;
+
+      if (isReviewing) {
+         setPhase('leaving-forward');
+         window.setTimeout(() => {
+            setIndex(index + 1);
+            setPhase('idle');
+         }, TRANSITION_MS);
+         return;
+      }
+
+      if (reachedCeiling) {
+         onSubmit(collectAnswers(questions, answers));
+         return;
+      }
+
+      setPhase('leaving-forward');
+      window.setTimeout(() => {
+         void fetchNext(answers);
+      }, TRANSITION_MS);
+   }, [
+      answers,
+      collectAnswers,
+      current,
+      fetchNext,
+      index,
+      isReviewing,
+      isSubmitting,
+      onSubmit,
+      questions,
+      reachedCeiling,
+      selectedId,
+   ]);
+
+   const handlePrev = () => {
+      if (index === 0) return;
+      setPhase('leaving-backward');
+      window.setTimeout(() => {
+         setIndex(index - 1);
+         setPhase('idle');
+      }, TRANSITION_MS);
+   };
+
+   const handleSkip = () => {
+      if (!current || isSubmitting) return;
+      const next = { ...answers, [current.id]: SKIP_SENTINEL };
+      setAnswers(next);
+      if (isReviewing) {
+         setPhase('leaving-forward');
+         window.setTimeout(() => {
+            setIndex(index + 1);
+            setPhase('idle');
+         }, TRANSITION_MS);
+         return;
+      }
+      if (reachedCeiling) {
+         onSubmit(collectAnswers(questions, next));
+         return;
+      }
+      setPhase('leaving-forward');
+      window.setTimeout(() => {
+         void fetchNext(next);
+      }, TRANSITION_MS);
+   };
+
+   const handleRetry = () => {
+      void fetchNext(answers);
    };
 
    useEffect(() => {
@@ -94,21 +195,54 @@ export function AssessmentModal({
    }, [onCancel, isSubmitting]);
 
    useEffect(() => {
-      // foca o card a cada troca de pergunta — leitor de tela anuncia o novo conteúdo
       if (phase === 'idle' && dialogRef.current) {
          dialogRef.current.focus();
       }
    }, [phase, index]);
 
-   if (!current) return null;
+   const progress = useMemo(() => {
+      const items: Array<{ key: string; state: 'active' | 'answered' | 'pending' }> = [];
+      questions.forEach((q, i) => {
+         if (i === index && phase !== 'loading-next') {
+            items.push({ key: q.id, state: 'active' });
+         } else if (answers[q.id]) {
+            items.push({ key: q.id, state: 'answered' });
+         } else {
+            items.push({ key: q.id, state: 'active' });
+         }
+      });
+      const remaining = Math.max(0, maxQuestions - questions.length);
+      const showLoadingSlot = phase === 'loading-next';
+      const pendingCount = showLoadingSlot ? remaining + 1 : remaining;
+      for (let i = 0; i < pendingCount; i += 1) {
+         items.push({ key: `pending-${i}`, state: 'pending' });
+      }
+      return items;
+   }, [answers, index, maxQuestions, phase, questions]);
 
    const stageClass = [
       styles.stage,
-      phase === 'leaving' && direction === 'forward' ? styles.leavingForward : '',
-      phase === 'leaving' && direction === 'backward' ? styles.leavingBackward : '',
+      phase === 'leaving-forward' ? styles.leavingForward : '',
+      phase === 'leaving-backward' ? styles.leavingBackward : '',
+      phase === 'loading-next' ? styles.stageLoading : '',
    ]
       .filter(Boolean)
       .join(' ');
+
+   const isLoading = phase === 'loading-next';
+
+   let primaryLabel: string;
+   if (isSubmitting) {
+      primaryLabel = 'Gerando trilha...';
+   } else if (isLoading) {
+      primaryLabel = 'Carregando...';
+   } else if (isReviewing) {
+      primaryLabel = 'Próxima';
+   } else if (reachedCeiling) {
+      primaryLabel = 'Gerar trilha';
+   } else {
+      primaryLabel = 'Continuar';
+   }
 
    return (
       <div
@@ -127,23 +261,33 @@ export function AssessmentModal({
                   Antes de gerar a trilha
                </h2>
                <p className={styles.subtitle}>
-                  Responda rapidamente para a IA calibrar profundidade e pré-requisitos
-                  sobre <strong>{topic}</strong>.
+                  Cada resposta calibra a próxima pergunta. A IA usa esse contexto
+                  para ajustar a profundidade e os pré-requisitos sobre{' '}
+                  <strong>{topic}</strong>.
                </p>
                <ol className={styles.progress} aria-label="Progresso do diagnóstico">
-                  {questions.map((q, i) => {
-                     const isActive = i === index;
-                     const isAnswered = Boolean(answers[q.id]);
+                  {progress.map((item, i) => {
                      const className = [
                         styles.progressDot,
-                        isActive ? styles.progressDotActive : '',
-                        isAnswered && !isActive ? styles.progressDotAnswered : '',
+                        item.state === 'active' && i === index && !isLoading
+                           ? styles.progressDotActive
+                           : '',
+                        item.state === 'answered' ? styles.progressDotAnswered : '',
+                        item.state === 'pending' ? styles.progressDotPending : '',
                      ]
                         .filter(Boolean)
                         .join(' ');
                      return (
-                        <li key={q.id} className={className} aria-current={isActive || undefined}>
-                           {i + 1}
+                        <li
+                           key={item.key}
+                           className={className}
+                           aria-current={
+                              item.state === 'active' && i === index && !isLoading
+                                 ? true
+                                 : undefined
+                           }
+                        >
+                           {item.state === 'pending' ? '·' : i + 1}
                         </li>
                      );
                   })}
@@ -152,43 +296,68 @@ export function AssessmentModal({
 
             <div
                className={stageClass}
-               key={`stage-${index}`}
+               key={`stage-${index}-${phase}`}
                aria-live="polite"
             >
-               <div className={styles.questionMeta}>
-                  Pergunta {index + 1} de {total}
-               </div>
-               <h3 className={styles.question}>{current.question}</h3>
-               <fieldset
-                  className={styles.options}
-                  aria-label={`Alternativas para: ${current.question}`}
-                  disabled={isSubmitting}
-               >
-                  {current.options.map((option) => {
-                     const isSelected = selectedId === option.id;
-                     return (
-                        <label
-                           key={option.id}
-                           className={[
-                              styles.option,
-                              isSelected ? styles.optionSelected : '',
-                           ]
-                              .filter(Boolean)
-                              .join(' ')}
-                        >
-                           <input
-                              type="radio"
-                              name={`q-${current.id}`}
-                              value={option.id}
-                              checked={isSelected}
-                              onChange={() => handleSelect(option.id)}
-                              className={styles.optionRadio}
-                           />
-                           <span className={styles.optionLabel}>{option.label}</span>
-                        </label>
-                     );
-                  })}
-               </fieldset>
+               {isLoading ? (
+                  <>
+                     <Spinner label="Preparando a próxima pergunta..." />
+                     <p className={styles.stageLoadingHint}>
+                        A IA está usando suas respostas anteriores para escolher
+                        a próxima sondagem.
+                     </p>
+                  </>
+               ) : errorMessage ? (
+                  <>
+                     <p className={styles.stageLoadingTitle}>
+                        Algo deu errado ao carregar a próxima pergunta.
+                     </p>
+                     <p className={styles.stageLoadingHint}>{errorMessage}</p>
+                     <Button type="button" variant="secondary" onClick={handleRetry}>
+                        Tentar novamente
+                     </Button>
+                  </>
+               ) : current ? (
+                  <>
+                     <div className={styles.questionMeta}>
+                        Pergunta {index + 1}
+                        {reachedCeiling || isReviewing ? ` de ${total}` : ''}
+                     </div>
+                     <h3 className={styles.question}>{current.question}</h3>
+                     <fieldset
+                        className={styles.options}
+                        aria-label={`Alternativas para: ${current.question}`}
+                        disabled={isSubmitting}
+                     >
+                        {current.options.map((option) => {
+                           const isSelected = selectedId === option.id;
+                           return (
+                              <label
+                                 key={option.id}
+                                 className={[
+                                    styles.option,
+                                    isSelected ? styles.optionSelected : '',
+                                 ]
+                                    .filter(Boolean)
+                                    .join(' ')}
+                              >
+                                 <input
+                                    type="radio"
+                                    name={`q-${current.id}`}
+                                    value={option.id}
+                                    checked={isSelected}
+                                    onChange={() => handleSelect(option.id)}
+                                    className={styles.optionRadio}
+                                 />
+                                 <span className={styles.optionLabel}>
+                                    {option.label}
+                                 </span>
+                              </label>
+                           );
+                        })}
+                     </fieldset>
+                  </>
+               ) : null}
             </div>
 
             <footer className={styles.footer}>
@@ -196,7 +365,7 @@ export function AssessmentModal({
                   type="button"
                   className={styles.skip}
                   onClick={handleSkip}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isLoading}
                >
                   Pular pergunta
                </button>
@@ -205,21 +374,17 @@ export function AssessmentModal({
                      type="button"
                      variant="ghost"
                      onClick={handlePrev}
-                     disabled={index === 0 || isSubmitting}
+                     disabled={index === 0 || isSubmitting || isLoading}
                   >
                      Anterior
                   </Button>
                   <Button
                      type="button"
                      variant="primary"
-                     onClick={handleNext}
-                     disabled={!selectedId || isSubmitting}
+                     onClick={handleContinue}
+                     disabled={!selectedId || isSubmitting || isLoading}
                   >
-                     {isLast
-                        ? isSubmitting
-                           ? 'Gerando trilha...'
-                           : 'Gerar trilha'
-                        : 'Próxima'}
+                     {primaryLabel}
                   </Button>
                </div>
             </footer>

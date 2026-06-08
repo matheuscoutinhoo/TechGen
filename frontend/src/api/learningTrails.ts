@@ -5,7 +5,7 @@ import type {
    LearningTrail,
    LearningTrailSummary,
    TopicAnswer,
-   TopicQuestionSet,
+   TopicNextQuestionResponse,
    TrailContent,
 } from '../types/api';
 
@@ -28,8 +28,15 @@ export const learningTrailsApi = {
          topic: payload.topic,
          assessment: payload.assessment ?? [],
       }),
-   buildAssessment: (topic: string) =>
-      apiClient.post<TopicQuestionSet>('/learning-trails/assessment', { topic }),
+   /**
+    * Pede à IA a PRÓXIMA pergunta do diagnóstico, com o histórico atual.
+    * A IA decide quando encerrar (response.done === true).
+    */
+   nextAssessmentQuestion: (topic: string, previousAnswers: TopicAnswer[]) =>
+      apiClient.post<TopicNextQuestionResponse>(
+         '/learning-trails/assessment/next',
+         { topic, previous_answers: previousAnswers },
+      ),
    update: (id: number, payload: UpdateTrailPayload) =>
       apiClient.patch<LearningTrail>(`/learning-trails/${id}`, payload),
    regenerate: (id: number) =>

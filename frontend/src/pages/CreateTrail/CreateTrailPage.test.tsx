@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { CreateTrailPage } from './CreateTrailPage';
@@ -14,18 +14,23 @@ function jsonResponse(body: unknown, status = 200): Response {
    });
 }
 
-const QUESTION_SET = {
-   topic: 'FastAPI',
-   questions: [
-      {
-         id: 'q1',
-         question: 'Você já usou FastAPI?',
-         rationale: 'familiaridade',
-         options: [
-            { id: 'a', label: 'Nunca usei FastAPI' },
-            { id: 'b', label: 'Uso em produção' },
-         ],
-      },
+const Q1 = {
+   id: 'q1',
+   question: 'Você já trabalhou com FastAPI antes?',
+   rationale: 'familiaridade',
+   options: [
+      { id: 'a', label: 'Nunca usei FastAPI' },
+      { id: 'b', label: 'Uso em produção' },
+   ],
+};
+
+const Q2 = {
+   id: 'q2',
+   question: 'Você se sente confortável com Python?',
+   rationale: 'pré-requisito',
+   options: [
+      { id: 'a', label: 'Não' },
+      { id: 'b', label: 'Sim' },
    ],
 };
 
@@ -47,24 +52,24 @@ const TRAIL_RESPONSE = {
    },
 };
 
+interface NextHandler {
+   (body: { topic: string; previous_answers: unknown[] }): Response | Promise<Response>;
+}
+
 function fetchMock(handlers: {
-   assessment?: () => Promise<Response> | Response;
-   create?: (body: unknown) => Promise<Response> | Response;
+   next: NextHandler;
+   create: (body: unknown) => Response | Promise<Response>;
 }): typeof fetch {
    return vi
       .fn()
       .mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
          const url = typeof input === 'string' ? input : input.toString();
-         if (url.endsWith('/learning-trails/assessment')) {
-            const fn = handlers.assessment;
-            if (!fn) throw new Error('assessment handler missing');
-            return fn();
+         const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+         if (url.endsWith('/learning-trails/assessment/next')) {
+            return handlers.next(body);
          }
          if (url.endsWith('/learning-trails')) {
-            const fn = handlers.create;
-            if (!fn) throw new Error('create handler missing');
-            const body = init?.body ? JSON.parse(String(init.body)) : undefined;
-            return fn(body);
+            return handlers.create(body);
          }
          throw new Error(`URL inesperada no teste: ${url}`);
       }) as unknown as typeof fetch;
@@ -92,10 +97,15 @@ describe('<CreateTrailPage />', () => {
       tokenStorage.clear();
    });
 
-   it('abre o modal de diagnóstico ao continuar e gera a trilha com as respostas', async () => {
+   it('faz chamadas adaptativas ao endpoint /assessment/next e gera a trilha', async () => {
+      const nextSpy = vi
+         .fn<(body: { topic: string; previous_answers: unknown[] }) => Response>()
+         .mockImplementationOnce(() => jsonResponse({ question: Q1, done: false }))
+         .mockImplementationOnce(() => jsonResponse({ question: Q2, done: false }))
+         .mockImplementationOnce(() => jsonResponse({ question: null, done: true }));
       const createSpy = vi.fn(() => jsonResponse(TRAIL_RESPONSE, 201));
       globalThis.fetch = fetchMock({
-         assessment: () => jsonResponse(QUESTION_SET),
+         next: (body) => nextSpy(body),
          create: createSpy,
       });
 
@@ -104,28 +114,46 @@ describe('<CreateTrailPage />', () => {
       await user.type(screen.getByLabelText('Tema'), 'FastAPI');
       await user.click(screen.getByRole('button', { name: 'Continuar' }));
 
+      // Modal abre com Q1.
       await waitFor(() =>
-         expect(screen.getByText('Você já usou FastAPI?')).toBeInTheDocument(),
+         expect(screen.getByText('Você já trabalhou com FastAPI antes?')).toBeInTheDocument(),
       );
 
-      await user.click(screen.getByLabelText('Nunca usei FastAPI'));
-      await user.click(screen.getByRole('button', { name: 'Gerar trilha' }));
+      const dialog = screen.getByRole('dialog');
+
+      // Responde Q1 → busca Q2 (com histórico).
+      await user.click(within(dialog).getByLabelText('Nunca usei FastAPI'));
+      await user.click(within(dialog).getByRole('button', { name: 'Continuar' }));
+      await waitFor(() =>
+         expect(screen.getByText('Você se sente confortável com Python?')).toBeInTheDocument(),
+      );
+
+      // Responde Q2 → IA encerra → gera trilha.
+      await user.click(within(dialog).getByLabelText('Não'));
+      await user.click(within(dialog).getByRole('button', { name: 'Continuar' }));
 
       await waitFor(() => expect(screen.getByText('detalhe ok')).toBeInTheDocument());
 
-      expect(createSpy).toHaveBeenCalledTimes(1);
-      const calls = createSpy.mock.calls as unknown as Array<
-         [{ topic: string; assessment: Array<{ question_id: string; question: string; answer: string }> }]
-      >;
-      const body = calls[0][0];
-      expect(body.topic).toBe('FastAPI');
-      expect(body.assessment).toEqual([
+      // 3 chamadas a /assessment/next, com histórico crescente:
+      expect(nextSpy).toHaveBeenCalledTimes(3);
+      expect(nextSpy.mock.calls[0][0].previous_answers).toEqual([]);
+      expect(nextSpy.mock.calls[1][0].previous_answers).toEqual([
          {
             question_id: 'q1',
-            question: 'Você já usou FastAPI?',
+            question: 'Você já trabalhou com FastAPI antes?',
             answer: 'Nunca usei FastAPI',
          },
       ]);
+      expect(nextSpy.mock.calls[2][0].previous_answers).toHaveLength(2);
+
+      // E o create carrega as duas respostas.
+      const createCalls = createSpy.mock.calls as unknown as Array<
+         [{ topic: string; assessment: Array<{ question_id: string; answer: string }> }]
+      >;
+      const createBody = createCalls[0][0];
+      expect(createBody.assessment).toHaveLength(2);
+      expect(createBody.assessment[0].answer).toBe('Nunca usei FastAPI');
+      expect(createBody.assessment[1].answer).toBe('Não');
    });
 
    it('rejeita tema muito curto antes de enviar', async () => {
@@ -148,10 +176,11 @@ describe('<CreateTrailPage />', () => {
       expect(screen.getByLabelText('Tema')).toHaveValue('Microsserviços em Go');
    });
 
-   it('gera a trilha sem assessment quando a IA retorna lista vazia', async () => {
+   it('gera a trilha direto quando a IA retorna done=true na primeira chamada', async () => {
+      const nextSpy = vi.fn(() => jsonResponse({ question: null, done: true }));
       const createSpy = vi.fn(() => jsonResponse(TRAIL_RESPONSE, 201));
       globalThis.fetch = fetchMock({
-         assessment: () => jsonResponse({ topic: 'FastAPI', questions: [] }),
+         next: () => nextSpy(),
          create: createSpy,
       });
 
@@ -161,7 +190,7 @@ describe('<CreateTrailPage />', () => {
       await user.click(screen.getByRole('button', { name: 'Continuar' }));
 
       await waitFor(() => expect(screen.getByText('detalhe ok')).toBeInTheDocument());
-      expect(createSpy).toHaveBeenCalledTimes(1);
+
       const calls = createSpy.mock.calls as unknown as Array<[{ assessment: unknown[] }]>;
       expect(calls[0][0].assessment).toEqual([]);
    });
