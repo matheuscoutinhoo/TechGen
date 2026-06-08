@@ -12,6 +12,21 @@ body,
    height: 100%;
 }
 
+#root {
+   display: flex;
+   flex-direction: column;
+   min-height: 100vh;
+}
+
+#root > main,
+#root > .app-main {
+   flex: 1 0 auto;
+}
+
+#root > footer {
+   flex-shrink: 0;
+}
+
 body {
    margin: 0;
    font-family: var(--font-sans);

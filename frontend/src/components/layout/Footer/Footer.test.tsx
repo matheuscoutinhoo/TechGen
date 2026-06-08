@@ -3,10 +3,10 @@ import { render, screen } from '@testing-library/react';
 import { Footer } from './Footer';
 
 describe('<Footer />', () => {
-   it('mostra créditos do projeto', () => {
+   it('mostra apenas o nome do projeto', () => {
       render(<Footer />);
-      expect(screen.getByRole('contentinfo')).toBeInTheDocument();
-      expect(screen.getByText(/aprender tecnologia construindo/)).toBeInTheDocument();
-      expect(screen.getByText(/FastAPI/)).toBeInTheDocument();
+      const footer = screen.getByRole('contentinfo');
+      expect(footer).toBeInTheDocument();
+      expect(footer).toHaveTextContent('TechGen');
    });
 });

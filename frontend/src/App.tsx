@@ -7,7 +7,9 @@ export default function App() {
    return (
       <AuthProvider>
          <Header />
-         <AppRoutes />
+         <main className="app-main">
+            <AppRoutes />
+         </main>
          <Footer />
       </AuthProvider>
    );

@@ -22,9 +22,6 @@ export function Header() {
                      <NavLink to="/dashboard" className={navClass}>
                         Trilhas
                      </NavLink>
-                     <NavLink to="/trails/new" className={navClass}>
-                        Nova trilha
-                     </NavLink>
                      <NavLink to="/account" className={navClass}>
                         Minha conta
                      </NavLink>
