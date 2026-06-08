@@ -564,7 +564,7 @@ Checklist antes de migrar:
   - `ABACUS_QUESTIONS_MODEL` (ex.: `gemini-3.5-flash`) — modelo dedicado
     às perguntas de diagnóstico inicial. Curtas, baratas, mais rápidas.
     Quando vazio, faz fallback transparente em `ABACUS_MODEL`.
-  - `ABACUS_TIMEOUT_SECONDS` (padrão 180; modelos top-tier exigem +60s)
+  - `ABACUS_TIMEOUT_SECONDS` (padrão 300 — 5 min; trilhas longas com modelos top-tier podem se aproximar disso)
 - A interface `AIProvider` expõe três métodos obrigatórios:
   - `generate_next_topic_question(topic, *, skills, previous_answers)` —
     gera a **próxima** pergunta de diagnóstico levando em conta o histórico

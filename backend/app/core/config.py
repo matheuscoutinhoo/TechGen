@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     # Modelo usado nas perguntas de diagnóstico (curtas, baratas). Fallback no
     # ``abacus_model`` quando vazio.
     abacus_questions_model: str = ""
-    abacus_timeout_seconds: int = 180
+    abacus_timeout_seconds: int = 300
 
     @field_validator("allowed_origins", mode="before")
     @classmethod

@@ -51,7 +51,7 @@ class AbacusAIProvider(AIProvider):
         api_key: str,
         model: str,
         questions_model: str | None = None,
-        timeout_seconds: int = 60,
+        timeout_seconds: int = 300,
         http_client: httpx.Client | None = None,
     ) -> None:
         if not api_key or not model:
