@@ -28,7 +28,7 @@ function FlowCheck() {
          aria-hidden="true"
          focusable="false"
       >
-         <polyline points="20 6 9 17 4 12" />
+         <polyline points="20 6 9 17 4 12" className={styles.flowCheckPath} />
       </svg>
    );
 }

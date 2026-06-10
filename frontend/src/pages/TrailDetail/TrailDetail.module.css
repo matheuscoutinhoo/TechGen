@@ -55,15 +55,26 @@
 }
 
 /* Metade SUPERIOR da linha — do meio-gap acima até o centro do node.
-   Centro do node = top(0.5rem) + height/2(0.75rem) = 1.25rem. */
+   Centro do node = top(0.5rem) + height/2(0.75rem) = 1.25rem.
+   Coloração via gradient vertical + background-position transicionado:
+   no estado idle a área visível mostra a parte cinza do gradient;
+   quando done/connectorActive, o gradient "sobe" e a área visível
+   passa a mostrar primary — efeito de preenchimento descendente. */
 .flowItem::before,
 .flowItem::after {
    content: '';
    position: absolute;
    left: calc(var(--space-3) - 1px);
    width: 2px;
-   background-color: var(--color-border);
    border-radius: 1px;
+   background: linear-gradient(to bottom,
+         var(--color-primary) 0%,
+         var(--color-primary) 50%,
+         var(--color-border) 50%,
+         var(--color-border) 100%);
+   background-size: 100% 200%;
+   background-position: 0% 100%;
+   transition: background-position 380ms ease-out;
 }
 
 .flowItem::before {
@@ -128,19 +139,46 @@
 }
 
 .flowItemDone::after {
-   background-color: var(--color-primary);
+   background-position: 0% 0%;
 }
 
 /* Connector ativo (anterior está done): metade SUPERIOR em primary,
-   fechando visualmente o trecho entre os dois nodes. A parte abaixo do
-   node deste item segue cinza se ele ainda não foi concluído. */
+   fechando visualmente o trecho entre os dois nodes. Atraso curto pra
+   parecer que o preenchimento "desceu" do node anterior até este. */
 .flowConnectorActive::before {
-   background-color: var(--color-primary);
+   background-position: 0% 0%;
+   transition-delay: 180ms;
 }
 
 /* Último ticket auto-conclui a trilha — node ganha glow extra como marco. */
 .flowItemFinal .flowNode {
    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+/* Check do node — desenha o traço de cima pra baixo quando aparece. */
+.flowCheckPath {
+   stroke-dasharray: 26;
+   stroke-dashoffset: 26;
+   animation: drawFlowCheck 360ms ease-out 120ms forwards;
+}
+
+@keyframes drawFlowCheck {
+   to {
+      stroke-dashoffset: 0;
+   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+   .flowItem::before,
+   .flowItem::after {
+      transition: none;
+   }
+
+   .flowCheckPath {
+      animation: none;
+      stroke-dashoffset: 0;
+   }
 }
 
 .completedBadge {
