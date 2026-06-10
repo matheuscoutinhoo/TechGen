@@ -83,7 +83,7 @@ describe('<App /> + router', () => {
       );
       await waitFor(() =>
          expect(
-            screen.getByRole('heading', { name: /Suas trilhas/i }),
+            screen.getByRole('heading', { name: /Visão geral/i }),
          ).toBeInTheDocument(),
       );
    });

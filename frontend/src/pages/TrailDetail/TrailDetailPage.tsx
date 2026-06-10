@@ -73,7 +73,7 @@ export function TrailDetailPage() {
       setActionError(null);
       try {
          await learningTrailsApi.delete(trailId);
-         navigate('/dashboard', { replace: true });
+         navigate('/trails', { replace: true });
       } catch (err) {
          setActionError(
             err instanceof ApiError ? err.message : 'Não foi possível excluir agora.',

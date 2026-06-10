@@ -1,210 +1,313 @@
-.toolbar {
+.pageHead {
    display: flex;
-   align-items: center;
+   align-items: flex-end;
    justify-content: space-between;
-   gap: var(--space-3);
-   margin-bottom: var(--space-6);
+   gap: var(--space-4);
    flex-wrap: wrap;
-   color: var(--color-text-muted);
-   font-size: var(--font-size-sm);
+   margin-bottom: var(--space-7);
 }
 
-.list {
+/* ===== KPIs em grid responsivo ===== */
+.kpiGrid {
    display: grid;
-   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-   grid-auto-rows: 1fr;
-   gap: var(--space-5);
-   list-style: none;
-   padding-inline-start: 0;
-   margin: 0;
+   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+   gap: var(--space-3);
 }
 
-.listItem {
-   list-style: none;
-   display: flex;
-}
-
-.trailCard {
-   position: relative;
-   width: 100%;
-   min-height: 240px;
+.kpi {
    display: flex;
    flex-direction: column;
-   gap: var(--space-3);
+   gap: var(--space-2);
    padding: var(--space-5) var(--space-6);
-   border-radius: var(--radius-lg);
-   border: 1px solid var(--color-border);
    background-color: var(--color-bg-elevated);
+   border: 1px solid var(--color-border);
+   border-radius: var(--radius-lg);
    transition: border-color var(--transition-fast),
       background-color var(--transition-fast);
 }
 
-.trailCard:hover,
-.trailCard:focus-within {
+.kpi:hover {
    border-color: var(--color-border-strong);
    background-color: var(--color-surface);
 }
 
-.trailCard[aria-busy='true'] {
-   opacity: 0.6;
-   pointer-events: none;
-}
-
-.cardHeader {
-   display: flex;
-   align-items: center;
-   justify-content: space-between;
-   gap: var(--space-2);
-}
-
-.topic {
-   font-size: 0.7rem;
-   text-transform: uppercase;
-   letter-spacing: 0.14em;
-   color: var(--color-text-subtle);
-   font-weight: 500;
-}
-
-.completedBadge {
-   padding: 0.2rem 0.65rem;
-   border-radius: var(--radius-full);
-   background-color: var(--color-success-soft);
-   color: var(--color-success);
-   border: 1px solid color-mix(in srgb, var(--color-success) 35%, transparent);
-   font-size: 0.65rem;
-   text-transform: uppercase;
-   letter-spacing: 0.08em;
-   font-weight: 700;
-}
-
-.title {
-   font-size: var(--font-size-lg);
-   font-weight: 600;
-   line-height: 1.3;
-   letter-spacing: var(--letter-tight);
-   color: var(--color-text);
-   display: -webkit-box;
-   -webkit-line-clamp: 2;
-   -webkit-box-orient: vertical;
-   overflow: hidden;
-}
-
-.titleLink {
-   color: inherit;
-   text-decoration: none;
-}
-
-.titleLink:hover {
-   color: var(--color-text);
-}
-
-/* Stretched link: o anchor do título cobre o card inteiro, mas só os
-   elementos com z-index > 0 (botões) ficam clicáveis em cima dele. */
-.titleLink::after {
-   content: '';
-   position: absolute;
-   inset: 0;
-   border-radius: inherit;
-}
-
-.titleLink:focus-visible {
-   outline: none;
-}
-
-.titleLink:focus-visible::after {
-   outline: 2px solid var(--color-text);
-   outline-offset: 2px;
-}
-
-.summary {
-   color: var(--color-text-muted);
-   font-size: var(--font-size-sm);
-   line-height: var(--line-height-base);
-   display: -webkit-box;
-   -webkit-line-clamp: 3;
-   -webkit-box-orient: vertical;
-   overflow: hidden;
-}
-
-.progressSlot {
-   margin-top: var(--space-2);
-   /* Acima do stretched link pra não interceptar cliques mas não ser coberto. */
-   position: relative;
-   z-index: 0;
-}
-
-.cardFooter {
-   margin-top: auto;
-   padding-top: var(--space-2);
+.kpiHeader {
    display: flex;
    align-items: center;
    justify-content: space-between;
    gap: var(--space-3);
 }
 
-.meta {
+.kpiEyebrow {
+   font-size: var(--font-size-xs);
+   text-transform: uppercase;
+   letter-spacing: 0.08em;
+   color: var(--color-text-muted);
+   font-weight: 600;
+}
+
+.kpiTrend {
+   font-size: var(--font-size-xs);
+   color: var(--color-text-subtle);
+   font-weight: 500;
+   font-variant-numeric: tabular-nums;
+}
+
+.kpiTrendPositive {
+   color: var(--color-primary);
+}
+
+.kpiTrendNegative {
+   color: var(--color-danger);
+}
+
+.kpiValue {
+   font-size: var(--font-size-4xl);
+   font-weight: 700;
+   letter-spacing: var(--letter-tight);
+   color: var(--color-text);
+   line-height: 1.05;
+   font-variant-numeric: tabular-nums;
+}
+
+.kpiHint {
+   font-size: var(--font-size-xs);
+   color: var(--color-text-subtle);
+   line-height: 1.4;
+}
+
+/* ===== Chart card ===== */
+.chartCard {
+   margin-top: var(--space-5);
+   padding: var(--space-6);
+   background-color: var(--color-bg-elevated);
+   border: 1px solid var(--color-border);
+   border-radius: var(--radius-lg);
+}
+
+.chartHeader {
+   display: flex;
+   align-items: flex-start;
+   justify-content: space-between;
+   gap: var(--space-4);
+   margin-bottom: var(--space-4);
+}
+
+.cardTitle {
+   font-size: var(--font-size-lg);
+   font-weight: 600;
+   letter-spacing: var(--letter-tight);
+   margin: 0;
+   color: var(--color-text);
+}
+
+.cardSubtitle {
+   font-size: var(--font-size-sm);
+   color: var(--color-text-muted);
+   margin: var(--space-1) 0 0;
+   line-height: 1.5;
+}
+
+.chartLegend {
+   display: inline-flex;
+   align-items: center;
+   gap: var(--space-2);
+   font-size: var(--font-size-xs);
+   color: var(--color-text-subtle);
+   text-transform: uppercase;
+   letter-spacing: 0.08em;
+   font-weight: 600;
+}
+
+.legendDot {
+   width: 8px;
+   height: 8px;
+   border-radius: 50%;
+   background-color: var(--color-primary);
+}
+
+.chart {
+   width: 100%;
+   height: auto;
+   max-height: 220px;
+   display: block;
+}
+
+/* ===== Split: skills + continue ===== */
+.splitRow {
+   display: grid;
+   grid-template-columns: 1fr 1fr;
+   gap: var(--space-5);
+   margin-top: var(--space-5);
+}
+
+@media (max-width: 860px) {
+   .splitRow {
+      grid-template-columns: 1fr;
+   }
+}
+
+.splitCard {
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-4);
+   padding: var(--space-6);
+   background-color: var(--color-bg-elevated);
+   border: 1px solid var(--color-border);
+   border-radius: var(--radius-lg);
+}
+
+.cardHead {
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-1);
+}
+
+/* ===== Skills breakdown ===== */
+.breakdown {
+   list-style: none;
+   margin: 0;
+   padding: 0;
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-3);
+}
+
+.breakdownRow {
+   display: grid;
+   grid-template-columns: 6.5rem 1fr 2rem;
+   align-items: center;
+   gap: var(--space-3);
+}
+
+.breakdownLabel {
+   font-size: var(--font-size-sm);
+   color: var(--color-text-muted);
+   text-transform: lowercase;
+}
+
+.breakdownBar {
+   position: relative;
+   height: 6px;
+   background-color: var(--color-surface-strong);
+   border-radius: var(--radius-full);
+   overflow: hidden;
+}
+
+.breakdownFill {
+   display: block;
+   height: 100%;
+   border-radius: inherit;
+   background-color: var(--color-primary);
+   transition: width 420ms ease-out;
+}
+
+.barNovice {
+   background-color: var(--color-text-subtle);
+}
+
+.barBeginner {
+   background-color: var(--color-warning);
+}
+
+.barIntermediate {
+   background-color: var(--color-primary);
+}
+
+.barAdvanced {
+   background-color: var(--color-success);
+}
+
+.breakdownCount {
+   font-variant-numeric: tabular-nums;
+   font-weight: 600;
+   text-align: right;
+   color: var(--color-text);
+   font-size: var(--font-size-sm);
+}
+
+/* ===== Continue list ===== */
+.allDone {
+   color: var(--color-text-muted);
+   font-size: var(--font-size-sm);
+}
+
+.continueList {
+   list-style: none;
+   margin: 0;
+   padding: 0;
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-2);
+}
+
+.continueItem {
+   border: 1px solid transparent;
+   border-radius: var(--radius-md);
+   background-color: var(--color-surface-strong);
+   transition: border-color var(--transition-fast),
+      background-color var(--transition-fast);
+}
+
+.continueItem:hover {
+   border-color: var(--color-border-strong);
+   background-color: var(--color-surface);
+}
+
+.continueLink {
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-2);
+   padding: var(--space-4) var(--space-5);
+   color: inherit;
+   text-decoration: none;
+}
+
+.continueLink:hover {
+   text-decoration: none;
+}
+
+.continueHead {
+   display: flex;
+   align-items: baseline;
+   justify-content: space-between;
+   gap: var(--space-3);
+}
+
+.continueTopic {
+   font-size: var(--font-size-xs);
+   text-transform: uppercase;
+   letter-spacing: 0.08em;
+   color: var(--color-text-subtle);
+   font-weight: 600;
+}
+
+.continueMeta {
    font-size: var(--font-size-xs);
    color: var(--color-text-subtle);
 }
 
-.actions {
-   display: flex;
-   gap: var(--space-1);
-   /* fica acima do stretched link, então os cliques chegam aos botões */
-   position: relative;
-   z-index: 1;
-}
-
-.iconButton {
-   display: inline-flex;
-   align-items: center;
-   justify-content: center;
-   width: 2rem;
-   height: 2rem;
-   padding: 0;
-   border-radius: var(--radius-md);
-   border: 1px solid transparent;
-   background-color: transparent;
-   color: var(--color-text-muted);
-   cursor: pointer;
-   transition: background-color var(--transition-fast),
-      color var(--transition-fast),
-      border-color var(--transition-fast);
-}
-
-.iconButton svg {
-   width: 1rem;
-   height: 1rem;
-}
-
-.iconButton:hover:not(:disabled) {
-   background-color: var(--color-surface);
+.continueTitle {
+   font-size: var(--font-size-base);
    color: var(--color-text);
-   border-color: var(--color-border);
+   font-weight: 600;
+   letter-spacing: var(--letter-tight);
+   line-height: 1.3;
 }
 
-.iconButton:focus-visible {
-   outline: 2px solid var(--color-primary);
-   outline-offset: 2px;
+.cardFoot {
+   margin-top: auto;
 }
 
-.iconButton:disabled {
-   opacity: 0.5;
-   cursor: not-allowed;
-}
-
-.iconButtonDanger:hover:not(:disabled) {
-   background-color: var(--color-danger-soft);
-   color: var(--color-danger);
-   border-color: color-mix(in srgb, var(--color-danger) 50%, transparent);
-}
-
-.actionError {
-   margin-bottom: var(--space-4);
-   padding: var(--space-3) var(--space-4);
-   border-radius: var(--radius-md);
-   background-color: var(--color-danger-soft);
-   color: var(--color-danger);
-   border: 1px solid color-mix(in srgb, var(--color-danger) 35%, transparent);
+.allTrailsLink {
    font-size: var(--font-size-sm);
+   color: var(--color-text-muted);
+   text-decoration: none;
+   font-weight: 500;
+   transition: color var(--transition-fast);
+}
+
+.allTrailsLink:hover {
+   color: var(--color-primary);
+   text-decoration: none;
 }

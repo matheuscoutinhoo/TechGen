@@ -6,6 +6,7 @@ import { HomePage } from './pages/Home';
 import { LoginPage } from './pages/Login';
 import { RegisterPage } from './pages/Register';
 import { DashboardPage } from './pages/Dashboard';
+import { TrailsPage } from './pages/Trails';
 import { CreateTrailPage } from './pages/CreateTrail';
 import { TrailDetailPage } from './pages/TrailDetail';
 import { AccountPage } from './pages/Account';
@@ -60,6 +61,16 @@ export function AppRoutes() {
                <ProtectedRoute>
                   <PageContainer width="wide">
                      <DashboardPage />
+                  </PageContainer>
+               </ProtectedRoute>
+            }
+         />
+         <Route
+            path="/trails"
+            element={
+               <ProtectedRoute>
+                  <PageContainer width="wide">
+                     <TrailsPage />
                   </PageContainer>
                </ProtectedRoute>
             }

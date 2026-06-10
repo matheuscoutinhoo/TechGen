@@ -21,7 +21,10 @@ export function Header() {
             {isAuthenticated ? (
                <>
                   <nav className={styles.nav} aria-label="Navegação principal">
-                     <NavLink to="/dashboard" className={navClass}>
+                     <NavLink to="/dashboard" className={navClass} end>
+                        Visão geral
+                     </NavLink>
+                     <NavLink to="/trails" className={navClass}>
                         Trilhas
                      </NavLink>
                   </nav>

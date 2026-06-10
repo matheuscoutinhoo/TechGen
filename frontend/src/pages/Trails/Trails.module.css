@@ -1,0 +1,210 @@
+.toolbar {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   gap: var(--space-3);
+   margin-bottom: var(--space-6);
+   flex-wrap: wrap;
+   color: var(--color-text-muted);
+   font-size: var(--font-size-sm);
+}
+
+.list {
+   display: grid;
+   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+   grid-auto-rows: 1fr;
+   gap: var(--space-5);
+   list-style: none;
+   padding-inline-start: 0;
+   margin: 0;
+}
+
+.listItem {
+   list-style: none;
+   display: flex;
+}
+
+.trailCard {
+   position: relative;
+   width: 100%;
+   min-height: 240px;
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-3);
+   padding: var(--space-5) var(--space-6);
+   border-radius: var(--radius-lg);
+   border: 1px solid var(--color-border);
+   background-color: var(--color-bg-elevated);
+   transition: border-color var(--transition-fast),
+      background-color var(--transition-fast);
+}
+
+.trailCard:hover,
+.trailCard:focus-within {
+   border-color: var(--color-border-strong);
+   background-color: var(--color-surface);
+}
+
+.trailCard[aria-busy='true'] {
+   opacity: 0.6;
+   pointer-events: none;
+}
+
+.cardHeader {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   gap: var(--space-2);
+}
+
+.topic {
+   font-size: 0.7rem;
+   text-transform: uppercase;
+   letter-spacing: 0.14em;
+   color: var(--color-text-subtle);
+   font-weight: 500;
+}
+
+.completedBadge {
+   padding: 0.2rem 0.65rem;
+   border-radius: var(--radius-full);
+   background-color: var(--color-success-soft);
+   color: var(--color-success);
+   border: 1px solid color-mix(in srgb, var(--color-success) 35%, transparent);
+   font-size: 0.65rem;
+   text-transform: uppercase;
+   letter-spacing: 0.08em;
+   font-weight: 700;
+}
+
+.title {
+   font-size: var(--font-size-lg);
+   font-weight: 600;
+   line-height: 1.3;
+   letter-spacing: var(--letter-tight);
+   color: var(--color-text);
+   display: -webkit-box;
+   -webkit-line-clamp: 2;
+   -webkit-box-orient: vertical;
+   overflow: hidden;
+}
+
+.titleLink {
+   color: inherit;
+   text-decoration: none;
+}
+
+.titleLink:hover {
+   color: var(--color-text);
+}
+
+/* Stretched link: o anchor do título cobre o card inteiro, mas só os
+   elementos com z-index > 0 (botões) ficam clicáveis em cima dele. */
+.titleLink::after {
+   content: '';
+   position: absolute;
+   inset: 0;
+   border-radius: inherit;
+}
+
+.titleLink:focus-visible {
+   outline: none;
+}
+
+.titleLink:focus-visible::after {
+   outline: 2px solid var(--color-text);
+   outline-offset: 2px;
+}
+
+.summary {
+   color: var(--color-text-muted);
+   font-size: var(--font-size-sm);
+   line-height: var(--line-height-base);
+   display: -webkit-box;
+   -webkit-line-clamp: 3;
+   -webkit-box-orient: vertical;
+   overflow: hidden;
+}
+
+.progressSlot {
+   margin-top: var(--space-2);
+   /* Acima do stretched link pra não interceptar cliques mas não ser coberto. */
+   position: relative;
+   z-index: 0;
+}
+
+.cardFooter {
+   margin-top: auto;
+   padding-top: var(--space-2);
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   gap: var(--space-3);
+}
+
+.meta {
+   font-size: var(--font-size-xs);
+   color: var(--color-text-subtle);
+}
+
+.actions {
+   display: flex;
+   gap: var(--space-1);
+   /* fica acima do stretched link, então os cliques chegam aos botões */
+   position: relative;
+   z-index: 1;
+}
+
+.iconButton {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   width: 2rem;
+   height: 2rem;
+   padding: 0;
+   border-radius: var(--radius-md);
+   border: 1px solid transparent;
+   background-color: transparent;
+   color: var(--color-text-muted);
+   cursor: pointer;
+   transition: background-color var(--transition-fast),
+      color var(--transition-fast),
+      border-color var(--transition-fast);
+}
+
+.iconButton svg {
+   width: 1rem;
+   height: 1rem;
+}
+
+.iconButton:hover:not(:disabled) {
+   background-color: var(--color-surface);
+   color: var(--color-text);
+   border-color: var(--color-border);
+}
+
+.iconButton:focus-visible {
+   outline: 2px solid var(--color-primary);
+   outline-offset: 2px;
+}
+
+.iconButton:disabled {
+   opacity: 0.5;
+   cursor: not-allowed;
+}
+
+.iconButtonDanger:hover:not(:disabled) {
+   background-color: var(--color-danger-soft);
+   color: var(--color-danger);
+   border-color: color-mix(in srgb, var(--color-danger) 50%, transparent);
+}
+
+.actionError {
+   margin-bottom: var(--space-4);
+   padding: var(--space-3) var(--space-4);
+   border-radius: var(--radius-md);
+   background-color: var(--color-danger-soft);
+   color: var(--color-danger);
+   border: 1px solid color-mix(in srgb, var(--color-danger) 35%, transparent);
+   font-size: var(--font-size-sm);
+}

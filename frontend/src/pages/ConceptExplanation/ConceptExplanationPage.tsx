@@ -91,7 +91,7 @@ export function ConceptExplanationPage() {
    return (
       <article className={styles.page}>
          <nav className={styles.crumbs} aria-label="Navegação">
-            <Link to="/dashboard">Trilhas</Link>
+            <Link to="/trails">Trilhas</Link>
             <span className={styles.crumbsSep}>/</span>
             <Link to={`/trails/${trailId}`}>Trilha #{trailId}</Link>
             <span className={styles.crumbsSep}>/</span>

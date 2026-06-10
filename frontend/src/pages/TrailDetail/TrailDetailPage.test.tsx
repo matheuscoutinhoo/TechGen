@@ -55,7 +55,7 @@ function renderDetail() {
       <MemoryRouter initialEntries={['/trails/7']}>
          <Routes>
             <Route path="/trails/:id" element={<TrailDetailPage />} />
-            <Route path="/dashboard" element={<div>dashboard ok</div>} />
+            <Route path="/trails" element={<div>trails ok</div>} />
          </Routes>
       </MemoryRouter>,
    );
@@ -114,7 +114,7 @@ describe('<TrailDetailPage />', () => {
       const user = userEvent.setup();
       await user.click(screen.getByRole('button', { name: 'Excluir' }));
 
-      await waitFor(() => expect(screen.getByText('dashboard ok')).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('trails ok')).toBeInTheDocument());
       expect(deleted).toBe(true);
    });
 
