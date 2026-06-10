@@ -78,12 +78,18 @@ a:hover {
 }
 
 a:focus-visible,
-button:focus-visible,
+button:focus-visible {
+   outline: 2px solid var(--color-primary);
+   outline-offset: 2px;
+}
+
+/* Inputs/textareas/selects expressam o foco com **borda primary interna**
+   pintada no próprio componente — evita o outline grosso externo que
+   destoa do visual minimalista. */
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-   outline: 2px solid var(--color-primary);
-   outline-offset: 2px;
+   outline: none;
 }
 
 code,

@@ -12,18 +12,28 @@
 .textarea {
    padding: 0.6rem 0.85rem;
    border-radius: var(--radius-md);
-   border: 1px solid var(--color-border-strong);
-   background-color: var(--color-bg);
+   /* Borda transparente mantém o box do mesmo tamanho quando o foco a pinta. */
+   border: 1px solid transparent;
+   background-color: var(--color-bg-elevated);
    font-size: var(--font-size-base);
    color: var(--color-text);
    resize: vertical;
    min-height: 6rem;
    font-family: inherit;
    line-height: var(--line-height-base);
+   transition: border-color var(--transition-fast),
+      background-color var(--transition-fast);
 }
 
-.textarea:hover:not(:disabled) {
-   border-color: var(--color-text-muted);
+.textarea:hover:not(:disabled):not(:focus) {
+   background-color: var(--color-surface);
+}
+
+.textarea:focus,
+.textarea:focus-visible {
+   outline: none;
+   border-color: var(--color-primary);
+   background-color: var(--color-surface);
 }
 
 .error .textarea {
