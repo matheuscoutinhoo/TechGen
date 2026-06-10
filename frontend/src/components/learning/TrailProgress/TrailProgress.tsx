@@ -17,9 +17,8 @@ export function TrailProgress({
    const safeCompleted = Math.min(Math.max(completed, 0), safeTotal);
    const percent = safeTotal === 0 ? 0 : Math.round((safeCompleted / safeTotal) * 100);
    const isDone = safeTotal > 0 && safeCompleted === safeTotal;
-   const wrapperClass = `${styles.wrapper} ${
-      variant === 'compact' ? styles.compact : styles.detailed
-   }`;
+   const wrapperClass = `${styles.wrapper} ${variant === 'compact' ? styles.compact : styles.detailed
+      }`;
    const fillClass = isDone ? `${styles.fill} ${styles.fillDone}` : styles.fill;
    const valueClass = isDone
       ? `${styles.headerValue} ${styles.headerValueDone}`

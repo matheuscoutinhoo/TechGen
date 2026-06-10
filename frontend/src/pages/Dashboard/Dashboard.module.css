@@ -140,7 +140,6 @@
    align-items: center;
    justify-content: space-between;
    gap: var(--space-3);
-   border-top: 1px solid var(--color-border);
 }
 
 .meta {
