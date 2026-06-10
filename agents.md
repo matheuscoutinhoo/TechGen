@@ -255,69 +255,64 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 ## 13. Identidade Visual
 
-Identidade **moderna, elegante e técnica** — inspirada em produtos premium
-como Orbital, Linear, Vercel. Ancorada no **teal (`#009688`)** como cor de
-marca em ambos os temas. Visual ganha profundidade via gradientes
-radiais, sombras em camadas, glass nos cards e raios generosos.
+Identidade **dark-only, minimalista, alto contraste** — inspirada no
+[Next.js Showcase](https://nextjs.org/showcase) / Vercel. Preto puro como
+fundo, escala de cinzas frios, texto branco. Teal mantido como acento
+discreto da marca, não como cor principal.
 
-### Tema claro (default)
+### Princípios
 
-| Token | Valor | Uso |
-|---|---|---|
-| `--color-bg` | `#f4f6f7` | Fundo principal |
-| `--color-bg-elevated` | `#ffffff` | Headers, chips, avatars |
-| `--color-surface` | `#ffffff` | Cards e blocos |
-| `--color-text` | `#0a2024` | Texto principal |
-| `--color-text-muted` | `#4a6168` | Texto secundário |
-| `--color-text-subtle` | `#8a9aa0` | Texto auxiliar / metadata |
-| `--color-border` | `#e1e7e9` | Bordas sutís |
-| `--color-primary` | `#009688` | Ação primária (teal) |
-| `--color-primary-strong` | `#00796b` | Hover/foco |
-| `--color-primary-soft` | `#d8f3ee` | Background de chip/badge primário |
-| `--color-accent` | `#14d4b4` | Destaques pontuais |
+- Não existe tema claro. `<html data-theme="dark">` é hardcoded no
+  servidor; `color-scheme: dark` no CSS evita flash de cor neutra do browser.
+- Hierarquia visual via **contraste e bordas hairline**, não via cor.
+- Acento primário em ações CTA é **branco invertido** (Vercel-style), não
+  cor de marca. O teal aparece em badges/links/foco quando precisamos
+  sinalizar identidade.
 
-### Tema escuro (Orbital-inspired)
-
-Fundo teal profundo (`#061513`), texto claro suave, cards translucidos
-sobre gradient radial. Ativado via `[data-theme="dark"]` no `<html>`.
-Mantém hierarquia semântica dos tokens — nenhum componente precisa de
-override manual de cor.
+### Tokens principais
 
 | Token | Valor | Uso |
 |---|---|---|
-| `--color-bg` | `#061513` | Fundo principal (teal profundo) |
-| `--color-bg-elevated` | `#0c2722` | Headers, cards primeiro plano |
-| `--color-surface` | `rgba(20,50,47,0.55)` | Cards translucidos (glass) |
-| `--color-text` | `#e6f5f1` | Texto principal |
-| `--color-text-muted` | `#9bb5b0` | Texto secundário |
-| `--color-primary` | `#1ee0bd` | Teal saturado pro contraste no escuro |
-| `--color-primary-soft` | `rgba(30,224,189,0.16)` | Chips e backgrounds primary |
-| `--color-accent` | `#2cf0d4` | Destaques |
+| `--color-bg` | `#000000` | Fundo principal |
+| `--color-bg-elevated` | `#0a0a0a` | Cards, header sólido |
+| `--color-surface` | `#0e0e0e` | Hover de cards e nav |
+| `--color-surface-strong` | `#161616` | Skeletons, chips neutros |
+| `--color-text` | `#ededed` | Texto principal |
+| `--color-text-muted` | `#a1a1aa` | Texto secundário |
+| `--color-text-subtle` | `#6e6e76` | Metadata, eyebrows |
+| `--color-border` | `#1f1f23` | Bordas hairline |
+| `--color-border-strong` | `#2a2a2f` | Hover, foco |
+| `--color-primary` | `#14d1be` | Acento de marca (teal discreto) |
+| `--color-primary-soft` | `rgba(20,209,190,0.12)` | Badges de marca |
+| `--color-accent` | `#ededed` | Acento neutro = branco |
 
 ### Tokens estruturais
 
 | Token | Valor | Uso |
 |---|---|---|
-| `--gradient-primary` | gradient 135° teal→accent | Botões primary, brand mark |
-| `--gradient-hero` | gradient 135° dark teal | Hero/seções de destaque |
-| `--gradient-card` | gradient vertical sutil | Cards |
-| `--gradient-glow` | radial-gradient atrás do body | Profundidade global |
-| `--shadow-primary-glow` | sombra colorida em teal | Botões primary, avatars destacados |
-| `--shadow-md`/`-lg`/`-xl` | sombras escalonadas | Cards, modais, dropdowns |
+| `--gradient-primary` | `#fafafa → #ededed` | Botões primary (sólido branco) |
+| `--gradient-hero` | preto vertical sutil | Heroes |
+| `--gradient-card` | preto vertical sutil | Cards de destaque |
+| `--gradient-glow` | radial branco a 6% no topo | Profundidade global |
+| `--shadow-sm`/`-md`/`-lg`/`-xl` | sombras pretas profundas | Modais, dropdowns |
+| `--shadow-primary-glow` | glow teal **muito sutil** | Reservado a destaques pontuais |
+| `--radius-md` | `8px` | Botões ghost/secondary, inputs |
+| `--radius-lg` | `12px` | Cards |
 | `--radius-full` | `999px` | Pílulas, avatars, botões primários |
-| `--radius-xl` | `22px` | Cards |
-| `--font-sans` | `'Inter', system-ui` | UI |
-| `--font-mono` | `'JetBrains Mono', ui-monospace` | Código |
+| `--font-sans` | `'Inter', 'Geist', system-ui` | UI |
+| `--font-mono` | `'JetBrains Mono', 'Geist Mono', ui-monospace` | Código |
 
 ### Regras
 
 - **Nunca** literais de cor em CSS de componente/página (exceto blocos
-  de código).
-- Sombras na escala `xs → sm → md → lg → xl` mais
-  `--shadow-primary-glow` pra destaque teal.
-- Cards interativos usam `transform: translateY(-3..-4px)` + glow no hover.
-- Glassmorphism (`backdrop-filter: blur`) reservado pra header, cards de
-  conta/trilha e modais — economiza performance em listas longas.
+  de código com sintaxe destacada).
+- Hover de cards e botões muda **borda + background**, nunca posição.
+  Evite `transform: translateY` no hover — é ruído nesse visual.
+- Sombras pretas; glow colorido (`--shadow-primary-glow`) reservado a
+  callouts especiais.
+- Glassmorphism limitado ao header (blur sobre preto translucido).
+- Tipografia ousada nos títulos via tamanho + `--letter-tighter`, não via
+  peso 800.
 
 ---
 

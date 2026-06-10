@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { Header } from './Header';
 import { AuthProvider } from '../../../contexts/AuthContext';
-import { ThemeProvider } from '../../../contexts/ThemeContext';
 import { tokenStorage } from '../../../utils/storage';
 
 const ORIGINAL_FETCH = globalThis.fetch;
@@ -19,11 +18,9 @@ function jsonResponse(body: unknown, status = 200): Response {
 function renderHeader() {
    return render(
       <MemoryRouter>
-         <ThemeProvider>
-            <AuthProvider>
-               <Header />
-            </AuthProvider>
-         </ThemeProvider>
+         <AuthProvider>
+            <Header />
+         </AuthProvider>
       </MemoryRouter>,
    );
 }
@@ -86,13 +83,5 @@ describe('<Header />', () => {
       await waitFor(() => screen.getByText('Ada Lovelace'));
       const link = screen.getByRole('link', { name: 'Conta de Ada Lovelace' });
       expect(link).toHaveAttribute('href', '/account');
-   });
-
-   it('inclui o toggle de tema', async () => {
-      renderHeader();
-      const toggle = await screen.findByRole('button', {
-         name: /tema (claro|escuro)/i,
-      });
-      expect(toggle).toBeInTheDocument();
    });
 });
