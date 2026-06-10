@@ -1,0 +1,82 @@
+.wrapper {
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-2);
+   width: 100%;
+}
+
+.header {
+   display: flex;
+   justify-content: space-between;
+   align-items: baseline;
+   gap: var(--space-3);
+   font-size: var(--font-size-xs);
+   text-transform: uppercase;
+   letter-spacing: 0.08em;
+   color: var(--color-text-muted);
+   font-weight: 600;
+}
+
+.headerLabel {
+   display: inline-flex;
+   align-items: baseline;
+   gap: var(--space-2);
+}
+
+.headerValue {
+   color: var(--color-text);
+   font-variant-numeric: tabular-nums;
+}
+
+.headerValueDone {
+   color: var(--color-primary);
+}
+
+.track {
+   position: relative;
+   width: 100%;
+   height: 6px;
+   background-color: var(--color-surface-strong);
+   border-radius: var(--radius-full);
+   overflow: hidden;
+}
+
+.fill {
+   position: absolute;
+   inset: 0;
+   width: var(--progress, 0%);
+   background-color: var(--color-primary);
+   border-radius: inherit;
+   transition: width 420ms ease-out, background-color var(--transition-base);
+}
+
+.fillDone {
+   background: linear-gradient(90deg,
+         var(--color-primary) 0%,
+         color-mix(in srgb, var(--color-primary) 70%, white) 100%);
+   box-shadow: 0 0 12px color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+
+/* Variante compact — usada nos cards do dashboard.
+   Mais discreta: trilho fino, header sem caixa-alta. */
+.compact .track {
+   height: 4px;
+}
+
+.compact .header {
+   text-transform: none;
+   letter-spacing: 0;
+   font-size: var(--font-size-xs);
+   font-weight: 500;
+   color: var(--color-text-subtle);
+}
+
+.compact .headerValue {
+   font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .fill {
+      transition: none;
+   }
+}

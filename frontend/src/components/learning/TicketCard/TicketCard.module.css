@@ -189,8 +189,6 @@
 .effort {
    font-size: var(--font-size-xs);
    color: var(--color-text-subtle);
-   padding-top: var(--space-3);
-   border-top: 1px dashed var(--color-border);
 }
 
 /* Tag "Concluído" no header do ticket — pequena, sutil, ao lado do título. */
@@ -216,12 +214,14 @@
    height: 0.8rem;
 }
 
-/* Linha de ação para marcar/desmarcar conclusão. */
+/* Linha de ação para marcar/desmarcar conclusão. Compartilhada com o
+   "Esforço estimado" para um único rodapé alinhado, sem réguas extra. */
 .completeRow {
    display: flex;
-   justify-content: flex-end;
-   padding-top: var(--space-3);
-   border-top: 1px solid var(--color-border);
+   align-items: center;
+   justify-content: space-between;
+   gap: var(--space-4);
+   margin-top: var(--space-2);
 }
 
 .completeButton {

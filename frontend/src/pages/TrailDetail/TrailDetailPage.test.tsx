@@ -89,7 +89,8 @@ describe('<TrailDetailPage />', () => {
       );
       expect(screen.getByText('TG-1')).toBeInTheDocument();
       expect(screen.getByText('TG-2')).toBeInTheDocument();
-      expect(screen.getByText('0 de 2 tickets concluídos')).toBeInTheDocument();
+      expect(screen.getByText('0/2 · 0%')).toBeInTheDocument();
+      expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
    });
 
    it('botão Excluir confirma e navega para o dashboard', async () => {
@@ -192,14 +193,14 @@ describe('<TrailDetailPage />', () => {
 
       renderDetail();
       await waitFor(() =>
-         expect(screen.getByText('0 de 2 tickets concluídos')).toBeInTheDocument(),
+         expect(screen.getByText('0/2 · 0%')).toBeInTheDocument(),
       );
 
       const user = userEvent.setup();
       const completeButtons = screen.getAllByRole('button', { name: /marcar como conclu/i });
       await user.click(completeButtons[0]);
       await waitFor(() =>
-         expect(screen.getByText('1 de 2 tickets concluídos')).toBeInTheDocument(),
+         expect(screen.getByText('1/2 · 50%')).toBeInTheDocument(),
       );
 
       // O segundo ticket começa colapsado: precisa expandir antes de marcar.
@@ -214,7 +215,7 @@ describe('<TrailDetailPage />', () => {
       });
       await user.click(remainingButton);
       await waitFor(() =>
-         expect(screen.getByText('2 de 2 tickets concluídos')).toBeInTheDocument(),
+         expect(screen.getByText('2/2 · 100%')).toBeInTheDocument(),
       );
       expect(screen.getByText(/Trilha conclu/i)).toBeInTheDocument();
    });

@@ -10,6 +10,7 @@ import { ErrorState } from '../../components/ui/ErrorState';
 import { learningTrailsApi } from '../../api/learningTrails';
 import { ApiError } from '../../api/client';
 import { formatDate } from '../../utils/format';
+import { TrailProgress } from '../../components/learning/TrailProgress';
 import styles from './Dashboard.module.css';
 
 function TrashIcon() {
@@ -138,6 +139,15 @@ export function DashboardPage() {
                               </Link>
                            </h2>
                            <p className={styles.summary}>{trail.summary}</p>
+                           {trail.ticket_count > 0 && (
+                              <div className={styles.progressSlot}>
+                                 <TrailProgress
+                                    completed={trail.completed_ticket_count}
+                                    total={trail.ticket_count}
+                                    variant="compact"
+                                 />
+                              </div>
+                           )}
                            <div className={styles.cardFooter}>
                               <span className={styles.meta}>
                                  Atualizada em {formatDate(trail.updated_at)}

@@ -126,6 +126,13 @@
    overflow: hidden;
 }
 
+.progressSlot {
+   margin-top: var(--space-2);
+   /* Acima do stretched link pra não interceptar cliques mas não ser coberto. */
+   position: relative;
+   z-index: 0;
+}
+
 .cardFooter {
    margin-top: auto;
    padding-top: var(--space-2);

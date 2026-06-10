@@ -27,7 +27,7 @@ def list_trails(
     service: LearningTrailService = Depends(get_learning_trail_service),
 ) -> list[LearningTrailListItem]:
     trails = service.list_for_user(current_user)
-    return [LearningTrailListItem.model_validate(trail) for trail in trails]
+    return [service.to_list_item(trail) for trail in trails]
 
 
 @router.post(

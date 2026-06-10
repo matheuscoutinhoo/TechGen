@@ -144,28 +144,33 @@ export function TicketCard({
                   </section>
                )}
 
-               {ticket.estimated_effort && (
-                  <p className={styles.effort}>Esforço estimado: {ticket.estimated_effort}</p>
-               )}
-
-               {onToggleComplete && (
+               {(ticket.estimated_effort || onToggleComplete) && (
                   <div className={styles.completeRow}>
-                     <button
-                        type="button"
-                        className={
-                           isCompleted
-                              ? `${styles.completeButton} ${styles.completeButtonDone}`
-                              : styles.completeButton
-                        }
-                        onClick={() => onToggleComplete(ticket.code, !isCompleted)}
-                        disabled={isBusy}
-                        aria-pressed={isCompleted}
-                     >
-                        <span className={styles.completeButtonIcon} aria-hidden="true">
-                           <CheckIcon />
+                     {ticket.estimated_effort ? (
+                        <span className={styles.effort}>
+                           Esforço estimado: {ticket.estimated_effort}
                         </span>
-                        {isCompleted ? 'Concluído — desmarcar' : 'Marcar como concluído'}
-                     </button>
+                     ) : (
+                        <span aria-hidden="true" />
+                     )}
+                     {onToggleComplete && (
+                        <button
+                           type="button"
+                           className={
+                              isCompleted
+                                 ? `${styles.completeButton} ${styles.completeButtonDone}`
+                                 : styles.completeButton
+                           }
+                           onClick={() => onToggleComplete(ticket.code, !isCompleted)}
+                           disabled={isBusy}
+                           aria-pressed={isCompleted}
+                        >
+                           <span className={styles.completeButtonIcon} aria-hidden="true">
+                              <CheckIcon />
+                           </span>
+                           {isCompleted ? 'Concluído — desmarcar' : 'Marcar como concluído'}
+                        </button>
+                     )}
                   </div>
                )}
             </div>

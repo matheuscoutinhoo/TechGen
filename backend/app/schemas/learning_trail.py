@@ -121,7 +121,12 @@ class LearningTrailRead(BaseModel):
 
 
 class LearningTrailListItem(BaseModel):
-    """Versão enxuta para listagem (não carrega tickets completos)."""
+    """Versão enxuta para listagem.
+
+    Não carrega o ``content`` inteiro — mas expõe contagem de tickets total e
+    concluídos pra que a UI consiga mostrar progresso resumido sem precisar
+    de uma segunda chamada por trilha.
+    """
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -129,6 +134,8 @@ class LearningTrailListItem(BaseModel):
     title: str
     summary: str
     completed_at: datetime | None = None
+    ticket_count: int = 0
+    completed_ticket_count: int = 0
     created_at: datetime
     updated_at: datetime
 

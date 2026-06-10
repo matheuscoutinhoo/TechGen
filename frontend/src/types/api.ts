@@ -81,6 +81,8 @@ export interface LearningTrailSummary {
    title: string;
    summary: string;
    completed_at: string | null;
+   ticket_count: number;
+   completed_ticket_count: number;
    created_at: string;
    updated_at: string;
 }

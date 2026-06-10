@@ -18,6 +18,7 @@ from app.repositories.concept_explanation_repository import (
 from app.repositories.learning_trail_repository import LearningTrailRepository
 from app.schemas.learning_trail import (
     ConceptExplanation,
+    LearningTrailListItem,
     LearningTrailRead,
     TopicAnswer,
     TopicNextQuestionResponse,
@@ -308,6 +309,33 @@ class LearningTrailService:
             summary=trail.summary,
             content=content,
             completed_at=trail.completed_at,
+            created_at=trail.created_at,
+            updated_at=trail.updated_at,
+        )
+
+    @staticmethod
+    def to_list_item(trail: LearningTrail) -> LearningTrailListItem:
+        """Converte para o schema enxuto já com contagem de tickets.
+
+        Parseia o ``content_json`` só para extrair as contagens — vale a
+        ida ao JSON pra não forar a UI a um round-trip por trilha.
+        """
+        try:
+            content = TrailContent.model_validate_json(trail.content_json)
+            tickets = content.tickets
+            total = len(tickets)
+            done = sum(1 for t in tickets if t.completed_at is not None)
+        except ValidationError:
+            total = 0
+            done = 0
+        return LearningTrailListItem(
+            id=trail.id,
+            topic=trail.topic,
+            title=trail.title,
+            summary=trail.summary,
+            completed_at=trail.completed_at,
+            ticket_count=total,
+            completed_ticket_count=done,
             created_at=trail.created_at,
             updated_at=trail.updated_at,
         )

@@ -1,4 +1,5 @@
 import type { LearningTrail } from '../../../types/api';
+import { TrailProgress } from '../TrailProgress';
 import styles from './TrailHeader.module.css';
 
 export interface TrailHeaderProps {
@@ -7,11 +8,19 @@ export interface TrailHeaderProps {
 
 export function TrailHeader({ trail }: TrailHeaderProps) {
    const { content } = trail;
+   const total = content.tickets.length;
+   const completed = content.tickets.filter((t) => Boolean(t.completed_at)).length;
    return (
       <header className={styles.wrapper}>
          <span className={styles.topic}>Tema: {trail.topic}</span>
          <h1 className={styles.title}>{trail.title}</h1>
          <p className={styles.summary}>{trail.summary}</p>
+
+         {total > 0 && (
+            <div className={styles.progressSlot}>
+               <TrailProgress completed={completed} total={total} variant="detailed" />
+            </div>
+         )}
 
          {content.final_deliverable && (
             <aside

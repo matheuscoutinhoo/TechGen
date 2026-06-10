@@ -126,7 +126,6 @@ export function TrailDetailPage() {
    }
 
    const tickets = trail.content.tickets;
-   const completedCount = tickets.filter((t) => Boolean(t.completed_at)).length;
    const isCompleted = Boolean(trail.completed_at);
    const conceptHref = (ticketCode: string) => (concept: string) =>
       `/trails/${trail.id}/tickets/${encodeURIComponent(
@@ -157,9 +156,7 @@ export function TrailDetailPage() {
          />
 
          <div className={styles.toolbar} style={{ marginTop: 'var(--space-6)' }}>
-            <span className={styles.sectionTitle}>
-               {completedCount} de {tickets.length} tickets concluídos
-            </span>
+            <span className={styles.sectionTitle}>Tickets</span>
             <div className={styles.actions}>
                <Button
                   variant="secondary"

@@ -26,6 +26,10 @@
    line-height: var(--line-height-loose);
 }
 
+.progressSlot {
+   margin-top: var(--space-3);
+}
+
 .deliverable {
    margin-top: var(--space-3);
    padding: var(--space-4) var(--space-5);
