@@ -43,6 +43,8 @@ export interface Ticket {
    tasks: TicketTask[];
    acceptance_criteria: string[];
    estimated_effort?: string | null;
+   /** Timestamp (ISO) de quando o aluno marcou o ticket como concluído. */
+   completed_at?: string | null;
 }
 
 export interface TrailContent {
@@ -107,9 +109,13 @@ export interface ConceptExplanation {
    glossary: GlossaryEntry[];
 }
 
-export interface CompleteTrailResponse {
+export interface CompleteTicketResponse {
    trail: LearningTrail;
+   /** True na transição 0% → 100% (auto-conclusão). */
+   trail_completed: boolean;
+   /** Skills adicionadas no perfil (só preenchido se trail_completed). */
    added_concepts: string[];
+   /** Skills elevadas (só preenchido se trail_completed). */
    upgraded_concepts: string[];
 }
 

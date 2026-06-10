@@ -11,14 +11,53 @@ export interface TicketCardProps {
     * pairing e consulta paralela sem perder a trilha original.
     */
    conceptHref?(concept: string): string;
+   /**
+    * Quando fornecido, o ticket exibe um botão de concluir/desconcluir.
+    * Recebe o code do ticket e o novo estado desejado. O componente assume
+    * que o pai vai chamar a API e atualizar o trail.
+    */
+   onToggleComplete?(code: string, next: boolean): void;
+   /** Trava o botão enquanto a request está em voo. */
+   isBusy?: boolean;
 }
 
-export function TicketCard({ ticket, defaultOpen = false, conceptHref }: TicketCardProps) {
+function CheckIcon() {
+   return (
+      <svg
+         viewBox="0 0 24 24"
+         fill="none"
+         stroke="currentColor"
+         strokeWidth="2.5"
+         strokeLinecap="round"
+         strokeLinejoin="round"
+         aria-hidden="true"
+         focusable="false"
+      >
+         <polyline points="20 6 9 17 4 12" />
+      </svg>
+   );
+}
+
+export function TicketCard({
+   ticket,
+   defaultOpen = false,
+   conceptHref,
+   onToggleComplete,
+   isBusy = false,
+}: TicketCardProps) {
    const [isOpen, setOpen] = useState(defaultOpen);
    const bodyId = `ticket-${ticket.code}-body`;
+   const isCompleted = Boolean(ticket.completed_at);
+
+   const articleClass = [
+      styles.ticket,
+      isCompleted ? styles.ticketCompleted : '',
+   ]
+      .filter(Boolean)
+      .join(' ');
 
    return (
-      <article className={styles.ticket}>
+      <article className={articleClass} data-completed={isCompleted || undefined}>
          <button
             type="button"
             className={styles.summary}
@@ -30,6 +69,12 @@ export function TicketCard({ ticket, defaultOpen = false, conceptHref }: TicketC
                <div>
                   <span className={styles.code}>{ticket.code}</span>
                   <span className={styles.title}>{ticket.title}</span>
+                  {isCompleted && (
+                     <span className={styles.completedTag} aria-label="Concluído">
+                        <CheckIcon />
+                        Concluído
+                     </span>
+                  )}
                </div>
                <p className={styles.objective}>{ticket.objective}</p>
             </div>
@@ -101,6 +146,27 @@ export function TicketCard({ ticket, defaultOpen = false, conceptHref }: TicketC
 
                {ticket.estimated_effort && (
                   <p className={styles.effort}>Esforço estimado: {ticket.estimated_effort}</p>
+               )}
+
+               {onToggleComplete && (
+                  <div className={styles.completeRow}>
+                     <button
+                        type="button"
+                        className={
+                           isCompleted
+                              ? `${styles.completeButton} ${styles.completeButtonDone}`
+                              : styles.completeButton
+                        }
+                        onClick={() => onToggleComplete(ticket.code, !isCompleted)}
+                        disabled={isBusy}
+                        aria-pressed={isCompleted}
+                     >
+                        <span className={styles.completeButtonIcon} aria-hidden="true">
+                           <CheckIcon />
+                        </span>
+                        {isCompleted ? 'Concluído — desmarcar' : 'Marcar como concluído'}
+                     </button>
+                  </div>
                )}
             </div>
          )}

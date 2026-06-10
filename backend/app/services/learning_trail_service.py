@@ -7,7 +7,7 @@ from typing import Sequence
 
 from pydantic import TypeAdapter, ValidationError
 
-from app.exceptions import ConflictError, ForbiddenError, NotFoundError
+from app.exceptions import ForbiddenError, NotFoundError
 from app.exceptions import ValidationError as DomainValidationError
 from app.models.learning_trail import LearningTrail
 from app.models.skill import PROFICIENCY_LABELS
@@ -147,31 +147,87 @@ class LearningTrailService:
         self.repository.delete(trail)
 
     # ------------------------------------------------------------------ #
-    # Conclusão + progressão de skills
+    # Conclusão de tickets + auto-conclusão da trilha
     # ------------------------------------------------------------------ #
-    def complete_for_user(
-        self, user: User, trail_id: int
-    ) -> tuple[LearningTrail, list[str], list[str]]:
+    def set_ticket_completion(
+        self,
+        user: User,
+        trail_id: int,
+        ticket_code: str,
+        *,
+        completed: bool,
+    ) -> tuple[LearningTrail, bool, list[str], list[str]]:
+        """Marca/desmarca um ticket como concluído. Idempotente.
+
+        Quando ``completed=True`` e todos os tickets da trilha passam a estar
+        concluídos, a trilha auto-conclui: ``completed_at`` é setado e as
+        ``skill_categories`` viram skills no perfil (apply_concepts no nível
+        beginner).
+
+        Quando ``completed=False`` e a trilha estava concluída, "desconclui"
+        a trilha (``completed_at`` volta para ``None``). As skills aplicadas
+        permanecem no perfil — desfazer aprendizado seria confuso e o aluno
+        pode ajustar/remover manualmente em /account se quiser.
+
+        Returns: ``(trail, trail_completed_now, added_concepts, upgraded_concepts)``.
+        ``trail_completed_now`` só é ``True`` na transição 0% → 100%; nas
+        outras chamadas vem ``False`` e as listas vêm vazias.
+        """
         trail = self.get_for_user(user, trail_id)
-        if trail.completed_at is not None:
-            raise ConflictError("Trilha já marcada como concluída")
         content = self._parse_content(trail)
-        # Usa as categorias genéricas geradas no create/regenerate. Se a
-        # trilha foi criada antes do campo existir, categoriza agora.
-        categories = list(content.skill_categories)
-        if not categories:
-            raw_concepts: list[str] = []
-            for ticket in content.tickets:
-                raw_concepts.extend(ticket.concepts)
-            categories = self.ai_provider.categorize_concepts(raw_concepts)
-            content = content.model_copy(update={"skill_categories": categories})
-            trail.content_json = content.model_dump_json()
-        added, upgraded = self.skill_service.apply_concepts(
-            user, categories, target_level=2
+
+        # Acha o ticket pelo code.
+        target_index = next(
+            (i for i, t in enumerate(content.tickets) if t.code == ticket_code),
+            None,
         )
-        trail.completed_at = datetime.now(timezone.utc)
+        if target_index is None:
+            raise NotFoundError(f"Ticket '{ticket_code}' não existe nesta trilha")
+
+        target = content.tickets[target_index]
+        already_marked = target.completed_at is not None
+        if completed and already_marked:
+            # Idempotente: já estava marcado, nada a fazer.
+            return trail, False, [], []
+        if not completed and not already_marked:
+            return trail, False, [], []
+
+        new_timestamp = datetime.now(timezone.utc) if completed else None
+        updated_tickets = [
+            t.model_copy(update={"completed_at": new_timestamp}) if i == target_index else t
+            for i, t in enumerate(content.tickets)
+        ]
+        content = content.model_copy(update={"tickets": updated_tickets})
+
+        # Detecta auto-conclusão da trilha (transição 0% → 100%).
+        all_done = all(t.completed_at is not None for t in updated_tickets)
+        trail_completed_now = False
+        added: list[str] = []
+        upgraded: list[str] = []
+
+        if completed and all_done and trail.completed_at is None:
+            # Aplica as categorias genéricas (backfill se necessário) +
+            # marca a trilha como concluída.
+            categories = list(content.skill_categories)
+            if not categories:
+                raw_concepts: list[str] = []
+                for t in updated_tickets:
+                    raw_concepts.extend(t.concepts)
+                categories = self.ai_provider.categorize_concepts(raw_concepts)
+                content = content.model_copy(update={"skill_categories": categories})
+            added, upgraded = self.skill_service.apply_concepts(
+                user, categories, target_level=2
+            )
+            trail.completed_at = new_timestamp
+            trail_completed_now = True
+        elif not completed and trail.completed_at is not None:
+            # "Desconclui" a trilha: ao desmarcar um ticket, a trilha não
+            # pode mais ser considerada finalizada. Skills aplicadas ficam.
+            trail.completed_at = None
+
+        trail.content_json = content.model_dump_json()
         self.repository.update(trail)
-        return trail, added, upgraded
+        return trail, trail_completed_now, added, upgraded
 
     # ------------------------------------------------------------------ #
     # Helpers privados

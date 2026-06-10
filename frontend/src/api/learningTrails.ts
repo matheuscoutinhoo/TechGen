@@ -1,6 +1,6 @@
 import { apiClient } from './client';
 import type {
-   CompleteTrailResponse,
+   CompleteTicketResponse,
    ConceptExplanation,
    LearningTrail,
    LearningTrailSummary,
@@ -21,10 +21,6 @@ export const learningTrailsApi = {
          topic: payload.topic,
          assessment: payload.assessment ?? [],
       }),
-   /**
-    * Pede à IA a PRÓXIMA pergunta do diagnóstico, com o histórico atual.
-    * A IA decide quando encerrar (response.done === true).
-    */
    nextAssessmentQuestion: (topic: string, previousAnswers: TopicAnswer[]) =>
       apiClient.post<TopicNextQuestionResponse>(
          '/learning-trails/assessment/next',
@@ -33,8 +29,20 @@ export const learningTrailsApi = {
    regenerate: (id: number) =>
       apiClient.post<LearningTrail>(`/learning-trails/${id}/regenerate`),
    delete: (id: number) => apiClient.del<void>(`/learning-trails/${id}`),
-   complete: (id: number) =>
-      apiClient.post<CompleteTrailResponse>(`/learning-trails/${id}/complete`),
+   /**
+    * Marca um ticket como concluído. Quando o último ticket é marcado, a
+    * trilha auto-conclui e `trail_completed=true` + `added_concepts`/
+    * `upgraded_concepts` vêm preenchidos.
+    */
+   completeTicket: (id: number, ticketCode: string) =>
+      apiClient.post<CompleteTicketResponse>(
+         `/learning-trails/${id}/tickets/${encodeURIComponent(ticketCode)}/complete`,
+      ),
+   /** Desfaz a conclusão de um ticket; "desconclui" a trilha se for o caso. */
+   uncompleteTicket: (id: number, ticketCode: string) =>
+      apiClient.del<CompleteTicketResponse>(
+         `/learning-trails/${id}/tickets/${encodeURIComponent(ticketCode)}/complete`,
+      ),
    explainConcept: (
       id: number,
       ticketCode: string,

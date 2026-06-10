@@ -28,6 +28,106 @@
    margin-bottom: var(--space-3);
 }
 
+/* Lista com linha de fluxo vertical à esquerda + nodes por ticket.
+   Cada item desenha um pedaço da linha (::before) e um node (::after).
+   A linha "preenche" conforme o ticket fica concluído. */
+.flow {
+   list-style: none;
+   margin: var(--space-7) 0 0;
+   padding: 0;
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-4);
+   position: relative;
+}
+
+.flowItem {
+   position: relative;
+   padding-left: calc(var(--space-7) + 4px);
+   display: flex;
+}
+
+.flowItem > * {
+   flex: 1;
+   min-width: 0;
+}
+
+/* Linha vertical entre os nodes. Desenhada do meio do node atual até o
+   bottom do item, e ::after desenha do top até o meio do node. Juntas,
+   formam uma linha contínua passando por todos os nodes. */
+.flowItem::before {
+   content: '';
+   position: absolute;
+   left: calc(var(--space-4) - 1px);
+   top: 0;
+   bottom: 0;
+   width: 2px;
+   background-color: var(--color-border);
+   border-radius: 1px;
+}
+
+/* Primeiro e último item não desenham linha além do node. */
+.flowItem:first-child::before {
+   top: 1.25rem; /* desce até o node */
+}
+
+.flowItem:last-child::before {
+   bottom: calc(100% - 1.25rem);
+}
+
+/* Caso item único, esconde a linha completamente. */
+.flowItem:only-child::before {
+   display: none;
+}
+
+/* Node — círculo no início de cada item. */
+.flowNode {
+   position: absolute;
+   left: 0;
+   top: 0.5rem;
+   width: calc(var(--space-7) - var(--space-2));
+   height: calc(var(--space-7) - var(--space-2));
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   border-radius: var(--radius-full);
+   background-color: var(--color-bg);
+   border: 2px solid var(--color-border-strong);
+   color: var(--color-text-subtle);
+   font-size: 0.75rem;
+   font-weight: 600;
+   z-index: 1;
+   transition: background-color var(--transition-fast),
+      border-color var(--transition-fast),
+      color var(--transition-fast);
+}
+
+.flowNode svg {
+   width: 0.95rem;
+   height: 0.95rem;
+}
+
+/* Quando o ticket está concluído, node fica primary e a linha QUE SAI dele
+   (descendente — desenhada no item SEGUINTE) precisa ficar primary também.
+   Usamos um modificador no flowItem que reflete o status do ticket anterior. */
+.flowItemDone .flowNode {
+   background-color: var(--color-primary);
+   border-color: var(--color-primary);
+   color: var(--color-text-inverse);
+}
+
+/* A linha do próprio item fica primary quando o anterior está concluído.
+   Como CSS puro não enxerga "irmão anterior", o componente coloca a classe
+   .flowConnectorActive em itens cujo predecessor está completo. */
+.flowConnectorActive::before {
+   background-color: var(--color-primary);
+}
+
+/* Último ticket auto-conclui a trilha — node ganha glow extra como marco. */
+.flowItemFinal .flowNode {
+   box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
 .completedBadge {
    display: flex;
    align-items: center;

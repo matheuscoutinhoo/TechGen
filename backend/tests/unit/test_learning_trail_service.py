@@ -1,7 +1,7 @@
 """Testes unitários do LearningTrailService."""
 import pytest
 
-from app.exceptions import ConflictError, ForbiddenError, NotFoundError
+from app.exceptions import ForbiddenError, NotFoundError
 from app.repositories.concept_explanation_repository import (
     ConceptExplanationRepository,
 )
@@ -217,6 +217,19 @@ class TestDelete:
 
 @pytest.mark.unit
 class TestComplete:
+    """Conclusão acontece via tickets — a trilha auto-conclui em 100%."""
+
+    @staticmethod
+    def _complete_all_tickets(service, user, trail):
+        """Marca todos os tickets como concluídos e devolve a última resposta."""
+        content = service.to_read_model(trail).content
+        last = None
+        for ticket in content.tickets:
+            last = service.set_ticket_completion(
+                user, trail.id, ticket.code, completed=True
+            )
+        return last
+
     def test_complete_marks_trail_and_adds_concepts_as_skills(
         self, service, user_a, skill_service
     ):
@@ -224,11 +237,13 @@ class TestComplete:
         # antes: usuário não tem skills
         assert list(skill_service.list_for_user(user_a)) == []
 
-        completed, added, upgraded = service.complete_for_user(user_a, trail.id)
+        completed, trail_completed_now, added, _ = self._complete_all_tickets(
+            service, user_a, trail
+        )
 
+        assert trail_completed_now is True
         assert completed.completed_at is not None
         assert added  # novos conceitos viraram skills
-        # cada skill criada existe no repositório
         skills = {s.name for s in skill_service.list_for_user(user_a)}
         assert all(name in skills for name in added)
 
@@ -241,7 +256,7 @@ class TestComplete:
         skill_service.add_for_user(user_a, name="testes unitários", proficiency=1)
 
         trail = service.create_for_user(user_a, topic="Ruby")
-        _, _, upgraded = service.complete_for_user(user_a, trail.id)
+        _, _, _, upgraded = self._complete_all_tickets(service, user_a, trail)
 
         assert "testes unitários" in upgraded
         skill = next(
@@ -251,11 +266,57 @@ class TestComplete:
         )
         assert skill.proficiency == 2
 
-    def test_complete_twice_raises_conflict(self, service, user_a):
-        trail = service.create_for_user(user_a, topic="Crystal")
-        service.complete_for_user(user_a, trail.id)
-        with pytest.raises(ConflictError):
-            service.complete_for_user(user_a, trail.id)
+    def test_completing_individual_ticket_does_not_complete_trail(
+        self, service, user_a, skill_service
+    ):
+        trail = service.create_for_user(user_a, topic="Go")
+        content = service.to_read_model(trail).content
+        first_code = content.tickets[0].code
+
+        result_trail, trail_completed_now, added, upgraded = (
+            service.set_ticket_completion(user_a, trail.id, first_code, completed=True)
+        )
+
+        assert trail_completed_now is False
+        assert result_trail.completed_at is None
+        assert added == [] and upgraded == []
+        # E nenhuma skill foi aplicada.
+        assert list(skill_service.list_for_user(user_a)) == []
+
+    def test_completing_ticket_twice_is_idempotent(self, service, user_a):
+        trail = service.create_for_user(user_a, topic="Rust")
+        content = service.to_read_model(trail).content
+        code = content.tickets[0].code
+
+        service.set_ticket_completion(user_a, trail.id, code, completed=True)
+        _, trail_completed_now, added, upgraded = service.set_ticket_completion(
+            user_a, trail.id, code, completed=True
+        )
+
+        # Segunda chamada não dispara auto-conclusão nem duplica skills.
+        assert trail_completed_now is False
+        assert added == [] and upgraded == []
+
+    def test_uncompleting_ticket_reopens_trail(self, service, user_a):
+        trail = service.create_for_user(user_a, topic="Zig")
+        self._complete_all_tickets(service, user_a, trail)
+        # Trilha está concluída.
+        completed_at = service.get_for_user(user_a, trail.id).completed_at
+        assert completed_at is not None
+
+        # Desmarcar qualquer ticket reabre a trilha.
+        first_code = service.to_read_model(trail).content.tickets[0].code
+        reopened, _, _, _ = service.set_ticket_completion(
+            user_a, trail.id, first_code, completed=False
+        )
+        assert reopened.completed_at is None
+
+    def test_complete_unknown_ticket_raises(self, service, user_a):
+        trail = service.create_for_user(user_a, topic="Nim")
+        with pytest.raises(NotFoundError):
+            service.set_ticket_completion(
+                user_a, trail.id, "TG-999", completed=True
+            )
 
     def test_create_populates_skill_categories_and_complete_uses_them(
         self, service, user_a, skill_service
@@ -266,24 +327,19 @@ class TestComplete:
 
         # 1. create já populou as categorias genéricas
         assert content.skill_categories, "skill_categories não foi populado"
-        # categorias genéricas têm volume muito menor que concepts crus
         raw_concepts: list[str] = []
         for ticket in content.tickets:
             raw_concepts.extend(ticket.concepts)
         assert len(content.skill_categories) <= len(raw_concepts)
-        # e estão em lowercase
         assert all(c == c.lower() for c in content.skill_categories)
 
-        # 2. complete aplica as categorias (não os concepts brutos)
-        _, added, _ = service.complete_for_user(user_a, trail.id)
+        # 2. completar TODOS os tickets aplica as categorias
+        _, _, added, _ = self._complete_all_tickets(service, user_a, trail)
         skills = {s.name for s in skill_service.list_for_user(user_a)}
         assert set(added) == set(content.skill_categories)
         assert all(cat in skills for cat in content.skill_categories)
-        # E NÃO entrou nada com nome de concept específico (TDD, JWT, etc.)
         assert "tdd" not in skills
         assert "jwt" not in skills
-        # Nem rótulos super amplos como "testes" / "autenticação" sozinhos —
-        # esses são vagos demais para ter valor curricular.
         assert "testes" not in skills
         assert "autenticação" not in skills
 

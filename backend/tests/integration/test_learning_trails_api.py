@@ -273,8 +273,8 @@ class TestDeleteTrail:
 
 
 @pytest.mark.integration
-class TestCompleteTrail:
-    def test_complete_marks_trail_and_promotes_concepts_to_skills(
+class TestCompleteTicket:
+    def test_complete_ticket_marks_only_the_ticket_until_all_done(
         self, client, auth_headers
     ):
         created = client.post(
@@ -282,35 +282,112 @@ class TestCompleteTrail:
             headers=auth_headers,
             json={"topic": "Elixir"},
         ).json()
+        first_code = created["content"]["tickets"][0]["code"]
+
         response = client.post(
-            f"/api/v1/learning-trails/{created['id']}/complete",
+            f"/api/v1/learning-trails/{created['id']}/tickets/{first_code}/complete",
             headers=auth_headers,
         )
         assert response.status_code == 200
         body = response.json()
-        assert body["trail"]["completed_at"] is not None
-        assert body["added_concepts"]
+        # Trilha NÃO conclui ainda — só um ticket marcado.
+        assert body["trail_completed"] is False
+        assert body["added_concepts"] == []
+        assert body["trail"]["completed_at"] is None
+        # E o ticket veio com completed_at preenchido.
+        tickets = body["trail"]["content"]["tickets"]
+        assert tickets[0]["completed_at"] is not None
+        assert tickets[1]["completed_at"] is None
 
-        skills = client.get("/api/v1/skills", headers=auth_headers).json()
-        skill_names = {s["name"] for s in skills}
-        for concept in body["added_concepts"]:
-            assert concept in skill_names
-
-    def test_second_complete_returns_conflict(self, client, auth_headers):
+    def test_completing_all_tickets_auto_completes_trail(
+        self, client, auth_headers
+    ):
         created = client.post(
             "/api/v1/learning-trails",
             headers=auth_headers,
             json={"topic": "Crystal"},
         ).json()
-        client.post(
-            f"/api/v1/learning-trails/{created['id']}/complete",
+        tickets = created["content"]["tickets"]
+        last_response = None
+        for ticket in tickets:
+            last_response = client.post(
+                f"/api/v1/learning-trails/{created['id']}/tickets/{ticket['code']}/complete",
+                headers=auth_headers,
+            )
+
+        assert last_response is not None
+        body = last_response.json()
+        # Última chamada disparou a auto-conclusão.
+        assert body["trail_completed"] is True
+        assert body["added_concepts"]
+        assert body["trail"]["completed_at"] is not None
+        # Todas as skills do skill_categories entraram no perfil.
+        skills = client.get("/api/v1/skills", headers=auth_headers).json()
+        skill_names = {s["name"] for s in skills}
+        for category in body["added_concepts"]:
+            assert category in skill_names
+
+    def test_repeating_complete_on_same_ticket_is_idempotent(
+        self, client, auth_headers
+    ):
+        created = client.post(
+            "/api/v1/learning-trails",
+            headers=auth_headers,
+            json={"topic": "Haskell"},
+        ).json()
+        code = created["content"]["tickets"][0]["code"]
+        url = f"/api/v1/learning-trails/{created['id']}/tickets/{code}/complete"
+
+        first = client.post(url, headers=auth_headers)
+        second = client.post(url, headers=auth_headers)
+        assert first.status_code == 200
+        assert second.status_code == 200
+        # Segunda chamada não duplica skills (apply_concepts só é chamado na
+        # transição 0%→100%, não a cada ticket).
+        assert second.json()["added_concepts"] == []
+
+    def test_uncomplete_ticket_undoes_trail_completion(
+        self, client, auth_headers
+    ):
+        created = client.post(
+            "/api/v1/learning-trails",
+            headers=auth_headers,
+            json={"topic": "Nim"},
+        ).json()
+        tickets = created["content"]["tickets"]
+        for ticket in tickets:
+            client.post(
+                f"/api/v1/learning-trails/{created['id']}/tickets/{ticket['code']}/complete",
+                headers=auth_headers,
+            )
+        # Trilha já está concluída.
+        snapshot = client.get(
+            f"/api/v1/learning-trails/{created['id']}", headers=auth_headers
+        ).json()
+        assert snapshot["completed_at"] is not None
+
+        # Desmarcar um ticket "desconclui" a trilha.
+        last_code = tickets[-1]["code"]
+        response = client.delete(
+            f"/api/v1/learning-trails/{created['id']}/tickets/{last_code}/complete",
             headers=auth_headers,
         )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["trail"]["completed_at"] is None
+        assert body["trail"]["content"]["tickets"][-1]["completed_at"] is None
+
+    def test_complete_unknown_ticket_returns_404(self, client, auth_headers):
+        created = client.post(
+            "/api/v1/learning-trails",
+            headers=auth_headers,
+            json={"topic": "Zig"},
+        ).json()
         response = client.post(
-            f"/api/v1/learning-trails/{created['id']}/complete",
+            f"/api/v1/learning-trails/{created['id']}/tickets/TG-999/complete",
             headers=auth_headers,
         )
-        assert response.status_code == 409
+        assert response.status_code == 404
 
 
 @pytest.mark.integration

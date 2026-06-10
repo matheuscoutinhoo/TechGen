@@ -11,10 +11,27 @@ import { TrailHeader } from '../../components/learning/TrailHeader';
 import { TicketCard } from '../../components/learning/TicketCard';
 import { EarnedSkillsCard } from '../../components/learning/EarnedSkillsCard';
 import { formatDate } from '../../utils/format';
-import type { CompleteTrailResponse } from '../../types/api';
+import type { CompleteTicketResponse } from '../../types/api';
 import styles from './TrailDetail.module.css';
 
-type Action = 'regenerate' | 'delete' | 'complete';
+type Action = 'regenerate' | 'delete';
+
+function FlowCheck() {
+   return (
+      <svg
+         viewBox="0 0 24 24"
+         fill="none"
+         stroke="currentColor"
+         strokeWidth="3"
+         strokeLinecap="round"
+         strokeLinejoin="round"
+         aria-hidden="true"
+         focusable="false"
+      >
+         <polyline points="20 6 9 17 4 12" />
+      </svg>
+   );
+}
 
 export function TrailDetailPage() {
    const { id } = useParams<{ id: string }>();
@@ -24,7 +41,8 @@ export function TrailDetailPage() {
    const { skills, refetch: refetchSkills } = useSkills();
    const [actionInFlight, setActionInFlight] = useState<Action | null>(null);
    const [actionError, setActionError] = useState<string | null>(null);
-   const [completion, setCompletion] = useState<CompleteTrailResponse | null>(null);
+   const [completion, setCompletion] = useState<CompleteTicketResponse | null>(null);
+   const [busyTicketCode, setBusyTicketCode] = useState<string | null>(null);
 
    const handleRegenerate = async () => {
       if (!trailId) return;
@@ -64,22 +82,30 @@ export function TrailDetailPage() {
       }
    };
 
-   const handleComplete = async () => {
+   const handleToggleTicket = async (ticketCode: string, next: boolean) => {
       if (!trailId) return;
-      setActionInFlight('complete');
       setActionError(null);
+      setBusyTicketCode(ticketCode);
       try {
-         const response = await learningTrailsApi.complete(trailId);
+         const response = next
+            ? await learningTrailsApi.completeTicket(trailId, ticketCode)
+            : await learningTrailsApi.uncompleteTicket(trailId, ticketCode);
          setTrail(response.trail);
-         setCompletion(response);
-         // refresh do perfil de skills para refletir o que entrou agora
-         void refetchSkills();
+         if (response.trail_completed) {
+            setCompletion(response);
+            void refetchSkills();
+         } else if (!next) {
+            // Reabriu a trilha — limpa feedback de auto-conclusão anterior.
+            setCompletion(null);
+         }
       } catch (err) {
          setActionError(
-            err instanceof ApiError ? err.message : 'Não foi possível concluir agora.',
+            err instanceof ApiError
+               ? err.message
+               : 'Não foi possível atualizar o ticket agora.',
          );
       } finally {
-         setActionInFlight(null);
+         setBusyTicketCode(null);
       }
    };
 
@@ -99,6 +125,8 @@ export function TrailDetailPage() {
       );
    }
 
+   const tickets = trail.content.tickets;
+   const completedCount = tickets.filter((t) => Boolean(t.completed_at)).length;
    const isCompleted = Boolean(trail.completed_at);
    const conceptHref = (ticketCode: string) => (concept: string) =>
       `/trails/${trail.id}/tickets/${encodeURIComponent(
@@ -110,7 +138,7 @@ export function TrailDetailPage() {
          <TrailHeader trail={trail} />
 
          {isCompleted && (
-            <div className={styles.completedBadge}>
+            <div className={styles.completedBadge} role="status">
                <strong>Trilha concluída</strong>
                <span>
                   em {formatDate(trail.completed_at as string)} — os conceitos foram
@@ -121,7 +149,7 @@ export function TrailDetailPage() {
 
          <EarnedSkillsCard
             categories={trail.content.skill_categories ?? []}
-            tickets={trail.content.tickets}
+            tickets={tickets}
             currentSkills={skills}
             completed={isCompleted && completion !== null}
             addedConcepts={completion?.added_concepts ?? []}
@@ -130,18 +158,9 @@ export function TrailDetailPage() {
 
          <div className={styles.toolbar} style={{ marginTop: 'var(--space-6)' }}>
             <span className={styles.sectionTitle}>
-               {trail.content.tickets.length} tickets
+               {completedCount} de {tickets.length} tickets concluídos
             </span>
             <div className={styles.actions}>
-               {!isCompleted && (
-                  <Button
-                     variant="primary"
-                     onClick={() => void handleComplete()}
-                     isLoading={actionInFlight === 'complete'}
-                  >
-                     Concluir trilha
-                  </Button>
-               )}
                <Button
                   variant="secondary"
                   onClick={() => void handleRegenerate()}
@@ -161,16 +180,38 @@ export function TrailDetailPage() {
 
          {actionError && <ErrorState description={actionError} />}
 
-         <section className={styles.tickets} aria-label="Lista de tickets da trilha">
-            {trail.content.tickets.map((ticket, index) => (
-               <TicketCard
-                  key={ticket.code}
-                  ticket={ticket}
-                  defaultOpen={index === 0}
-                  conceptHref={conceptHref(ticket.code)}
-               />
-            ))}
-         </section>
+         <ol className={styles.flow} aria-label="Fluxo de tickets da trilha">
+            {tickets.map((ticket, index) => {
+               const ticketDone = Boolean(ticket.completed_at);
+               const previousDone =
+                  index > 0 && Boolean(tickets[index - 1].completed_at);
+               const isFinal = index === tickets.length - 1;
+               const itemClass = [
+                  styles.flowItem,
+                  ticketDone ? styles.flowItemDone : '',
+                  previousDone ? styles.flowConnectorActive : '',
+                  isFinal ? styles.flowItemFinal : '',
+               ]
+                  .filter(Boolean)
+                  .join(' ');
+               return (
+                  <li key={ticket.code} className={itemClass}>
+                     <span className={styles.flowNode} aria-hidden="true">
+                        {ticketDone ? <FlowCheck /> : index + 1}
+                     </span>
+                     <TicketCard
+                        ticket={ticket}
+                        defaultOpen={index === 0}
+                        conceptHref={conceptHref(ticket.code)}
+                        onToggleComplete={(code, next) =>
+                           void handleToggleTicket(code, next)
+                        }
+                        isBusy={busyTicketCode === ticket.code}
+                     />
+                  </li>
+               );
+            })}
+         </ol>
       </>
    );
 }

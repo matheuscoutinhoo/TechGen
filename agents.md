@@ -214,30 +214,39 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 - Layout principal: container central, max-width ~960px para conteúdo de leitura, ~1200px para listagens.
 - Espaçamento via tokens (`--space-1` a `--space-12`).
 - Tipografia escalonada (`--font-size-sm`, `-base`, `-lg`, `-xl`, `-2xl`, `-3xl`, `-4xl`, `-5xl`).
-- Pesos: `h1` em 800 com `--letter-tighter`; outros títulos em 700.
-- Botões: 4 variantes — `primary` (gradiente teal + glow),
-  `secondary` (glass), `ghost`, `danger`. Forma pílula
-  (`--radius-full`). Sempre com `:focus-visible` perceptível e
-  microinteracão `translateY(1px)` no `:active`.
+- Pesos: `h1` em 700–800 com `--letter-tighter` (impacto via tamanho + tracking, não via peso); demais títulos em 600–700.
+- Botões: 4 variantes — `primary` (sólido branco invertido, Vercel-style),
+  `secondary` (borda hairline sobre preto), `ghost` (transparente), `danger`
+  (vermelho discreto). Raio `--radius-md` (8px) para retangulares e
+  `--radius-full` para pílulas pontuais (avatars, badges). Sempre com
+  `:focus-visible` perceptível. **Sem `translateY` no `:active` ou `:hover`**
+  — o hover muda borda/background, não posição.
 - Inputs sempre com `label` associado.
-- Cards: borda 1px translucida, `--radius-xl` (22px), fundo
-  `--gradient-card`, sombra `--shadow-sm` em repouso e
-  `--shadow-md + --shadow-primary-glow` no hover. Backdrop blur no dark
-  pra glassmorphism real.
+- Cards: borda 1px hairline (`--color-border`), `--radius-lg` (12px), fundo
+  `--color-bg-elevated`/`--gradient-card`, sombra `--shadow-sm` em repouso.
+  Hover muda **borda e background** para a variante `-strong`, **nunca** a
+  posição vertical. Glow colorido (`--shadow-primary-glow`) reservado a
+  destaques pontuais.
 - Animações discretas (≤ 320ms) via `--transition-fast`,
   `--transition-base`, `--transition-slow`.
-- **Hardcoded de cores (`#xxxxxx`, `rgba(...)` literais) é proibido em
-  CSS de página/componente** — use sempre variáveis pra suportar tema
-  claro/escuro. Exceção limitada: blocos de código com sintaxe
-  destacada (cores fixas independentes de tema).
-- **Tema claro e escuro** por padrão. Toggle (ícone sol/lua) no header
-  alterna entre eles; preferência persiste em
-  `localStorage('techgen.theme')`. Componente `ThemeToggle` + hook
-  `useTheme` em `contexts/ThemeContext.tsx`. O `index.html` aplica o tema
-  antes do React montar pra evitar flash.
+- **Hardcoded de cores (`#xxxxxx`, `rgba(...)` literais) é proibido em CSS
+  de página/componente** — use sempre tokens. Exceção limitada: blocos de
+  código com sintaxe destacada (cores fixas independentes de tema).
+- **Tema único — dark.** `<html data-theme="dark">` é hardcoded em
+  `index.html` e `color-scheme: dark` evita flash. **Não há tema claro,
+  toggle, `ThemeContext` nem `useTheme`.** Tentativas de reintroduzir tema
+  claro exigem RFC dedicado.
 - Avatar do usuário aparece no header como **âncora pra `/account`** em
   todas as páginas autenticadas. Foto opcional, armazenada no backend
   como data URL base64 (limite ~450 KB).
+- **Listas com fluxo de execução** (ex.: tickets de uma trilha) usam
+  **ligadura visual** entre os cards: cada item da lista (`<li>`) tem um
+  node circular numerado (28px, `--radius-full`) conectado por uma linha
+  vertical hairline (2px) que percorre a coluna esquerda. Itens já
+  executados pintam o node em `--color-primary` (com `CheckIcon` no lugar
+  do número) e elevam o connector que chega até eles para `--color-primary`.
+  O último item ganha glow sutil para sinalizar "release final". Isso
+  comunica progressão linear sem precisar de timeline elaborada.
 
 ---
 
@@ -711,11 +720,26 @@ A experiência de gerar uma trilha deve transmitir intenção pedagógica clara:
    - Lista ordenada de tickets, cada um expansível.
    - Cada ticket mostra: título, objetivo, **nota de personalização**, conceitos abordados (clicáveis), tarefas e critérios de aceite.
 5. **Conceitos aprofundáveis**: cada chip de conceito abre uma página dedicada com definição, padrões, armadilhas, dicas, exemplo de código e leituras complementares — também gerados por IA e calibrados pelo nível do aluno.
-6. **Conclusão + progressão**: ao concluir uma trilha, os conceitos cobertos viram skills (ou são elevados) automaticamente, e a UI mostra o que foi adicionado/elevado.
-7. **Tom**: didático e exigente. Sem infantilizar. Sem encher de emoji.
-8. **Edição**: usuário pode editar título, descrição e tickets manualmente.
-9. **Regeneração**: pode pedir nova versão; isso zera `completed_at` para reforçar que é uma nova jornada. As respostas do diagnóstico **são reaproveitadas** — o aluno não responde tudo de novo.
-10. **Leitura confortável**: largura controlada, contraste alto, espaçamento generoso.
+6. **Conclusão é por ticket**: cada `TicketCard` expõe um botão "Marcar
+   como concluído" no rodapé do corpo expandido. Concluir um ticket pinta
+   o node correspondente na ligadura visual (§11), risca o título do
+   ticket e exibe uma pílula "Concluído" ao lado do código. A trilha
+   **auto-conclui** assim que o último ticket é marcado — não existe
+   botão "Concluir trilha". Desmarcar um ticket de uma trilha já
+   concluída reabre a trilha (`completed_at = null`), mas **mantém** as
+   skills aplicadas no perfil (desfazer aprendizado seria confuso).
+7. **Progressão automática**: na transição 0→100% de tickets concluídos,
+   as `skill_categories` da trilha (§37) viram skills no perfil ou
+   elevam o nível existente, e a UI mostra o que foi adicionado/elevado
+   via `EarnedSkillsCard`.
+8. **Tom**: didático e exigente. Sem infantilizar. Sem encher de emoji.
+9. **Não-editável**: o conteúdo gerado da trilha não é editável pelo
+   usuário — para mudar, regenera ou cria uma nova.
+10. **Regeneração**: pode pedir nova versão; isso zera `completed_at` e
+    o estado dos tickets, e invalida o cache de explicações. As
+    respostas do diagnóstico **são reaproveitadas** — o aluno não
+    responde tudo de novo.
+11. **Leitura confortável**: largura controlada, contraste alto, espaçamento generoso.
 
 ---
 
@@ -755,18 +779,29 @@ conhecer (e em que profundidade) e alimentam a personalização da IA.
   persistidas em `TrailContent.skill_categories`. Isso evita poluir o
   perfil do aluno com dezenas de termos pontuais ("JWT", "OAuth2",
   "bcrypt"…) — eles colapsam em "autenticação".
-- Endpoint `POST /api/v1/learning-trails/{id}/complete`:
-  - marca `completed_at` na trilha;
-  - itera sobre `content.skill_categories` (não sobre `ticket.concepts`)
-    e garante uma skill no perfil para cada categoria;
-  - se a skill não existia, cria em nível `beginner` (2);
-  - se existia em nível abaixo de `beginner`, eleva para `beginner`;
-  - trilhas geradas antes do campo existir caem num backfill on-the-fly
-    (chama o categorizer naquele momento e persiste o resultado).
-- Resposta inclui `added_concepts` e `upgraded_concepts` (nomes de
-  categorias, lowercase) para feedback ao usuário.
-- Concluir a mesma trilha duas vezes retorna `409 CONFLICT` — a regeneração
-  zera `completed_at` se o aluno quiser refazer o ciclo.
+- A conclusão da trilha é **um efeito colateral da conclusão dos
+  tickets**, não uma ação separada do usuário. Não existe endpoint
+  `POST /{id}/complete`.
+- Endpoints reais: `POST /api/v1/learning-trails/{id}/tickets/{code}/complete`
+  e `DELETE /api/v1/learning-trails/{id}/tickets/{code}/complete`.
+  Ambos retornam `CompleteTicketResponse({ trail, trail_completed,
+  added_concepts, upgraded_concepts })`.
+- Comportamento do service `set_ticket_completion`:
+  - marca/desmarca `completed_at` no ticket dentro de `content`;
+  - operação **idempotente** — chamar duas vezes seguidas é no-op
+    (`trail_completed=false`, listas vazias);
+  - quando a transição leva a trilha de <100% para 100% de tickets
+    concluídos, automaticamente marca `trail.completed_at`, itera sobre
+    `content.skill_categories` e aplica skills no perfil. O response
+    devolve `trail_completed=true` para a UI mostrar o feedback;
+  - se `skill_categories` está vazio (trilha antiga), executa backfill
+    on-the-fly com o categorizer e persiste o resultado antes de aplicar;
+  - skill nova entra como `beginner` (2); skill em `novice` (1) sobe
+    para `beginner`; nada acima é tocado;
+  - **desmarcar um ticket de uma trilha 100% concluída** zera
+    `trail.completed_at` (reabre a trilha) mas **não desfaz** as skills
+    aplicadas no perfil — retroceder aprendizado seria confuso e
+    convidaria a abuso.
 
 ### UX no frontend
 - `SkillEditor` é o único componente que entende skills no frontend.

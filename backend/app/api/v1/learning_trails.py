@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Response, status
 from app.api.deps import get_current_user, get_learning_trail_service
 from app.models.user import User
 from app.schemas.learning_trail import (
-    CompleteTrailResponse,
+    CompleteTicketResponse,
     ConceptExplanation,
     LearningTrailCreate,
     LearningTrailListItem,
@@ -109,20 +109,46 @@ def delete_trail(
 
 
 @router.post(
-    "/{trail_id}/complete",
-    response_model=CompleteTrailResponse,
-    summary="Marca a trilha como concluída e atualiza as skills do usuário",
+    "/{trail_id}/tickets/{ticket_code}/complete",
+    response_model=CompleteTicketResponse,
+    summary="Marca um ticket como concluído (auto-conclui a trilha em 100%)",
 )
-def complete_trail(
+def complete_ticket(
     trail_id: int,
+    ticket_code: str,
     current_user: User = Depends(get_current_user),
     service: LearningTrailService = Depends(get_learning_trail_service),
-) -> CompleteTrailResponse:
-    trail, added, upgraded = service.complete_for_user(current_user, trail_id)
-    return CompleteTrailResponse(
+) -> CompleteTicketResponse:
+    trail, trail_completed, added, upgraded = service.set_ticket_completion(
+        current_user, trail_id, ticket_code, completed=True
+    )
+    return CompleteTicketResponse(
         trail=service.to_read_model(trail),
+        trail_completed=trail_completed,
         added_concepts=added,
         upgraded_concepts=upgraded,
+    )
+
+
+@router.delete(
+    "/{trail_id}/tickets/{ticket_code}/complete",
+    response_model=CompleteTicketResponse,
+    summary="Desfaz a conclusão de um ticket (desconclui a trilha se necessário)",
+)
+def uncomplete_ticket(
+    trail_id: int,
+    ticket_code: str,
+    current_user: User = Depends(get_current_user),
+    service: LearningTrailService = Depends(get_learning_trail_service),
+) -> CompleteTicketResponse:
+    trail, _, _, _ = service.set_ticket_completion(
+        current_user, trail_id, ticket_code, completed=False
+    )
+    return CompleteTicketResponse(
+        trail=service.to_read_model(trail),
+        trail_completed=False,
+        added_concepts=[],
+        upgraded_concepts=[],
     )
 
 

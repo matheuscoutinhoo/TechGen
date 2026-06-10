@@ -89,7 +89,7 @@ describe('<TrailDetailPage />', () => {
       );
       expect(screen.getByText('TG-1')).toBeInTheDocument();
       expect(screen.getByText('TG-2')).toBeInTheDocument();
-      expect(screen.getByText('2 tickets')).toBeInTheDocument();
+      expect(screen.getByText('0 de 2 tickets concluídos')).toBeInTheDocument();
    });
 
    it('botão Excluir confirma e navega para o dashboard', async () => {
@@ -134,5 +134,88 @@ describe('<TrailDetailPage />', () => {
 
       renderDetail();
       await waitFor(() => expect(screen.getByText('Trilha não encontrada')).toBeInTheDocument());
+   });
+
+   it('concluir todos os tickets auto-conclui a trilha e exibe feedback', async () => {
+      const trailOneDone = {
+         ...TRAIL,
+         content: {
+            ...TRAIL.content,
+            tickets: [
+               { ...TRAIL.content.tickets[0], completed_at: '2025-01-03T00:00:00Z' },
+               { ...TRAIL.content.tickets[1] },
+            ],
+         },
+      };
+      const trailAllDone = {
+         ...TRAIL,
+         completed_at: '2025-01-04T00:00:00Z',
+         content: {
+            ...TRAIL.content,
+            tickets: [
+               { ...TRAIL.content.tickets[0], completed_at: '2025-01-03T00:00:00Z' },
+               { ...TRAIL.content.tickets[1], completed_at: '2025-01-04T00:00:00Z' },
+            ],
+         },
+      };
+
+      let postCalls = 0;
+      globalThis.fetch = vi
+         .fn()
+         .mockImplementation((url: string, init?: RequestInit) => {
+            if (typeof url === 'string' && url.includes('/skills')) {
+               return Promise.resolve(jsonResponse([]));
+            }
+            if (init?.method === 'POST' && url.includes('/tickets/')) {
+               postCalls += 1;
+               if (postCalls === 1) {
+                  return Promise.resolve(
+                     jsonResponse({
+                        trail: trailOneDone,
+                        trail_completed: false,
+                        added_concepts: [],
+                        upgraded_concepts: [],
+                     }),
+                  );
+               }
+               return Promise.resolve(
+                  jsonResponse({
+                     trail: trailAllDone,
+                     trail_completed: true,
+                     added_concepts: ['testes'],
+                     upgraded_concepts: [],
+                  }),
+               );
+            }
+            return Promise.resolve(jsonResponse(TRAIL));
+         }) as unknown as typeof fetch;
+
+      renderDetail();
+      await waitFor(() =>
+         expect(screen.getByText('0 de 2 tickets concluídos')).toBeInTheDocument(),
+      );
+
+      const user = userEvent.setup();
+      const completeButtons = screen.getAllByRole('button', { name: /marcar como conclu/i });
+      await user.click(completeButtons[0]);
+      await waitFor(() =>
+         expect(screen.getByText('1 de 2 tickets concluídos')).toBeInTheDocument(),
+      );
+
+      // O segundo ticket começa colapsado: precisa expandir antes de marcar.
+      const expanders = screen.getAllByRole('button', { expanded: false });
+      const tg2Expander = expanders.find((btn) => btn.textContent?.includes('TG-2'));
+      if (tg2Expander) {
+         await user.click(tg2Expander);
+      }
+
+      const remainingButton = await screen.findByRole('button', {
+         name: /marcar como conclu/i,
+      });
+      await user.click(remainingButton);
+      await waitFor(() =>
+         expect(screen.getByText('2 de 2 tickets concluídos')).toBeInTheDocument(),
+      );
+      expect(screen.getByText(/Trilha conclu/i)).toBeInTheDocument();
    });
 });

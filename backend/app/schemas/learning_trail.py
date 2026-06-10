@@ -69,6 +69,10 @@ class Ticket(BaseModel):
     tasks: list[TicketTask] = Field(default_factory=list)
     acceptance_criteria: list[str] = Field(default_factory=list)
     estimated_effort: str | None = Field(default=None, max_length=50)
+    # Quando o aluno marca o ticket como concluído. Persistido dentro do
+    # JSON da trilha (TrailContent.tickets[*].completed_at). Quando TODOS
+    # os tickets estão concluídos, a trilha auto-conclui.
+    completed_at: datetime | None = None
 
 
 class TrailContent(BaseModel):
@@ -161,8 +165,15 @@ class ConceptExplanation(BaseModel):
     glossary: list[GlossaryEntry] = Field(default_factory=list, max_length=12)
 
 
-class CompleteTrailResponse(BaseModel):
-    """Resultado de concluir uma trilha: trilha atualizada + skills afetadas."""
+class CompleteTicketResponse(BaseModel):
+    """Resultado de marcar/desmarcar um ticket.
+
+    Quando o ticket marcado fez a trilha alcançar 100% de tickets concluídos,
+    a trilha auto-conclui e ``trail_completed=True`` + ``added_concepts``/
+    ``upgraded_concepts`` carregam o que entrou no perfil. Caso contrário,
+    ``trail_completed=False`` e as listas vêm vazias.
+    """
     trail: LearningTrailRead
+    trail_completed: bool = False
     added_concepts: list[str] = Field(default_factory=list)
     upgraded_concepts: list[str] = Field(default_factory=list)

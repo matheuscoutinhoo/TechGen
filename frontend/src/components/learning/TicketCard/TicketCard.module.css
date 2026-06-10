@@ -1,13 +1,29 @@
 .ticket {
    border: 1px solid var(--color-border);
    border-radius: var(--radius-lg);
-   background-color: var(--color-bg);
+   background-color: var(--color-bg-elevated);
    overflow: hidden;
-   transition: border-color 150ms ease, box-shadow 150ms ease;
+   transition: border-color 150ms ease, background-color 150ms ease;
 }
 
 .ticket:hover {
    border-color: var(--color-border-strong);
+}
+
+/* Estado concluído — borda esquerda primary marca visualmente o ticket. */
+.ticketCompleted {
+   border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+   background-color: var(--color-bg-elevated);
+}
+
+.ticketCompleted .summary {
+   opacity: 0.85;
+}
+
+.ticketCompleted .title {
+   text-decoration: line-through;
+   text-decoration-color: var(--color-text-subtle);
+   text-decoration-thickness: 1px;
 }
 
 .summary {
@@ -175,4 +191,86 @@
    color: var(--color-text-subtle);
    padding-top: var(--space-3);
    border-top: 1px dashed var(--color-border);
+}
+
+/* Tag "Concluído" no header do ticket — pequena, sutil, ao lado do título. */
+.completedTag {
+   display: inline-flex;
+   align-items: center;
+   gap: 0.3rem;
+   margin-left: var(--space-3);
+   padding: 0.15rem 0.55rem;
+   border-radius: var(--radius-full);
+   background-color: var(--color-primary-soft);
+   color: var(--color-primary);
+   font-size: 0.65rem;
+   text-transform: uppercase;
+   letter-spacing: 0.08em;
+   font-weight: 600;
+   vertical-align: middle;
+   border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.completedTag svg {
+   width: 0.8rem;
+   height: 0.8rem;
+}
+
+/* Linha de ação para marcar/desmarcar conclusão. */
+.completeRow {
+   display: flex;
+   justify-content: flex-end;
+   padding-top: var(--space-3);
+   border-top: 1px solid var(--color-border);
+}
+
+.completeButton {
+   display: inline-flex;
+   align-items: center;
+   gap: var(--space-2);
+   padding: 0.55rem 1.1rem;
+   border-radius: var(--radius-full);
+   border: 1px solid var(--color-border-strong);
+   background-color: var(--color-bg-elevated);
+   color: var(--color-text);
+   font-size: var(--font-size-sm);
+   font-weight: 500;
+   cursor: pointer;
+   transition: background-color var(--transition-fast),
+      border-color var(--transition-fast),
+      color var(--transition-fast);
+}
+
+.completeButton:hover:not(:disabled) {
+   border-color: var(--color-primary);
+   color: var(--color-primary);
+   background-color: var(--color-surface);
+}
+
+.completeButton:disabled {
+   cursor: not-allowed;
+   opacity: 0.5;
+}
+
+.completeButtonDone {
+   background-color: var(--color-primary-soft);
+   border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+   color: var(--color-primary);
+}
+
+.completeButtonDone:hover:not(:disabled) {
+   background-color: var(--color-primary-soft);
+   border-color: var(--color-primary);
+   color: var(--color-primary-strong);
+}
+
+.completeButtonIcon {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+}
+
+.completeButtonIcon svg {
+   width: 0.9rem;
+   height: 0.9rem;
 }
