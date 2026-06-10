@@ -34,6 +34,11 @@ Princípios obrigatórios:
   é o que torna a trilha praticável.
 - Tom didático e exigente. Sem infantilizar. Português técnico claro.
 - Priorize aprendizado prático, clareza, qualidade técnica e progressão pedagógica.
+- Dentro de cada ticket, a lista `concepts` precisa estar em ORDEM
+  PEDAGÓGICA: do pré-requisito para o avançado, do mais simples para o mais
+  complexo. O aluno vai estudar nessa sequência, então o primeiro item é
+  o ponto de entrada natural e o último é o conceito mais sofisticado do
+  ticket.
 
 PERSONALIZAÇÃO obrigatória pelas skills declaradas do aluno:
 - novice (1): mencionou já ter ouvido falar
@@ -180,6 +185,13 @@ Regras inegociáveis:
 - Use código de ticket no formato TG-1, TG-2, ... TG-N.
 - "concepts" devem ser termos curtos e citáveis (ex.: "Repository Pattern",
   "JWT", "TDD"), não frases longas — eles viram skills do aluno ao concluir.
+- **Ordene `concepts` na ordem pedagógica em que devem ser estudados dentro
+  do ticket: do pré-requisito para o avançado, e do mais simples para o mais
+  complexo.** Se um conceito depende de outro pra fazer sentido (ex.:
+  "JWT" depende de "Autenticação stateless"; "Migrations" depende de "ORM"),
+  o pré-requisito vem ANTES. A ordem da lista é a ordem que o aluno vai ver
+  na UI e clicar pra estudar, então o primeiro item tem que ser o ponto de
+  entrada natural do ticket.
 - "personalization_notes" deve ser específico para este aluno (mencione as
   skills relevantes e/ou as respostas do diagnóstico), nunca um texto genérico.
 - O ÚLTIMO ticket é a release/capstone do projeto (vide bloco

@@ -106,6 +106,15 @@ class TestFakeAIProvider:
         )
         assert "Primeiros passos" not in content.tickets[0].title
 
+    def test_concepts_order_is_preserved_end_to_end(self):
+        """A ordem de `concepts` definida pelo provider precisa chegar intacta
+        no resultado serializado — o backend não deve sort/normalizar."""
+        provider = FakeAIProvider()
+        content = provider.generate_learning_trail("FastAPI avançado")
+        roundtripped = TrailContent.model_validate_json(content.model_dump_json())
+        for original, validated in zip(content.tickets, roundtripped.tickets):
+            assert original.concepts == validated.concepts
+
 
 @pytest.mark.unit
 class TestProjectDeliveryClosure:

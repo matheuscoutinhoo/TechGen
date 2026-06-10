@@ -666,6 +666,12 @@ Checklist antes de migrar:
     API REST com FastAPI" sem antes garantir que ele consegue subir uma
     rota básica.
   - **Concepts curtos e citáveis**, porque eles viram skills do aluno na conclusão.
+  - **`concepts` em ordem pedagógica.** Dentro de cada ticket, a lista
+    `concepts` segue a ordem em que o aluno deve estudar: do pré-requisito
+    para o avançado, do mais simples para o mais complexo. O backend NÃO
+    reordena — a UI mostra os chips na ordem que a IA devolveu, então o
+    primeiro chip tem que ser o ponto de entrada natural do ticket e o
+    último o conceito mais sofisticado.
   - **Encerramento obrigatório.** O ÚLTIMO ticket da trilha é a release
     final: entrega o projeto descrito em `project_summary` de ponta a
     ponta. Nada de terminar em "refatoração", "observabilidade" ou
