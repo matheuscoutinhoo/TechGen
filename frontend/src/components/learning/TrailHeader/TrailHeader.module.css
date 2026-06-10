@@ -4,8 +4,10 @@
    gap: var(--space-3);
    padding: var(--space-7);
    border: 1px solid var(--color-border);
-   border-radius: var(--radius-lg);
-   background-color: var(--color-surface);
+   border-radius: var(--radius-xl);
+   background: var(--gradient-card);
+   box-shadow: var(--shadow-md);
+   backdrop-filter: blur(8px);
 }
 
 .topic {

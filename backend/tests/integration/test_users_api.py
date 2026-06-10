@@ -39,6 +39,64 @@ class TestUpdateMe:
         )
         assert response.status_code == 409
 
+    def test_uploads_and_returns_avatar(self, client, auth_headers):
+        png_b64 = (
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lE"
+            "QVR42mNkAAIAAAoAAv/lxKUAAAAASUVORK5CYII="
+        )
+        response = client.patch(
+            "/api/v1/users/me", headers=auth_headers, json={"avatar_url": png_b64}
+        )
+        assert response.status_code == 200
+        assert response.json()["avatar_url"] == png_b64
+        me = client.get("/api/v1/users/me", headers=auth_headers).json()
+        assert me["avatar_url"] == png_b64
+
+    def test_removes_avatar_when_null(self, client, auth_headers):
+        png_b64 = (
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lE"
+            "QVR42mNkAAIAAAoAAv/lxKUAAAAASUVORK5CYII="
+        )
+        client.patch(
+            "/api/v1/users/me", headers=auth_headers, json={"avatar_url": png_b64}
+        )
+        response = client.patch(
+            "/api/v1/users/me", headers=auth_headers, json={"avatar_url": None}
+        )
+        assert response.status_code == 200
+        assert response.json()["avatar_url"] is None
+
+    def test_rejects_invalid_avatar_data_url(self, client, auth_headers):
+        response = client.patch(
+            "/api/v1/users/me",
+            headers=auth_headers,
+            json={"avatar_url": "https://example.com/foto.png"},
+        )
+        assert response.status_code == 422
+
+    def test_rejects_oversized_avatar(self, client, auth_headers):
+        oversized = "data:image/png;base64," + ("A" * 700_000)
+        response = client.patch(
+            "/api/v1/users/me", headers=auth_headers, json={"avatar_url": oversized}
+        )
+        assert response.status_code == 422
+
+    def test_update_without_avatar_does_not_clear_existing(self, client, auth_headers):
+        """PATCH com só 'name' não pode apagar avatar — comportamento de unset."""
+        png_b64 = (
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lE"
+            "QVR42mNkAAIAAAoAAv/lxKUAAAAASUVORK5CYII="
+        )
+        client.patch(
+            "/api/v1/users/me", headers=auth_headers, json={"avatar_url": png_b64}
+        )
+        client.patch(
+            "/api/v1/users/me", headers=auth_headers, json={"name": "Sem foto?"}
+        )
+        me = client.get("/api/v1/users/me", headers=auth_headers).json()
+        assert me["name"] == "Sem foto?"
+        assert me["avatar_url"] == png_b64
+
 
 @pytest.mark.integration
 class TestChangePassword:

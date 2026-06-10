@@ -34,9 +34,15 @@ body {
    line-height: var(--line-height-base);
    color: var(--color-text);
    background-color: var(--color-bg);
+   /* Gradient glow sutil ancorado no canto superior — desaparece em telas
+      claras e brilha discreto no dark. */
+   background-image: var(--gradient-glow);
+   background-attachment: fixed;
    -webkit-font-smoothing: antialiased;
    -moz-osx-font-smoothing: grayscale;
    text-rendering: optimizeLegibility;
+   transition: background-color var(--transition-base),
+      color var(--transition-base);
 }
 
 h1,
@@ -44,10 +50,15 @@ h2,
 h3,
 h4 {
    margin: 0;
-   font-weight: 600;
+   font-weight: 700;
    line-height: var(--line-height-tight);
    letter-spacing: var(--letter-tight);
    color: var(--color-text);
+}
+
+h1 {
+   letter-spacing: var(--letter-tighter);
+   font-weight: 800;
 }
 
 p {

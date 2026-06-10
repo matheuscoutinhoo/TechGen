@@ -34,9 +34,9 @@
    gap: var(--space-3);
    margin-top: var(--space-5);
    padding: var(--space-4) var(--space-5);
-   border-radius: var(--radius-md);
-   background-color: #f0fdf4;
-   border: 1px solid #bbf7d0;
+   border-radius: var(--radius-lg);
+   background-color: var(--color-success-soft);
+   border: 1px solid color-mix(in srgb, var(--color-success) 35%, transparent);
    color: var(--color-success);
    font-size: var(--font-size-sm);
 }

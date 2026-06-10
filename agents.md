@@ -212,12 +212,32 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 ## 11. Padrões de UI
 
 - Layout principal: container central, max-width ~960px para conteúdo de leitura, ~1200px para listagens.
-- Espaçamento via tokens (`--space-1` a `--space-8`).
-- Tipografia escalonada (`--font-size-sm`, `-base`, `-lg`, `-xl`, `-2xl`).
-- Botões: 3 variantes — `primary`, `secondary`, `ghost`. Sempre com estado de foco visível.
+- Espaçamento via tokens (`--space-1` a `--space-12`).
+- Tipografia escalonada (`--font-size-sm`, `-base`, `-lg`, `-xl`, `-2xl`, `-3xl`, `-4xl`, `-5xl`).
+- Pesos: `h1` em 800 com `--letter-tighter`; outros títulos em 700.
+- Botões: 4 variantes — `primary` (gradiente teal + glow),
+  `secondary` (glass), `ghost`, `danger`. Forma pílula
+  (`--radius-full`). Sempre com `:focus-visible` perceptível e
+  microinteracão `translateY(1px)` no `:active`.
 - Inputs sempre com `label` associado.
-- Cards: borda 1px sutil, raio 8px, sombra mínima.
-- Animações discretas (≤ 200ms).
+- Cards: borda 1px translucida, `--radius-xl` (22px), fundo
+  `--gradient-card`, sombra `--shadow-sm` em repouso e
+  `--shadow-md + --shadow-primary-glow` no hover. Backdrop blur no dark
+  pra glassmorphism real.
+- Animações discretas (≤ 320ms) via `--transition-fast`,
+  `--transition-base`, `--transition-slow`.
+- **Hardcoded de cores (`#xxxxxx`, `rgba(...)` literais) é proibido em
+  CSS de página/componente** — use sempre variáveis pra suportar tema
+  claro/escuro. Exceção limitada: blocos de código com sintaxe
+  destacada (cores fixas independentes de tema).
+- **Tema claro e escuro** por padrão. Toggle (ícone sol/lua) no header
+  alterna entre eles; preferência persiste em
+  `localStorage('techgen.theme')`. Componente `ThemeToggle` + hook
+  `useTheme` em `contexts/ThemeContext.tsx`. O `index.html` aplica o tema
+  antes do React montar pra evitar flash.
+- Avatar do usuário aparece no header como **âncora pra `/account`** em
+  todas as páginas autenticadas. Foto opcional, armazenada no backend
+  como data URL base64 (limite ~450 KB).
 
 ---
 
@@ -235,24 +255,69 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 ## 13. Identidade Visual
 
-Inspiração estética: site oficial do FastAPI — minimalista, técnico, claro.
+Identidade **moderna, elegante e técnica** — inspirada em produtos premium
+como Orbital, Linear, Vercel. Ancorada no **teal (`#009688`)** como cor de
+marca em ambos os temas. Visual ganha profundidade via gradientes
+radiais, sombras em camadas, glass nos cards e raios generosos.
+
+### Tema claro (default)
 
 | Token | Valor | Uso |
 |---|---|---|
-| `--color-bg` | `#ffffff` | Fundo principal |
-| `--color-surface` | `#fafafa` | Cards e blocos |
-| `--color-text` | `#1f2933` | Texto principal |
-| `--color-text-muted` | `#52606d` | Texto secundário |
-| `--color-border` | `#e4e7eb` | Bordas sutis |
-| `--color-primary` | `#009688` | Ação primária (teal FastAPI-like) |
+| `--color-bg` | `#f4f6f7` | Fundo principal |
+| `--color-bg-elevated` | `#ffffff` | Headers, chips, avatars |
+| `--color-surface` | `#ffffff` | Cards e blocos |
+| `--color-text` | `#0a2024` | Texto principal |
+| `--color-text-muted` | `#4a6168` | Texto secundário |
+| `--color-text-subtle` | `#8a9aa0` | Texto auxiliar / metadata |
+| `--color-border` | `#e1e7e9` | Bordas sutís |
+| `--color-primary` | `#009688` | Ação primária (teal) |
 | `--color-primary-strong` | `#00796b` | Hover/foco |
-| `--color-accent` | `#05a37a` | Destaques pontuais |
-| `--color-danger` | `#c0392b` | Erro/exclusão |
-| `--color-warning` | `#b7791f` | Aviso |
-| `--font-sans` | `'Inter', system-ui, sans-serif` | UI |
-| `--font-mono` | `'JetBrains Mono', ui-monospace, monospace` | Código/tickets |
+| `--color-primary-soft` | `#d8f3ee` | Background de chip/badge primário |
+| `--color-accent` | `#14d4b4` | Destaques pontuais |
 
-> Não copiar o FastAPI literalmente — apenas se inspirar.
+### Tema escuro (Orbital-inspired)
+
+Fundo teal profundo (`#061513`), texto claro suave, cards translucidos
+sobre gradient radial. Ativado via `[data-theme="dark"]` no `<html>`.
+Mantém hierarquia semântica dos tokens — nenhum componente precisa de
+override manual de cor.
+
+| Token | Valor | Uso |
+|---|---|---|
+| `--color-bg` | `#061513` | Fundo principal (teal profundo) |
+| `--color-bg-elevated` | `#0c2722` | Headers, cards primeiro plano |
+| `--color-surface` | `rgba(20,50,47,0.55)` | Cards translucidos (glass) |
+| `--color-text` | `#e6f5f1` | Texto principal |
+| `--color-text-muted` | `#9bb5b0` | Texto secundário |
+| `--color-primary` | `#1ee0bd` | Teal saturado pro contraste no escuro |
+| `--color-primary-soft` | `rgba(30,224,189,0.16)` | Chips e backgrounds primary |
+| `--color-accent` | `#2cf0d4` | Destaques |
+
+### Tokens estruturais
+
+| Token | Valor | Uso |
+|---|---|---|
+| `--gradient-primary` | gradient 135° teal→accent | Botões primary, brand mark |
+| `--gradient-hero` | gradient 135° dark teal | Hero/seções de destaque |
+| `--gradient-card` | gradient vertical sutil | Cards |
+| `--gradient-glow` | radial-gradient atrás do body | Profundidade global |
+| `--shadow-primary-glow` | sombra colorida em teal | Botões primary, avatars destacados |
+| `--shadow-md`/`-lg`/`-xl` | sombras escalonadas | Cards, modais, dropdowns |
+| `--radius-full` | `999px` | Pílulas, avatars, botões primários |
+| `--radius-xl` | `22px` | Cards |
+| `--font-sans` | `'Inter', system-ui` | UI |
+| `--font-mono` | `'JetBrains Mono', ui-monospace` | Código |
+
+### Regras
+
+- **Nunca** literais de cor em CSS de componente/página (exceto blocos
+  de código).
+- Sombras na escala `xs → sm → md → lg → xl` mais
+  `--shadow-primary-glow` pra destaque teal.
+- Cards interativos usam `transform: translateY(-3..-4px)` + glow no hover.
+- Glassmorphism (`backdrop-filter: blur`) reservado pra header, cards de
+  conta/trilha e modais — economiza performance em listas longas.
 
 ---
 

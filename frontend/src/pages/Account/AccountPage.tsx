@@ -1,9 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { usersApi } from '../../api/users';
 import { skillsApi } from '../../api/skills';
 import { ApiError } from '../../api/client';
+import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { PageTitle } from '../../components/ui/PageTitle';
@@ -13,6 +14,20 @@ import { SkillEditor, type SkillEditorEntry } from '../../components/learning/Sk
 import { useSkills } from '../../hooks/useSkills';
 import type { ProficiencyLevel, SkillInput } from '../../types/api';
 import styles from './Account.module.css';
+
+const AVATAR_MAX_BYTES = 450 * 1024; // ~450 KB de arquivo bruto
+
+function readFileAsDataURL(file: File): Promise<string> {
+   return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+         if (typeof reader.result === 'string') resolve(reader.result);
+         else reject(new Error('Falha ao ler a imagem.'));
+      };
+      reader.onerror = () => reject(reader.error ?? new Error('Falha ao ler a imagem.'));
+      reader.readAsDataURL(file);
+   });
+}
 
 export function AccountPage() {
    const { user, applyUser, logout } = useAuth();
@@ -37,6 +52,10 @@ export function AccountPage() {
 
    const [deleteError, setDeleteError] = useState<string | null>(null);
    const [deleting, setDeleting] = useState(false);
+
+   const [avatarError, setAvatarError] = useState<string | null>(null);
+   const [avatarBusy, setAvatarBusy] = useState(false);
+   const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
    useEffect(() => {
       if (user) {
@@ -165,6 +184,48 @@ export function AccountPage() {
       }
    };
 
+   const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (!file) return;
+      setAvatarError(null);
+      if (!file.type.startsWith('image/')) {
+         setAvatarError('Selecione um arquivo de imagem (PNG, JPEG, WebP).');
+         return;
+      }
+      if (file.size > AVATAR_MAX_BYTES) {
+         setAvatarError('Imagem muito grande. Escolha uma foto menor que ~450 KB.');
+         return;
+      }
+      setAvatarBusy(true);
+      try {
+         const dataUrl = await readFileAsDataURL(file);
+         const updated = await usersApi.update({ avatar_url: dataUrl });
+         applyUser(updated);
+      } catch (err) {
+         setAvatarError(
+            err instanceof ApiError ? err.message : 'Não foi possível enviar a foto.',
+         );
+      } finally {
+         setAvatarBusy(false);
+      }
+   };
+
+   const handleAvatarRemove = async () => {
+      setAvatarError(null);
+      setAvatarBusy(true);
+      try {
+         const updated = await usersApi.update({ avatar_url: null });
+         applyUser(updated);
+      } catch (err) {
+         setAvatarError(
+            err instanceof ApiError ? err.message : 'Não foi possível remover a foto.',
+         );
+      } finally {
+         setAvatarBusy(false);
+      }
+   };
+
    return (
       <>
          <PageTitle
@@ -174,6 +235,49 @@ export function AccountPage() {
          />
 
          <div className={styles.sections}>
+            <section className={`${styles.section} ${styles.avatarSection}`}>
+               <h2>Foto de perfil</h2>
+               {avatarError && <ErrorState description={avatarError} />}
+               <div className={styles.avatarRow}>
+                  <Avatar name={user.name} src={user.avatar_url} size={96} featured />
+                  <div className={styles.avatarMeta}>
+                     <p className={styles.avatarHint}>
+                        Sua foto aparece no cabeçalho e te leva direto para esta
+                        página em qualquer tela. Use uma imagem quadrada para
+                        melhor enquadramento (PNG, JPEG ou WebP até ~450 KB).
+                     </p>
+                     <div className={styles.actions}>
+                        <Button
+                           type="button"
+                           variant="primary"
+                           onClick={() => avatarInputRef.current?.click()}
+                           isLoading={avatarBusy}
+                        >
+                           {user.avatar_url ? 'Trocar foto' : 'Enviar foto'}
+                        </Button>
+                        {user.avatar_url && (
+                           <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => void handleAvatarRemove()}
+                              disabled={avatarBusy}
+                           >
+                              Remover
+                           </Button>
+                        )}
+                        <input
+                           ref={avatarInputRef}
+                           type="file"
+                           accept="image/png,image/jpeg,image/webp,image/gif"
+                           onChange={(event) => void handleAvatarChange(event)}
+                           hidden
+                           aria-label="Selecionar imagem de perfil"
+                        />
+                     </div>
+                  </div>
+               </div>
+            </section>
+
             <form className={styles.section} onSubmit={handleProfileSubmit} noValidate>
                <h2>Perfil</h2>
                {profileError && <ErrorState description={profileError} />}

@@ -5,6 +5,17 @@ from app.models.user import User
 from app.repositories.user_repository import UserRepository
 
 
+# Sentinel para distinguir "campo não enviado" (UNSET → ignora) de
+# "campo enviado como None" (remove o valor). Necessário porque o PATCH
+# do avatar precisa permitir remoção explícita.
+class _Unset:
+    def __repr__(self) -> str:  # pragma: no cover
+        return "UNSET"
+
+
+UNSET: _Unset = _Unset()
+
+
 class UserService:
     def __init__(self, user_repository: UserRepository) -> None:
         self.user_repository = user_repository
@@ -21,6 +32,7 @@ class UserService:
         *,
         name: str | None = None,
         email: str | None = None,
+        avatar_url: str | None | _Unset = UNSET,
     ) -> User:
         if email and email.lower() != user.email:
             if self.user_repository.get_by_email(email):
@@ -28,6 +40,9 @@ class UserService:
             user.email = email.lower()
         if name:
             user.name = name
+        if not isinstance(avatar_url, _Unset):
+            # None ou "" → remove; data URL → atualiza.
+            user.avatar_url = avatar_url or None
         return self.user_repository.update(user)
 
     def change_password(

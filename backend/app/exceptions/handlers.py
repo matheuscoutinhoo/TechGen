@@ -24,12 +24,25 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def _handle_validation_error(_: Request, exc: RequestValidationError):
+        # Pydantic v2 inclui o ValueError original em ctx['error'] quando o
+        # erro vem de um field_validator. Esse objeto não é JSON-serializável,
+        # então normalizamos pra string antes de devolver.
+        safe_errors = []
+        for error in exc.errors():
+            normalized = dict(error)
+            ctx = normalized.get("ctx")
+            if isinstance(ctx, dict):
+                normalized["ctx"] = {
+                    key: str(value) if isinstance(value, Exception) else value
+                    for key, value in ctx.items()
+                }
+            safe_errors.append(normalized)
         return JSONResponse(
             status_code=422,
             content=_payload(
                 "VALIDATION_ERROR",
                 "Entrada inválida",
-                {"errors": exc.errors()},
+                {"errors": safe_errors},
             ),
         )
 

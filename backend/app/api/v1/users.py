@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Response, status
 from app.api.deps import get_current_user, get_user_service
 from app.models.user import User
 from app.schemas.user import PasswordChange, UserRead, UserUpdate
-from app.services.user_service import UserService
+from app.services.user_service import UNSET, UserService
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -14,16 +14,23 @@ def get_me(current_user: User = Depends(get_current_user)) -> UserRead:
     return UserRead.model_validate(current_user)
 
 
-@router.patch("/me", response_model=UserRead, summary="Atualiza nome/email")
+@router.patch("/me", response_model=UserRead, summary="Atualiza nome/email/foto")
 def update_me(
     payload: UserUpdate,
     current_user: User = Depends(get_current_user),
     service: UserService = Depends(get_user_service),
 ) -> UserRead:
+    # avatar_url só é passado adiante quando o cliente realmente enviou o
+    # campo (mesmo que como null/""). Sem isso, não dá pra distinguir
+    # "ignorar" de "remover foto".
+    avatar_arg = (
+        payload.avatar_url if "avatar_url" in payload.model_fields_set else UNSET
+    )
     updated = service.update_profile(
         current_user,
         name=payload.name,
         email=payload.email,
+        avatar_url=avatar_arg,
     )
     return UserRead.model_validate(updated)
 

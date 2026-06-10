@@ -85,9 +85,9 @@
 }
 
 .chipUpgraded {
-   background-color: #fefce8;
-   border-color: #fde68a;
-   color: #92400e;
+   background-color: var(--color-warning-soft);
+   border-color: color-mix(in srgb, var(--color-warning) 40%, transparent);
+   color: var(--color-warning);
 }
 
 .chipMeta {

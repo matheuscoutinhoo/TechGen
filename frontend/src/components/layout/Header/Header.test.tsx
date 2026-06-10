@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { Header } from './Header';
 import { AuthProvider } from '../../../contexts/AuthContext';
+import { ThemeProvider } from '../../../contexts/ThemeContext';
 import { tokenStorage } from '../../../utils/storage';
 
 const ORIGINAL_FETCH = globalThis.fetch;
@@ -18,9 +19,11 @@ function jsonResponse(body: unknown, status = 200): Response {
 function renderHeader() {
    return render(
       <MemoryRouter>
-         <AuthProvider>
-            <Header />
-         </AuthProvider>
+         <ThemeProvider>
+            <AuthProvider>
+               <Header />
+            </AuthProvider>
+         </ThemeProvider>
       </MemoryRouter>,
    );
 }
@@ -64,5 +67,32 @@ describe('<Header />', () => {
 
       await waitFor(() => expect(screen.getByRole('link', { name: 'Entrar' })).toBeInTheDocument());
       expect(tokenStorage.get()).toBeNull();
+   });
+
+   it('avatar funciona como âncora pra /account', async () => {
+      tokenStorage.set('jwt');
+      globalThis.fetch = vi.fn().mockResolvedValue(
+         jsonResponse({
+            id: 1,
+            name: 'Ada Lovelace',
+            email: 'ada@example.com',
+            avatar_url: null,
+            created_at: '2025-01-01T00:00:00Z',
+            updated_at: '2025-01-01T00:00:00Z',
+         }),
+      ) as unknown as typeof fetch;
+
+      renderHeader();
+      await waitFor(() => screen.getByText('Ada Lovelace'));
+      const link = screen.getByRole('link', { name: 'Conta de Ada Lovelace' });
+      expect(link).toHaveAttribute('href', '/account');
+   });
+
+   it('inclui o toggle de tema', async () => {
+      renderHeader();
+      const toggle = await screen.findByRole('button', {
+         name: /tema (claro|escuro)/i,
+      });
+      expect(toggle).toBeInTheDocument();
    });
 });
