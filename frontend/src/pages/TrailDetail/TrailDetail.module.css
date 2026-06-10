@@ -47,30 +47,31 @@
    display: flex;
 }
 
-.flowItem > * {
+.flowItem>* {
    flex: 1;
    min-width: 0;
 }
 
-/* Linha vertical entre os nodes. Desenhada do meio do node atual até o
-   bottom do item, e ::after desenha do top até o meio do node. Juntas,
-   formam uma linha contínua passando por todos os nodes. */
+/* Linha vertical centrada no node. Estende-se metade do gap pra cima e
+   pra baixo (com exceção de first/last) pra cobrir o vão entre itens
+   e formar uma única linha contínua passando por todos os nodes. */
 .flowItem::before {
    content: '';
    position: absolute;
-   left: calc(var(--space-4) - 1px);
-   top: 0;
-   bottom: 0;
+   left: calc(var(--space-3) - 1px);
+   top: calc(var(--space-4) * -0.5);
+   bottom: calc(var(--space-4) * -0.5);
    width: 2px;
    background-color: var(--color-border);
    border-radius: 1px;
 }
 
-/* Primeiro e último item não desenham linha além do node. */
+/* Primeiro item: linha começa no centro do node (sem pedaço acima). */
 .flowItem:first-child::before {
-   top: 1.25rem; /* desce até o node */
+   top: 1.25rem;
 }
 
+/* Último item: linha termina no centro do node (sem pedaço abaixo). */
 .flowItem:last-child::before {
    bottom: calc(100% - 1.25rem);
 }
@@ -107,18 +108,21 @@
    height: 0.95rem;
 }
 
-/* Quando o ticket está concluído, node fica primary e a linha QUE SAI dele
-   (descendente — desenhada no item SEGUINTE) precisa ficar primary também.
-   Usamos um modificador no flowItem que reflete o status do ticket anterior. */
+/* Quando o ticket está concluído, node fica primary e a linha que SAI dele
+   (a do próprio item, abaixo do node) também fica primary — representando
+   o "caminho percorrido" descendo até o próximo ticket. */
 .flowItemDone .flowNode {
    background-color: var(--color-primary);
    border-color: var(--color-primary);
    color: var(--color-text-inverse);
 }
 
-/* A linha do próprio item fica primary quando o anterior está concluído.
-   Como CSS puro não enxerga "irmão anterior", o componente coloca a classe
-   .flowConnectorActive em itens cujo predecessor está completo. */
+.flowItemDone::before {
+   background-color: var(--color-primary);
+}
+
+/* A linha do item SEGUINTE (acima do node dele) também fica primary
+   quando o anterior está concluído, fechando o connector visual. */
 .flowConnectorActive::before {
    background-color: var(--color-primary);
 }
