@@ -288,10 +288,12 @@ export function AccountPage() {
                   onChange={(event) => setName(event.target.value)}
                   minLength={2}
                   required
+                  placeholder="Como devemos te chamar"
                />
                <Input
                   label="Email"
                   type="email"
+                  placeholder="voce@email.com"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   required
@@ -336,6 +338,7 @@ export function AccountPage() {
                   label="Senha atual"
                   type="password"
                   autoComplete="current-password"
+                  placeholder="Digite sua senha atual"
                   value={currentPassword}
                   onChange={(event) => setCurrentPassword(event.target.value)}
                   minLength={8}
@@ -345,6 +348,7 @@ export function AccountPage() {
                   label="Nova senha"
                   type="password"
                   autoComplete="new-password"
+                  placeholder="Mínimo 8 caracteres"
                   value={newPassword}
                   onChange={(event) => setNewPassword(event.target.value)}
                   minLength={8}
@@ -354,6 +358,7 @@ export function AccountPage() {
                   label="Confirme a nova senha"
                   type="password"
                   autoComplete="new-password"
+                  placeholder="Repita a nova senha"
                   value={confirmation}
                   onChange={(event) => setConfirmation(event.target.value)}
                   minLength={8}

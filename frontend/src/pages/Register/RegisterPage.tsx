@@ -100,11 +100,13 @@ export function RegisterPage() {
                minLength={2}
                required
                autoComplete="name"
+               placeholder="Como devemos te chamar"
             />
             <Input
                label="Email"
                type="email"
                autoComplete="email"
+               placeholder="voce@email.com"
                value={email}
                onChange={(event) => setEmail(event.target.value)}
                required
@@ -115,6 +117,7 @@ export function RegisterPage() {
                   label="Senha"
                   type="password"
                   autoComplete="new-password"
+                  placeholder="Mínimo 8 caracteres"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   minLength={8}
@@ -125,6 +128,7 @@ export function RegisterPage() {
                   label="Confirme a senha"
                   type="password"
                   autoComplete="new-password"
+                  placeholder="Repita a senha"
                   value={confirmation}
                   onChange={(event) => setConfirmation(event.target.value)}
                   minLength={8}
