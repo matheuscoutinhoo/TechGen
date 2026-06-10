@@ -26,7 +26,8 @@
    --color-primary-strong: #1ee0bd;
    --color-primary-soft: rgba(20, 209, 190, 0.12);
    --color-primary-glow: rgba(20, 209, 190, 0.28);
-   --color-accent: #ededed; /* "branco" como acento padrão estilo Vercel */
+   --color-accent: #ededed;
+   /* "branco" como acento padrão estilo Vercel */
 
    --color-danger: #ff6b6b;
    --color-danger-soft: rgba(255, 107, 107, 0.14);
@@ -38,22 +39,16 @@
    /* === Gradientes — sutis, quase invisíveis === */
    /* Botão primary estilo Vercel: branco sólido (resolvido em CSS via cor). */
    --gradient-primary: linear-gradient(180deg, #fafafa 0%, #ededed 100%);
-   --gradient-hero: linear-gradient(
-      180deg,
-      #000000 0%,
-      #0a0a0a 100%
-   );
-   --gradient-card: linear-gradient(
-      180deg,
-      #0d0d0d 0%,
-      #0a0a0a 100%
-   );
+   --gradient-hero: linear-gradient(180deg,
+         #000000 0%,
+         #0a0a0a 100%);
+   --gradient-card: linear-gradient(180deg,
+         #0d0d0d 0%,
+         #0a0a0a 100%);
    /* Glow radial muito discreto atrás do conteúdo. */
-   --gradient-glow: radial-gradient(
-      ellipse 80% 40% at 50% -10%,
-      rgba(255, 255, 255, 0.06) 0%,
-      transparent 70%
-   );
+   --gradient-glow: radial-gradient(ellipse 80% 40% at 50% -10%,
+         rgba(255, 255, 255, 0.06) 0%,
+         transparent 70%);
 
    /* === Sombras — pretas profundas, escala Vercel === */
    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.6);
