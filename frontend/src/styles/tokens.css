@@ -1,74 +1,77 @@
-/* Design tokens — identidade moderna e elegante, com tema claro/escuro.
-   Inspiração: visuais técnicos premium tipo Orbital — fundo teal saturado
-   no dark, glassmorphism, tipografia pesada, gradientes sutis.
-   O tema é alternado via [data-theme="dark"] no <html>. */
-:root {
-   /* === TEMA CLARO (default) === */
-   --color-bg: #f4f6f7;
-   --color-bg-elevated: #ffffff;
-   --color-surface: #ffffff;
-   --color-surface-strong: #eef1f4;
-   --color-surface-overlay: rgba(10, 32, 36, 0.55);
+/* Design tokens — identidade Next.js Showcase: minimalismo extremo,
+   contraste puro, bordas hairline. Dark-only (sem alternância de tema).
+   Aplicado via [data-theme="dark"] sempre presente no <html>; o seletor
+   :root vem só pra garantir defaults caso o atributo falte. */
+:root,
+[data-theme='dark'] {
+   /* === Superfícies — escala de cinzas frios sobre preto puro === */
+   --color-bg: #000000;
+   --color-bg-elevated: #0a0a0a;
+   --color-surface: #0e0e0e;
+   --color-surface-strong: #161616;
+   --color-surface-overlay: rgba(0, 0, 0, 0.78);
 
-   --color-text: #0a2024;
-   --color-text-muted: #4a6168;
-   --color-text-subtle: #8a9aa0;
-   --color-text-inverse: #f4f6f7;
+   /* === Tipografia em escala neutra === */
+   --color-text: #ededed;
+   --color-text-muted: #a1a1aa;
+   --color-text-subtle: #6e6e76;
+   --color-text-inverse: #000000;
 
-   --color-border: #e1e7e9;
-   --color-border-strong: #c4cfd2;
+   /* === Bordas hairline — quase invisíveis === */
+   --color-border: #1f1f23;
+   --color-border-strong: #2a2a2f;
 
-   --color-primary: #009688;
-   --color-primary-strong: #00796b;
-   --color-primary-soft: #d8f3ee;
-   --color-primary-glow: rgba(0, 150, 136, 0.22);
-   --color-accent: #14d4b4;
+   /* === Marca: teal mantido como acento discreto === */
+   --color-primary: #14d1be;
+   --color-primary-strong: #1ee0bd;
+   --color-primary-soft: rgba(20, 209, 190, 0.12);
+   --color-primary-glow: rgba(20, 209, 190, 0.28);
+   --color-accent: #ededed; /* "branco" como acento padrão estilo Vercel */
 
-   --color-danger: #c0392b;
-   --color-danger-soft: #fdecea;
-   --color-warning: #b7791f;
-   --color-warning-soft: #fef3c7;
-   --color-success: #2f855a;
-   --color-success-soft: #ecfdf5;
+   --color-danger: #ff6b6b;
+   --color-danger-soft: rgba(255, 107, 107, 0.14);
+   --color-warning: #f4c14f;
+   --color-warning-soft: rgba(244, 193, 79, 0.14);
+   --color-success: #4ade80;
+   --color-success-soft: rgba(74, 222, 128, 0.14);
 
-   /* Gradientes — usados nos hero, cards de destaque e botões primary. */
-   --gradient-primary: linear-gradient(
-      135deg,
-      #009688 0%,
-      #14d4b4 100%
-   );
+   /* === Gradientes — sutis, quase invisíveis === */
+   /* Botão primary estilo Vercel: branco sólido (resolvido em CSS via cor). */
+   --gradient-primary: linear-gradient(180deg, #fafafa 0%, #ededed 100%);
    --gradient-hero: linear-gradient(
-      135deg,
-      #0a2024 0%,
-      #114a45 55%,
-      #0a2024 100%
+      180deg,
+      #000000 0%,
+      #0a0a0a 100%
    );
    --gradient-card: linear-gradient(
       180deg,
-      rgba(255, 255, 255, 1) 0%,
-      rgba(248, 250, 250, 1) 100%
+      #0d0d0d 0%,
+      #0a0a0a 100%
    );
+   /* Glow radial muito discreto atrás do conteúdo. */
    --gradient-glow: radial-gradient(
-      circle at 25% -5%,
-      rgba(0, 150, 136, 0.10) 0%,
-      transparent 55%
+      ellipse 80% 40% at 50% -10%,
+      rgba(255, 255, 255, 0.06) 0%,
+      transparent 70%
    );
 
-   /* Sombras em camadas — escala material moderno. */
-   --shadow-xs: 0 1px 2px rgba(10, 32, 36, 0.04);
-   --shadow-sm: 0 2px 6px -1px rgba(10, 32, 36, 0.08);
-   --shadow-md: 0 12px 28px -10px rgba(10, 32, 36, 0.15);
-   --shadow-lg: 0 24px 48px -16px rgba(10, 32, 36, 0.22);
-   --shadow-xl: 0 40px 80px -24px rgba(10, 32, 36, 0.28);
-   --shadow-primary-glow: 0 16px 40px -14px rgba(0, 150, 136, 0.55);
-   --shadow-hero: 0 30px 80px -30px rgba(0, 0, 0, 0.4);
+   /* === Sombras — pretas profundas, escala Vercel === */
+   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.6);
+   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.7);
+   --shadow-md: 0 6px 18px -4px rgba(0, 0, 0, 0.75);
+   --shadow-lg: 0 16px 40px -12px rgba(0, 0, 0, 0.8);
+   --shadow-xl: 0 30px 60px -20px rgba(0, 0, 0, 0.85);
+   /* Glow do primary fica muito sutil pra não roubar a cena. */
+   --shadow-primary-glow: 0 8px 24px -8px rgba(20, 209, 190, 0.35);
+   --shadow-hero: 0 30px 80px -30px rgba(0, 0, 0, 0.9);
 
-   /* Tipografia */
+   /* === Tipografia === */
    --font-sans:
-      'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-      sans-serif;
+      'Inter', 'Geist', system-ui, -apple-system, BlinkMacSystemFont,
+      'Segoe UI', Roboto, sans-serif;
    --font-mono:
-      'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Menlo,
+      Consolas, monospace;
 
    --font-size-xs: 0.75rem;
    --font-size-sm: 0.875rem;
@@ -78,18 +81,18 @@
    --font-size-2xl: 1.5rem;
    --font-size-3xl: 1.875rem;
    --font-size-4xl: 2.5rem;
-   --font-size-5xl: 3.25rem;
+   --font-size-5xl: 3.5rem;
 
-   --line-height-tight: 1.1;
+   --line-height-tight: 1.05;
    --line-height-base: 1.55;
    --line-height-loose: 1.75;
 
    --letter-tight: -0.02em;
-   --letter-tighter: -0.035em;
+   --letter-tighter: -0.045em;
    --letter-normal: 0;
    --letter-wide: 0.06em;
 
-   /* Espaçamento */
+   /* === Espaçamento === */
    --space-1: 0.25rem;
    --space-2: 0.5rem;
    --space-3: 0.75rem;
@@ -102,97 +105,34 @@
    --space-10: 4rem;
    --space-12: 6rem;
 
-   /* Raios — mais arredondados, com pill total disponível. */
-   --radius-sm: 6px;
-   --radius-md: 10px;
-   --radius-lg: 16px;
-   --radius-xl: 22px;
-   --radius-2xl: 28px;
+   /* === Raios — mais quadradinhos (Vercel é discreto) === */
+   --radius-sm: 4px;
+   --radius-md: 8px;
+   --radius-lg: 12px;
+   --radius-xl: 16px;
+   --radius-2xl: 22px;
    --radius-full: 999px;
 
-   /* Transições */
+   /* === Transições === */
    --transition-fast: 120ms ease;
-   --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
-   --transition-slow: 320ms cubic-bezier(0.16, 1, 0.3, 1);
+   --transition-base: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+   --transition-slow: 280ms cubic-bezier(0.16, 1, 0.3, 1);
 
-   /* Largura de leitura */
+   /* === Largura de leitura === */
    --container-narrow: 720px;
    --container-base: 960px;
    --container-wide: 1200px;
 
-   /* Layers */
+   /* === Layers === */
    --z-header: 100;
    --z-toast: 200;
    --z-modal: 300;
 
-   /* Breakpoints (uso documental) */
+   /* === Breakpoints (uso documental) === */
    --bp-sm: 480px;
    --bp-md: 768px;
    --bp-lg: 1024px;
    --bp-xl: 1280px;
-
-   color-scheme: light;
-}
-
-/* === TEMA ESCURO — fundo teal profundo, glassmorphism === */
-[data-theme='dark'] {
-   --color-bg: #061513;
-   --color-bg-elevated: #0c2722;
-   --color-surface: rgba(20, 50, 47, 0.55);
-   --color-surface-strong: rgba(28, 68, 64, 0.7);
-   --color-surface-overlay: rgba(0, 0, 0, 0.7);
-
-   --color-text: #e6f5f1;
-   --color-text-muted: #9bb5b0;
-   --color-text-subtle: #6e8580;
-   --color-text-inverse: #061513;
-
-   --color-border: rgba(173, 222, 215, 0.14);
-   --color-border-strong: rgba(173, 222, 215, 0.28);
-
-   /* Teal mais saturado pra brilhar no fundo escuro. */
-   --color-primary: #1ee0bd;
-   --color-primary-strong: #18c4a4;
-   --color-primary-soft: rgba(30, 224, 189, 0.16);
-   --color-primary-glow: rgba(30, 224, 189, 0.4);
-   --color-accent: #2cf0d4;
-
-   --color-danger: #ff6b6b;
-   --color-danger-soft: rgba(255, 107, 107, 0.16);
-   --color-warning: #f4c14f;
-   --color-warning-soft: rgba(244, 193, 79, 0.16);
-   --color-success: #4ade80;
-   --color-success-soft: rgba(74, 222, 128, 0.18);
-
-   --gradient-primary: linear-gradient(
-      135deg,
-      #1ee0bd 0%,
-      #18c4a4 100%
-   );
-   --gradient-hero: linear-gradient(
-      135deg,
-      #061513 0%,
-      #0e3a36 50%,
-      #061513 100%
-   );
-   --gradient-card: linear-gradient(
-      180deg,
-      rgba(28, 68, 64, 0.55) 0%,
-      rgba(12, 39, 34, 0.55) 100%
-   );
-   --gradient-glow: radial-gradient(
-      circle at 25% -5%,
-      rgba(30, 224, 189, 0.18) 0%,
-      transparent 55%
-   );
-
-   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
-   --shadow-sm: 0 2px 6px -1px rgba(0, 0, 0, 0.5);
-   --shadow-md: 0 12px 28px -10px rgba(0, 0, 0, 0.6);
-   --shadow-lg: 0 24px 48px -16px rgba(0, 0, 0, 0.7);
-   --shadow-xl: 0 40px 80px -24px rgba(0, 0, 0, 0.8);
-   --shadow-primary-glow: 0 16px 40px -14px rgba(30, 224, 189, 0.55);
-   --shadow-hero: 0 30px 80px -30px rgba(0, 0, 0, 0.7);
 
    color-scheme: dark;
 }

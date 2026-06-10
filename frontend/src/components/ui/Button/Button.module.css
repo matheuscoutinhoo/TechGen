@@ -3,69 +3,64 @@
    align-items: center;
    justify-content: center;
    gap: var(--space-2);
-   padding: 0.625rem 1.25rem;
+   padding: 0 1rem;
    border-radius: var(--radius-full);
    border: 1px solid transparent;
    font-size: var(--font-size-sm);
-   font-weight: 600;
+   font-weight: 500;
    cursor: pointer;
    transition: background var(--transition-fast),
       color var(--transition-fast),
       border-color var(--transition-fast),
-      box-shadow var(--transition-base),
-      transform var(--transition-fast),
-      filter var(--transition-fast);
+      opacity var(--transition-fast);
    text-decoration: none;
    line-height: 1;
-   min-height: 2.5rem;
-   letter-spacing: 0.01em;
-}
-
-.button:active:not(:disabled) {
-   transform: translateY(1px);
+   min-height: 2.25rem;
+   letter-spacing: -0.01em;
 }
 
 .button:disabled {
    cursor: not-allowed;
-   opacity: 0.5;
+   opacity: 0.4;
 }
 
+/* Primary estilo Vercel: branco invertido. Sólido, sem gradient. */
 .primary {
-   background: var(--gradient-primary);
-   color: var(--color-text-inverse);
-   box-shadow: var(--shadow-primary-glow);
+   background-color: #ededed;
+   color: #000000;
+   border-color: #ededed;
 }
 
 .primary:hover:not(:disabled) {
-   filter: brightness(1.08);
-   box-shadow: var(--shadow-primary-glow), var(--shadow-md);
+   background-color: #ffffff;
+   border-color: #ffffff;
 }
 
 .secondary {
    background-color: var(--color-bg-elevated);
    color: var(--color-text);
-   border-color: var(--color-border);
+   border-color: var(--color-border-strong);
 }
 
 .secondary:hover:not(:disabled) {
-   background-color: var(--color-surface-strong);
-   border-color: var(--color-primary);
-   color: var(--color-primary);
+   background-color: var(--color-surface);
+   border-color: var(--color-text-muted);
 }
 
 .ghost {
    background-color: transparent;
-   color: var(--color-primary-strong);
+   color: var(--color-text-muted);
 }
 
 .ghost:hover:not(:disabled) {
-   background-color: var(--color-primary-soft);
+   background-color: var(--color-surface);
+   color: var(--color-text);
 }
 
 .danger {
-   background-color: var(--color-bg-elevated);
+   background-color: transparent;
    color: var(--color-danger);
-   border-color: color-mix(in srgb, var(--color-danger) 50%, transparent);
+   border-color: var(--color-border);
 }
 
 .danger:hover:not(:disabled) {

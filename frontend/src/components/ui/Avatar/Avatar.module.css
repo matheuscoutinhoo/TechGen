@@ -7,13 +7,11 @@
    flex-shrink: 0;
    background-color: var(--color-surface-strong);
    color: var(--color-text);
-   font-weight: 700;
+   font-weight: 600;
    line-height: 1;
    user-select: none;
    border: 1px solid var(--color-border);
-   transition: box-shadow var(--transition-base),
-      transform var(--transition-base),
-      border-color var(--transition-base);
+   transition: border-color var(--transition-fast);
 }
 
 .image {
@@ -24,19 +22,18 @@
 }
 
 .placeholder {
-   background: var(--gradient-primary);
-   color: var(--color-text-inverse);
-   border-color: transparent;
+   /* Sem foto: bloco cinza neutro com inicial em branco — estilo Vercel. */
+   background-color: var(--color-surface-strong);
+   color: var(--color-text);
 }
 
 .initials {
    font-family: var(--font-sans);
-   letter-spacing: 0.04em;
+   letter-spacing: -0.01em;
 }
 
 .featured {
-   box-shadow: var(--shadow-primary-glow), 0 0 0 2px var(--color-bg),
-      0 0 0 3px var(--color-primary);
+   border-color: var(--color-border-strong);
 }
 
 .interactive {
@@ -44,7 +41,5 @@
 }
 
 .interactive:hover {
-   transform: scale(1.05);
-   box-shadow: var(--shadow-primary-glow);
-   border-color: var(--color-primary);
+   border-color: var(--color-text);
 }

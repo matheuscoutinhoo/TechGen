@@ -2,7 +2,6 @@ import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Button } from '../../ui/Button';
 import { Avatar } from '../../ui/Avatar';
-import { ThemeToggle } from '../../ui/ThemeToggle';
 import styles from './Header.module.css';
 
 export function Header() {
@@ -15,9 +14,8 @@ export function Header() {
       <header className={styles.header}>
          <div className={styles.inner}>
             <Link to={isAuthenticated ? '/dashboard' : '/'} className={styles.brand}>
-               <span className={styles.brandMark}>T</span>
+               <span className={styles.brandMark} aria-hidden="true">▲</span>
                TechGen
-               <span className={styles.badge}>IA</span>
             </Link>
 
             {isAuthenticated ? (
@@ -28,7 +26,6 @@ export function Header() {
                      </NavLink>
                   </nav>
                   <div className={styles.userMenu}>
-                     <ThemeToggle />
                      {user && (
                         <Link
                            to="/account"
@@ -39,7 +36,7 @@ export function Header() {
                            <Avatar
                               name={user.name}
                               src={user.avatar_url}
-                              size={36}
+                              size={32}
                               interactive
                            />
                            <span className={styles.userName}>{user.name}</span>
@@ -52,7 +49,6 @@ export function Header() {
                </>
             ) : (
                <nav className={styles.nav} aria-label="Acesso">
-                  <ThemeToggle />
                   <NavLink to="/login" className={navClass}>
                      Entrar
                   </NavLink>
