@@ -33,15 +33,15 @@ interface KpiProps {
 function Kpi({ eyebrow, value, trend, hint }: KpiProps) {
    const trendClass = trend
       ? [
-           styles.kpiTrend,
-           trend.tone === 'positive'
-              ? styles.kpiTrendPositive
-              : trend.tone === 'negative'
-                ? styles.kpiTrendNegative
-                : '',
-        ]
-           .filter(Boolean)
-           .join(' ')
+         styles.kpiTrend,
+         trend.tone === 'positive'
+            ? styles.kpiTrendPositive
+            : trend.tone === 'negative'
+               ? styles.kpiTrendNegative
+               : '',
+      ]
+         .filter(Boolean)
+         .join(' ')
       : undefined;
    return (
       <article className={styles.kpi}>
@@ -321,16 +321,11 @@ export function DashboardPage() {
 
    return (
       <>
-         <div className={styles.pageHead}>
-            <PageTitle
-               eyebrow={user ? `Olá, ${user.name.split(' ')[0]}` : undefined}
-               title="Visão geral"
-               description="Suas métricas de aprendizado, atividade recente e onde continuar."
-            />
-            <Button variant="primary" onClick={() => navigate('/trails/new')}>
-               Nova trilha
-            </Button>
-         </div>
+         <PageTitle
+            eyebrow={user ? `Olá, ${user.name.split(' ')[0]}` : undefined}
+            title="Visão geral"
+            description="Suas métricas de aprendizado, atividade recente e onde continuar."
+         />
 
          <section className={styles.kpiGrid} aria-label="Métricas principais">
             <Kpi

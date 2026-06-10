@@ -56,7 +56,7 @@ describe('<App /> + router', () => {
       );
    });
 
-   it('quando autenticado, / redireciona para /dashboard', async () => {
+   it('quando autenticado, / redireciona para /trails/new', async () => {
       tokenStorage.set('jwt');
       globalThis.fetch = vi.fn().mockImplementation((url: string) => {
          if (url.endsWith('/users/me')) {
@@ -83,7 +83,7 @@ describe('<App /> + router', () => {
       );
       await waitFor(() =>
          expect(
-            screen.getByRole('heading', { name: /Visão geral/i }),
+            screen.getByRole('heading', { name: /O que você quer aprender/i }),
          ).toBeInTheDocument(),
       );
    });

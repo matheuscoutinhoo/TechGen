@@ -68,7 +68,7 @@ export function RegisterPage() {
                proficiency,
             })),
          });
-         navigate('/dashboard', { replace: true });
+         navigate('/trails/new', { replace: true });
       } catch (err) {
          if (err instanceof ApiError) {
             setError(err.message);

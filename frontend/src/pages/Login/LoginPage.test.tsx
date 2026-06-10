@@ -21,7 +21,7 @@ function renderLogin() {
          <AuthProvider>
             <Routes>
                <Route path="/login" element={<LoginPage />} />
-               <Route path="/dashboard" element={<div>dashboard ok</div>} />
+               <Route path="/trails/new" element={<div>nova trilha ok</div>} />
             </Routes>
          </AuthProvider>
       </MemoryRouter>,
@@ -38,7 +38,7 @@ describe('<LoginPage />', () => {
       globalThis.fetch = ORIGINAL_FETCH;
    });
 
-   it('autentica com sucesso e navega para /dashboard', async () => {
+   it('autentica com sucesso e navega para /trails/new', async () => {
       globalThis.fetch = vi.fn().mockResolvedValue(
          jsonResponse({
             access_token: 'jwt',
@@ -60,7 +60,7 @@ describe('<LoginPage />', () => {
       await user.type(screen.getByLabelText('Senha'), 'supersecret');
       await user.click(screen.getByRole('button', { name: 'Entrar' }));
 
-      await waitFor(() => expect(screen.getByText('dashboard ok')).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('nova trilha ok')).toBeInTheDocument());
       expect(tokenStorage.get()).toBe('jwt');
    });
 

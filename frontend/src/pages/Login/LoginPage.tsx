@@ -26,7 +26,7 @@ export function LoginPage() {
       try {
          await login({ email, password });
          const state = location.state as LocationState | null;
-         const target = state?.from?.pathname ?? '/dashboard';
+         const target = state?.from?.pathname ?? '/trails/new';
          navigate(target, { replace: true });
       } catch (err) {
          if (err instanceof ApiError) {

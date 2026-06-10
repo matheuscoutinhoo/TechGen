@@ -22,7 +22,7 @@ export function AppRoutes() {
             path="/"
             element={
                isAuthenticated ? (
-                  <Navigate to="/dashboard" replace />
+                  <Navigate to="/trails/new" replace />
                ) : (
                   <PageContainer width="wide">
                      <HomePage />
@@ -34,7 +34,7 @@ export function AppRoutes() {
             path="/login"
             element={
                isAuthenticated ? (
-                  <Navigate to="/dashboard" replace />
+                  <Navigate to="/trails/new" replace />
                ) : (
                   <PageContainer width="narrow">
                      <LoginPage />
@@ -46,7 +46,7 @@ export function AppRoutes() {
             path="/register"
             element={
                isAuthenticated ? (
-                  <Navigate to="/dashboard" replace />
+                  <Navigate to="/trails/new" replace />
                ) : (
                   <PageContainer width="narrow">
                      <RegisterPage />

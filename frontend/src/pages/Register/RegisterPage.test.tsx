@@ -21,7 +21,7 @@ function renderRegister() {
          <AuthProvider>
             <Routes>
                <Route path="/register" element={<RegisterPage />} />
-               <Route path="/dashboard" element={<div>dashboard ok</div>} />
+               <Route path="/trails/new" element={<div>nova trilha ok</div>} />
             </Routes>
          </AuthProvider>
       </MemoryRouter>,
@@ -38,7 +38,7 @@ describe('<RegisterPage />', () => {
       globalThis.fetch = ORIGINAL_FETCH;
    });
 
-   it('cria conta e navega para dashboard', async () => {
+   it('cria conta e navega para nova trilha', async () => {
       globalThis.fetch = vi.fn().mockResolvedValue(
          jsonResponse(
             {
@@ -65,7 +65,7 @@ describe('<RegisterPage />', () => {
       await user.type(screen.getByLabelText('Confirme a senha'), 'supersecret');
       await user.click(screen.getByRole('button', { name: 'Criar conta' }));
 
-      await waitFor(() => expect(screen.getByText('dashboard ok')).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('nova trilha ok')).toBeInTheDocument());
       expect(tokenStorage.get()).toBe('jwt');
    });
 
