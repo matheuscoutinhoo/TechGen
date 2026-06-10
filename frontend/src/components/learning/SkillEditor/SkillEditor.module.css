@@ -4,25 +4,27 @@
    gap: var(--space-3);
 }
 
-/* ----- Linha de adição: input + select + botão alinhados ----- */
+/* ----- Linha de adição: input + trigger de nível + botão alinhados ----- */
 .composer {
    display: flex;
    align-items: stretch;
    gap: 0;
-   border: 1px solid var(--color-border-strong);
+   border: 1px solid var(--color-border);
    border-radius: var(--radius-md);
-   background-color: var(--color-bg);
-   overflow: hidden;
-   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+   background-color: var(--color-bg-elevated);
+   overflow: visible;
+   transition: border-color var(--transition-fast),
+      background-color var(--transition-fast);
 }
 
 .composer:focus-within {
-   border-color: var(--color-primary);
-   box-shadow: 0 0 0 3px rgba(0, 150, 136, 0.15);
+   border-color: var(--color-border-strong);
+   background-color: var(--color-surface);
 }
 
-.input,
-.select {
+.input {
+   flex: 1;
+   min-width: 0;
    border: 0;
    background: transparent;
    font-size: var(--font-size-sm);
@@ -31,49 +33,46 @@
    outline: none;
 }
 
-.input {
-   flex: 1;
-   min-width: 0;
-}
-
 .input::placeholder {
    color: var(--color-text-subtle);
 }
 
-.select {
+.composerLevel {
    border-left: 1px solid var(--color-border);
-   color: var(--color-text-muted);
-   appearance: none;
-   -webkit-appearance: none;
-   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%237b8794' d='M1 1l4 4 4-4'/></svg>");
-   background-repeat: no-repeat;
-   background-position: right 0.75rem center;
-   padding-right: 1.85rem;
-   cursor: pointer;
+   display: flex;
+   align-items: stretch;
+}
+
+.composerLevel .levelTrigger {
+   padding-left: 0.85rem;
 }
 
 .addBtn {
    appearance: none;
    border: 0;
    border-left: 1px solid var(--color-border);
-   background-color: var(--color-surface);
-   color: var(--color-primary-strong);
-   padding: 0 0.95rem;
+   background-color: transparent;
+   color: var(--color-text);
+   padding: 0 var(--space-4);
    font-size: var(--font-size-sm);
    font-weight: 600;
    cursor: pointer;
    display: inline-flex;
    align-items: center;
    gap: var(--space-2);
-   transition: background-color var(--transition-fast), color var(--transition-fast);
+   transition: background-color var(--transition-fast),
+      color var(--transition-fast);
 }
 
-.addBtn:hover:not(:disabled) {
-   background-color: var(--color-primary-soft);
+.addBtn:hover:not(:disabled),
+.addBtn:focus-visible {
+   outline: none;
+   background-color: var(--color-surface);
+   color: var(--color-primary);
 }
 
 .addBtn:disabled {
-   opacity: 0.5;
+   opacity: 0.4;
    cursor: not-allowed;
 }
 
@@ -105,17 +104,17 @@
 
 .chip {
    display: inline-flex;
-   align-items: center;
-   gap: 0;
+   align-items: stretch;
    border: 1px solid var(--color-border);
-   border-radius: 999px;
-   background-color: var(--color-surface);
-   transition: border-color var(--transition-fast), background-color var(--transition-fast);
+   border-radius: var(--radius-full);
+   background-color: var(--color-bg-elevated);
+   transition: border-color var(--transition-fast),
+      background-color var(--transition-fast);
 }
 
 .chip:hover {
    border-color: var(--color-border-strong);
-   background-color: var(--color-bg);
+   background-color: var(--color-surface);
 }
 
 .chipName {
@@ -123,32 +122,57 @@
    font-weight: 500;
    color: var(--color-text);
    text-transform: capitalize;
-   padding: 0.25rem 0.55rem 0.25rem 0.85rem;
+   padding: 0.3rem 0.55rem 0.3rem 0.9rem;
    line-height: 1.4;
+   align-self: center;
 }
 
 .chipDivider {
    width: 1px;
    align-self: stretch;
    background-color: var(--color-border);
-   margin: 0.3rem 0;
+   margin: 0.35rem 0;
 }
 
-/* ----- Nível dentro do chip ----- */
-.chipLevel {
+/* ----- Trigger do popup de nível ----- */
+.levelWrapper {
+   position: relative;
    display: inline-flex;
-   align-items: center;
-   gap: 0.4rem;
-   padding: 0.25rem 0.55rem 0.25rem 0.5rem;
+   align-items: stretch;
+}
+
+.levelTrigger {
+   appearance: none;
+   border: 0;
+   background: transparent;
    color: var(--levelColor, var(--color-text-muted));
    font-size: 0.7rem;
    font-weight: 700;
    text-transform: uppercase;
    letter-spacing: 0.05em;
+   padding: 0.3rem 1.5rem 0.3rem 0.65rem;
+   cursor: pointer;
+   display: inline-flex;
+   align-items: center;
+   gap: 0.4rem;
    line-height: 1.4;
+   position: relative;
+   transition: background-color var(--transition-fast),
+      color var(--transition-fast);
 }
 
-.chipLevel::before {
+.levelTrigger:hover:not(:disabled),
+.levelTrigger:focus-visible {
+   outline: none;
+   background-color: var(--color-surface);
+}
+
+.levelTrigger:disabled {
+   opacity: 0.5;
+   cursor: not-allowed;
+}
+
+.levelTrigger::before {
    content: '';
    width: 6px;
    height: 6px;
@@ -157,56 +181,110 @@
    flex-shrink: 0;
 }
 
-/* Select inline real (sem sobreposição), com aparência discreta. */
-.chipLevelSelect {
-   appearance: none;
-   -webkit-appearance: none;
-   background: transparent;
-   border: 0;
-   color: inherit;
-   font: inherit;
-   text-transform: inherit;
-   letter-spacing: inherit;
-   padding: 0 0.85rem 0 0;
-   margin: 0;
-   cursor: pointer;
-   line-height: 1.4;
-   /* seta custom no fundo (caret pequeno na cor atual) */
-   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'><path fill='currentColor' d='M0 0l4 5 4-5z'/></svg>");
-   background-repeat: no-repeat;
-   background-position: right 0 center;
-   background-size: 7px 4px;
+.levelTrigger::after {
+   content: '';
+   position: absolute;
+   right: 0.55rem;
+   top: 50%;
+   width: 6px;
+   height: 6px;
+   margin-top: -5px;
+   border-right: 1.5px solid currentColor;
+   border-bottom: 1.5px solid currentColor;
+   transform: rotate(45deg);
+   opacity: 0.7;
+   transition: transform var(--transition-fast),
+      margin-top var(--transition-fast);
 }
 
-.chipLevelSelect option {
+.levelTriggerOpen::after {
+   transform: rotate(-135deg);
+   margin-top: -1px;
+}
+
+/* ----- Popup (listbox) ----- */
+.levelPopup {
+   position: absolute;
+   top: calc(100% + 4px);
+   right: 0;
+   min-width: 12rem;
+   margin: 0;
+   padding: var(--space-1);
+   list-style: none;
+   background-color: var(--color-bg-elevated);
+   border: 1px solid var(--color-border-strong);
+   border-radius: var(--radius-md);
+   box-shadow: var(--shadow-lg);
+   z-index: 20;
+   display: flex;
+   flex-direction: column;
+   gap: 1px;
+}
+
+.levelOption {
+   display: flex;
+   align-items: center;
+   gap: var(--space-2);
+   padding: 0.45rem 0.7rem;
+   font-size: var(--font-size-sm);
    color: var(--color-text);
-   background-color: var(--color-bg);
+   border-radius: var(--radius-sm);
+   cursor: pointer;
+   user-select: none;
+   transition: background-color var(--transition-fast),
+      color var(--transition-fast);
+}
+
+.levelOption:hover,
+.levelOptionActive {
+   background-color: var(--color-surface);
+}
+
+.levelOptionSelected {
+   color: var(--color-primary);
+}
+
+.levelOptionDot {
+   width: 8px;
+   height: 8px;
+   border-radius: 50%;
+   background-color: var(--dotColor, var(--color-text-subtle));
+   flex-shrink: 0;
+}
+
+.levelOptionLabel {
+   font-weight: 500;
    text-transform: lowercase;
 }
 
-.chipLevelSelect:focus-visible {
-   outline: 2px solid var(--color-primary);
-   outline-offset: 2px;
-   border-radius: 4px;
+.levelOptionHint {
+   margin-left: auto;
+   font-size: var(--font-size-xs);
+   color: var(--color-text-subtle);
 }
 
-/* Cores por nível, expostas como custom property no contêiner do chip */
+/* ----- Cores por nível via tokens ----- */
 .level1 {
-   --levelColor: #6b7280;
+   --levelColor: var(--color-text-subtle);
+   --dotColor: var(--color-text-subtle);
 }
 
 .level2 {
-   --levelColor: #00796b;
+   --levelColor: var(--color-warning);
+   --dotColor: var(--color-warning);
 }
 
 .level3 {
-   --levelColor: #c2410c;
+   --levelColor: var(--color-primary);
+   --dotColor: var(--color-primary);
 }
 
 .level4 {
-   --levelColor: #7e22ce;
+   --levelColor: var(--color-success);
+   --dotColor: var(--color-success);
 }
 
+/* ----- Botão remover do chip ----- */
 .chipRemove {
    appearance: none;
    border: 0;
@@ -216,8 +294,9 @@
    line-height: 1;
    padding: 0 0.7rem;
    cursor: pointer;
-   border-radius: 0 999px 999px 0;
-   transition: color var(--transition-fast), background-color var(--transition-fast);
+   border-radius: 0 var(--radius-full) var(--radius-full) 0;
+   transition: color var(--transition-fast),
+      background-color var(--transition-fast);
    align-self: stretch;
    display: inline-flex;
    align-items: center;
@@ -233,11 +312,11 @@
    cursor: not-allowed;
 }
 
-/* Modo estático (sem onChangeProficiency): apenas badge, sem select */
+/* Modo estático (sem onChangeProficiency): apenas badge, sem trigger */
 .chipLevelStatic {
-   padding: 0.25rem 0.6rem;
+   padding: 0.3rem 0.65rem;
    font-size: 0.7rem;
-   font-weight: 600;
+   font-weight: 700;
    text-transform: uppercase;
    letter-spacing: 0.05em;
    color: var(--levelColor, var(--color-text-muted));
@@ -252,4 +331,10 @@
    height: 6px;
    border-radius: 50%;
    background-color: currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+   .levelTrigger::after {
+      transition: none;
+   }
 }

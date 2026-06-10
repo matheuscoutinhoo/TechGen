@@ -67,7 +67,7 @@ describe('<SkillEditor />', () => {
       expect(onRemove).toHaveBeenCalledWith(ITEMS[0]);
    });
 
-   it('permite alterar o nível via select inline quando onChangeProficiency é passado', async () => {
+   it('permite alterar o nível via listbox custom quando onChangeProficiency é passado', async () => {
       const onChange = vi.fn();
       render(
          <SkillEditor
@@ -79,10 +79,9 @@ describe('<SkillEditor />', () => {
       );
 
       const user = userEvent.setup();
-      await user.selectOptions(
-         screen.getByLabelText('Alterar nível de fastapi'),
-         '4',
-      );
+      await user.click(screen.getByRole('button', { name: 'Alterar nível de fastapi' }));
+      const option = await screen.findByRole('option', { name: /advanced/i });
+      await user.click(option);
       expect(onChange).toHaveBeenCalledWith(ITEMS[0], 4);
    });
 });

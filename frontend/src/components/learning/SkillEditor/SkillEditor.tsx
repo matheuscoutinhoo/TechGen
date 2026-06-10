@@ -1,4 +1,10 @@
-import { useId, useState, type KeyboardEvent } from 'react';
+import {
+   useEffect,
+   useId,
+   useRef,
+   useState,
+   type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import type { ProficiencyLabel, ProficiencyLevel, SkillInput } from '../../../types/api';
 import styles from './SkillEditor.module.css';
 
@@ -32,10 +38,10 @@ const SHORT_LABELS: Record<ProficiencyLevel, string> = {
 };
 
 const HELP_LABELS: Record<ProficiencyLevel, string> = {
-   1: 'novice — já ouvi falar',
-   2: 'beginner — já mexi um pouco',
-   3: 'intermediate — uso confortavelmente',
-   4: 'advanced — domino o tópico',
+   1: 'já ouvi falar',
+   2: 'já mexi um pouco',
+   3: 'uso confortavelmente',
+   4: 'domino o tópico',
 };
 
 const LEVEL_CLASS: Record<ProficiencyLevel, string> = {
@@ -47,6 +53,155 @@ const LEVEL_CLASS: Record<ProficiencyLevel, string> = {
 
 const LEVELS: ProficiencyLevel[] = [1, 2, 3, 4];
 
+interface LevelSelectProps {
+   value: ProficiencyLevel;
+   onChange(next: ProficiencyLevel): void;
+   ariaLabel: string;
+   disabled?: boolean;
+}
+
+/**
+ * Listbox custom de nível. Substitui o `<select>` nativo (que no Windows
+ * ignora estilos de `option` e abre com tema do SO).
+ */
+function LevelSelect({ value, onChange, ariaLabel, disabled }: LevelSelectProps) {
+   const wrapperRef = useRef<HTMLSpanElement | null>(null);
+   const triggerRef = useRef<HTMLButtonElement | null>(null);
+   const listboxId = useId();
+   const [open, setOpen] = useState(false);
+   const [activeIndex, setActiveIndex] = useState(() =>
+      Math.max(0, LEVELS.indexOf(value)),
+   );
+
+   useEffect(() => {
+      if (!open) return;
+      setActiveIndex(Math.max(0, LEVELS.indexOf(value)));
+
+      const handlePointerDown = (event: PointerEvent) => {
+         if (
+            wrapperRef.current &&
+            event.target instanceof Node &&
+            !wrapperRef.current.contains(event.target)
+         ) {
+            setOpen(false);
+         }
+      };
+      document.addEventListener('pointerdown', handlePointerDown);
+      return () => document.removeEventListener('pointerdown', handlePointerDown);
+   }, [open, value]);
+
+   const close = () => {
+      setOpen(false);
+      triggerRef.current?.focus();
+   };
+
+   const commit = (level: ProficiencyLevel) => {
+      onChange(level);
+      close();
+   };
+
+   const handleTriggerKey = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+      if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+         event.preventDefault();
+         setOpen(true);
+      } else if (event.key === 'Escape') {
+         setOpen(false);
+      }
+   };
+
+   const handleListKey = (event: ReactKeyboardEvent<HTMLUListElement>) => {
+      if (event.key === 'ArrowDown') {
+         event.preventDefault();
+         setActiveIndex((idx) => (idx + 1) % LEVELS.length);
+      } else if (event.key === 'ArrowUp') {
+         event.preventDefault();
+         setActiveIndex((idx) => (idx - 1 + LEVELS.length) % LEVELS.length);
+      } else if (event.key === 'Home') {
+         event.preventDefault();
+         setActiveIndex(0);
+      } else if (event.key === 'End') {
+         event.preventDefault();
+         setActiveIndex(LEVELS.length - 1);
+      } else if (event.key === 'Enter' || event.key === ' ') {
+         event.preventDefault();
+         commit(LEVELS[activeIndex]);
+      } else if (event.key === 'Escape' || event.key === 'Tab') {
+         event.preventDefault();
+         close();
+      }
+   };
+
+   return (
+      <span className={styles.levelWrapper} ref={wrapperRef}>
+         <button
+            ref={triggerRef}
+            type="button"
+            className={
+               open
+                  ? `${styles.levelTrigger} ${styles.levelTriggerOpen}`
+                  : styles.levelTrigger
+            }
+            onClick={() => setOpen((value) => !value)}
+            onKeyDown={handleTriggerKey}
+            disabled={disabled}
+            aria-haspopup="listbox"
+            aria-expanded={open}
+            aria-controls={open ? listboxId : undefined}
+            aria-label={ariaLabel}
+            title={`${SHORT_LABELS[value]} — ${HELP_LABELS[value]}`}
+         >
+            {SHORT_LABELS[value]}
+         </button>
+         {open && (
+            <ul
+               id={listboxId}
+               className={styles.levelPopup}
+               role="listbox"
+               tabIndex={-1}
+               aria-activedescendant={`${listboxId}-${activeIndex}`}
+               ref={(node) => {
+                  // Focar a lista quando ela aparece, sem perder controle de teclado.
+                  if (node) node.focus();
+               }}
+               onKeyDown={handleListKey}
+            >
+               {LEVELS.map((level, idx) => {
+                  const selected = level === value;
+                  const active = idx === activeIndex;
+                  const className = [
+                     styles.levelOption,
+                     selected ? styles.levelOptionSelected : '',
+                     active ? styles.levelOptionActive : '',
+                     LEVEL_CLASS[level],
+                  ]
+                     .filter(Boolean)
+                     .join(' ');
+                  return (
+                     <li
+                        id={`${listboxId}-${idx}`}
+                        key={level}
+                        role="option"
+                        aria-selected={selected}
+                        className={className}
+                        onMouseEnter={() => setActiveIndex(idx)}
+                        onClick={() => commit(level)}
+                     >
+                        <span className={styles.levelOptionDot} aria-hidden="true" />
+                        <span className={styles.levelOptionLabel}>
+                           {SHORT_LABELS[level]}
+                        </span>
+                        <span className={styles.levelOptionHint}>
+                           {HELP_LABELS[level]}
+                        </span>
+                     </li>
+                  );
+               })}
+            </ul>
+         )}
+      </span>
+   );
+}
+
 export function SkillEditor({
    skills,
    onAdd,
@@ -56,7 +211,6 @@ export function SkillEditor({
    error,
 }: SkillEditorProps) {
    const inputId = useId();
-   const levelId = useId();
    const [name, setName] = useState('');
    const [proficiency, setProficiency] = useState<ProficiencyLevel>(2);
    const [localError, setLocalError] = useState<string | null>(null);
@@ -80,17 +234,11 @@ export function SkillEditor({
       setProficiency(2);
    };
 
-   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+   const handleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
       if (event.key === 'Enter') {
          event.preventDefault();
          void handleAdd();
       }
-   };
-
-   const handleProficiency = async (skill: SkillEditorEntry, raw: string) => {
-      const next = Number(raw) as ProficiencyLevel;
-      if (!LEVELS.includes(next)) return;
-      await onChangeProficiency?.(skill, next);
    };
 
    const message = localError ?? error;
@@ -112,26 +260,14 @@ export function SkillEditor({
                disabled={isBusy}
                autoComplete="off"
             />
-            <label htmlFor={levelId} className="visually-hidden">
-               Nível
-            </label>
-            <select
-               id={levelId}
-               className={styles.select}
-               value={proficiency}
-               onChange={(event) =>
-                  setProficiency(Number(event.target.value) as ProficiencyLevel)
-               }
-               disabled={isBusy}
-               aria-label="Nível"
-               title={HELP_LABELS[proficiency]}
-            >
-               {LEVELS.map((value) => (
-                  <option key={value} value={value}>
-                     {SHORT_LABELS[value]}
-                  </option>
-               ))}
-            </select>
+            <span className={`${styles.composerLevel} ${LEVEL_CLASS[proficiency]}`}>
+               <LevelSelect
+                  value={proficiency}
+                  onChange={setProficiency}
+                  ariaLabel="Nível"
+                  disabled={isBusy}
+               />
+            </span>
             <button
                type="button"
                className={styles.addBtn}
@@ -165,24 +301,12 @@ export function SkillEditor({
                         <span className={styles.chipName}>{skill.name}</span>
                         <span className={styles.chipDivider} aria-hidden="true" />
                         {onChangeProficiency ? (
-                           <span className={styles.chipLevel}>
-                              <select
-                                 className={styles.chipLevelSelect}
-                                 value={skill.proficiency}
-                                 onChange={(event) =>
-                                    handleProficiency(skill, event.target.value)
-                                 }
-                                 disabled={isBusy}
-                                 aria-label={`Alterar nível de ${skill.name}`}
-                                 title={HELP_LABELS[skill.proficiency]}
-                              >
-                                 {LEVELS.map((value) => (
-                                    <option key={value} value={value}>
-                                       {SHORT_LABELS[value]}
-                                    </option>
-                                 ))}
-                              </select>
-                           </span>
+                           <LevelSelect
+                              value={skill.proficiency}
+                              onChange={(next) => void onChangeProficiency(skill, next)}
+                              ariaLabel={`Alterar nível de ${skill.name}`}
+                              disabled={isBusy}
+                           />
                         ) : (
                            <span
                               className={styles.chipLevelStatic}
