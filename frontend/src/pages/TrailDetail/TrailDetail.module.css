@@ -29,8 +29,10 @@
 }
 
 /* Lista com linha de fluxo vertical à esquerda + nodes por ticket.
-   Cada item desenha um pedaço da linha (::before) e um node (::after).
-   A linha "preenche" conforme o ticket fica concluído. */
+   Cada item desenha DUAS metades de linha: ::before (acima do node) e
+   ::after (abaixo do node). Isso permite colorir só a metade certa
+   quando um item está done — o connector segue até o próximo node e
+   para ali se o próximo ainda não foi concluído. */
 .flow {
    list-style: none;
    margin: var(--space-7) 0 0;
@@ -52,32 +54,41 @@
    min-width: 0;
 }
 
-/* Linha vertical centrada no node. Estende-se metade do gap pra cima e
-   pra baixo (com exceção de first/last) pra cobrir o vão entre itens
-   e formar uma única linha contínua passando por todos os nodes. */
-.flowItem::before {
+/* Metade SUPERIOR da linha — do meio-gap acima até o centro do node.
+   Centro do node = top(0.5rem) + height/2(0.75rem) = 1.25rem. */
+.flowItem::before,
+.flowItem::after {
    content: '';
    position: absolute;
    left: calc(var(--space-3) - 1px);
-   top: calc(var(--space-4) * -0.5);
-   bottom: calc(var(--space-4) * -0.5);
    width: 2px;
    background-color: var(--color-border);
    border-radius: 1px;
 }
 
-/* Primeiro item: linha começa no centro do node (sem pedaço acima). */
-.flowItem:first-child::before {
+.flowItem::before {
+   top: calc(var(--space-4) * -0.5);
+   height: calc(1.25rem + var(--space-4) * 0.5);
+}
+
+/* Metade INFERIOR da linha — do centro do node até o meio-gap abaixo. */
+.flowItem::after {
    top: 1.25rem;
+   bottom: calc(var(--space-4) * -0.5);
 }
 
-/* Último item: linha termina no centro do node (sem pedaço abaixo). */
-.flowItem:last-child::before {
-   bottom: calc(100% - 1.25rem);
+/* Primeiro item não tem linha entrando; último não tem linha saindo. */
+.flowItem:first-child::before {
+   display: none;
 }
 
-/* Caso item único, esconde a linha completamente. */
-.flowItem:only-child::before {
+.flowItem:last-child::after {
+   display: none;
+}
+
+/* Caso item único, esconde tudo. */
+.flowItem:only-child::before,
+.flowItem:only-child::after {
    display: none;
 }
 
@@ -108,21 +119,21 @@
    height: 0.95rem;
 }
 
-/* Quando o ticket está concluído, node fica primary e a linha que SAI dele
-   (a do próprio item, abaixo do node) também fica primary — representando
-   o "caminho percorrido" descendo até o próximo ticket. */
+/* Ticket concluído: node primary + metade INFERIOR da linha em primary
+   (caminho que sai descendo até o próximo node). */
 .flowItemDone .flowNode {
    background-color: var(--color-primary);
    border-color: var(--color-primary);
    color: var(--color-text-inverse);
 }
 
-.flowItemDone::before {
+.flowItemDone::after {
    background-color: var(--color-primary);
 }
 
-/* A linha do item SEGUINTE (acima do node dele) também fica primary
-   quando o anterior está concluído, fechando o connector visual. */
+/* Connector ativo (anterior está done): metade SUPERIOR em primary,
+   fechando visualmente o trecho entre os dois nodes. A parte abaixo do
+   node deste item segue cinza se ele ainda não foi concluído. */
 .flowConnectorActive::before {
    background-color: var(--color-primary);
 }
