@@ -11,6 +11,10 @@
 .kpiGrid {
    display: grid;
    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+   /* Linhas com mesma altura: cards na mesma fileira ficam alinhados na
+      base/topo mesmo quando o conteúdo do header quebra em 2 linhas em
+      uns e 1 em outros. */
+   grid-auto-rows: 1fr;
    gap: var(--space-3);
 }
 
@@ -33,9 +37,12 @@
 
 .kpiHeader {
    display: flex;
-   align-items: center;
+   align-items: flex-start;
    justify-content: space-between;
    gap: var(--space-3);
+   /* Reserva espaço para até 2 linhas no eyebrow OU no trend, pra que o
+      valor grande comece na mesma baseline em todos os cards da fileira. */
+   min-height: calc(var(--font-size-xs) * 1.4 * 2);
 }
 
 .kpiEyebrow {
@@ -44,6 +51,7 @@
    letter-spacing: 0.08em;
    color: var(--color-text-muted);
    font-weight: 600;
+   line-height: 1.4;
 }
 
 .kpiTrend {
@@ -51,6 +59,11 @@
    color: var(--color-text-subtle);
    font-weight: 500;
    font-variant-numeric: tabular-nums;
+   line-height: 1.4;
+   /* Não deixa o trend roubar mais que metade da linha do header — força
+      ele a quebrar antes de empurrar o eyebrow. */
+   max-width: 50%;
+   text-align: right;
 }
 
 .kpiTrendPositive {
@@ -74,6 +87,9 @@
    font-size: var(--font-size-xs);
    color: var(--color-text-subtle);
    line-height: 1.4;
+   /* Empurra o hint pra base do card: mesmo quando o eyebrow ocupa 1 ou 2
+      linhas, o hint dos 4 cards fica na mesma altura visual. */
+   margin-top: auto;
 }
 
 /* ===== Chart card ===== */
@@ -171,6 +187,10 @@
    display: flex;
    flex-direction: column;
    gap: var(--space-3);
+   /* O card lado a lado (Continue de onde parou) costuma ser mais alto;
+      esticar a lista evita o vazio embaixo das 4 linhas de proficiência. */
+   flex: 1;
+   justify-content: space-between;
 }
 
 .breakdownRow {
