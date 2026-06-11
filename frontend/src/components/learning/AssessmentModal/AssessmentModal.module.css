@@ -176,6 +176,48 @@
    max-width: 32ch;
 }
 
+/* Tela de geração da trilha: ocupa o dialog inteiro (sem header/footer). */
+.generating {
+   padding: var(--space-8) var(--space-7);
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   gap: var(--space-4);
+   text-align: center;
+   min-height: 0;
+   overflow-y: auto;
+}
+
+.generatingTitle {
+   font-size: var(--font-size-xl);
+   font-weight: 700;
+   letter-spacing: var(--letter-tight);
+   line-height: 1.2;
+   color: var(--color-text);
+   margin: 0;
+}
+
+.generatingText {
+   font-size: var(--font-size-sm);
+   color: var(--color-text-muted);
+   line-height: var(--line-height-loose);
+   margin: 0;
+   max-width: 44ch;
+}
+
+.generatingText strong {
+   color: var(--color-text);
+   font-weight: 600;
+}
+
+.generatingHint {
+   font-size: 0.8rem;
+   color: var(--color-text-subtle);
+   margin: var(--space-1) 0 0;
+   max-width: 44ch;
+}
+
 .leavingForward {
    animation: slideOutLeft 180ms ease-in forwards;
 }

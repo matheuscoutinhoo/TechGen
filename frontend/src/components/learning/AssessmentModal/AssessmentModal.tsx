@@ -231,6 +231,49 @@ export function AssessmentModal({
 
    const isLoading = phase === 'loading-next';
 
+   // Enquanto a trilha está sendo gerada, o modal vira uma tela de loading
+   // dedicada: sem perguntas, sem rodapé e sem nenhuma ação de fechar
+   // (Cancelar/Esc já estão desabilitados por `isSubmitting`). A mensagem
+   // persuade o aluno a aguardar pelo resultado a nível de mercado.
+   if (isSubmitting) {
+      return (
+         <div
+            className={styles.backdrop}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="assessment-generating-title"
+         >
+            <div className={styles.dialog} ref={dialogRef} tabIndex={-1}>
+               <div className={styles.generating} aria-live="polite">
+                  <Spinner label="O Mentor está desenhando seu projeto..." />
+                  <h2
+                     id="assessment-generating-title"
+                     className={styles.generatingTitle}
+                  >
+                     Gerando sua trilha sob medida
+                  </h2>
+                  <p className={styles.generatingText}>
+                     O Mentor está cruzando as suas <strong>skills</strong> com as{' '}
+                     <strong>respostas do diagnóstico</strong> para desenhar um
+                     projeto realista sobre <strong>{topic}</strong>, decomposto em
+                     tickets entregáveis a nível de mercado.
+                  </p>
+                  <p className={styles.generatingText}>
+                     Isso pode levar <strong>até 5 minutos</strong> — e vale cada
+                     segundo. Em vez de uma resposta rasa e instantânea, você recebe
+                     um plano de aprendizado no padrão de um projeto real, calibrado
+                     exatamente para o seu nível.
+                  </p>
+                  <p className={styles.generatingHint}>
+                     Mantenha esta aba aberta. Estamos trabalhando para entregar o
+                     melhor resultado possível.
+                  </p>
+               </div>
+            </div>
+         </div>
+      );
+   }
+
    let primaryLabel: string;
    if (isSubmitting) {
       primaryLabel = 'Gerando trilha...';
