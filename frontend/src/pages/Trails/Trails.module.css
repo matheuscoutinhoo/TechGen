@@ -92,6 +92,9 @@
    -webkit-line-clamp: 2;
    -webkit-box-orient: vertical;
    overflow: hidden;
+   /* Reserva 2 linhas mesmo quando o título cabe em 1, para o resumo e a
+      barra de progresso começarem na mesma altura em todos os cards. */
+   min-height: calc(1.3em * 2);
 }
 
 .titleLink {
@@ -129,6 +132,9 @@
    -webkit-line-clamp: 3;
    -webkit-box-orient: vertical;
    overflow: hidden;
+   /* Reserva 3 linhas para padronizar a posição da barra de progresso e do
+      rodapé entre cards com resumos de tamanhos diferentes. */
+   min-height: calc(var(--line-height-base) * 3em);
 }
 
 .progressSlot {
