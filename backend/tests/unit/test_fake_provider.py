@@ -437,3 +437,230 @@ class TestExplainConcept:
             skills=skills,
         )
         assert "advanced" in explanation.definition
+
+
+# ====================================================================== #
+# Modo PROJECT — aluno descreve escopo + tecnologias
+# ====================================================================== #
+PROJECT_SCOPE = (
+    "Plataforma web onde pessoas cadastram livros usados para doação. "
+    "Tem login, busca por título/autor e dashboard mostrando o ranking "
+    "dos doadores do mês."
+)
+TECHNOLOGIES = ["FastAPI", "PostgreSQL", "React"]
+
+
+@pytest.mark.unit
+class TestGenerateProjectTrail:
+    def test_returns_valid_trail_for_project(self):
+        provider = FakeAIProvider()
+        content = provider.generate_project_trail(
+            PROJECT_SCOPE, technologies=TECHNOLOGIES
+        )
+        assert isinstance(content, TrailContent)
+        # project_title é o rótulo curto que vira `topic` na listagem.
+        assert content.project_title
+        assert len(content.tickets) >= 6
+        for index, ticket in enumerate(content.tickets, start=1):
+            assert ticket.code == f"TG-{index}"
+            assert ticket.title
+            assert ticket.objective
+            assert ticket.concepts
+            assert ticket.tasks
+            assert ticket.acceptance_criteria
+            assert ticket.personalization_notes
+
+    def test_project_summary_references_scope(self):
+        provider = FakeAIProvider()
+        content = provider.generate_project_trail(
+            PROJECT_SCOPE, technologies=TECHNOLOGIES
+        )
+        # O resumo precisa carregar pedaços do escopo informado.
+        summary_lower = content.project_summary.lower()
+        assert "livros" in summary_lower or "doação" in summary_lower
+
+    def test_each_declared_technology_appears_somewhere(self):
+        provider = FakeAIProvider()
+        content = provider.generate_project_trail(
+            PROJECT_SCOPE, technologies=TECHNOLOGIES
+        )
+        blob = " ".join(
+            [
+                content.project_summary,
+                content.target_audience,
+                content.final_deliverable,
+                *(t.title for t in content.tickets),
+                *(t.objective for t in content.tickets),
+                *(t.personalization_notes or "" for t in content.tickets),
+                *(c for t in content.tickets for c in t.concepts),
+            ]
+        ).lower()
+        for tech in TECHNOLOGIES:
+            assert tech.lower() in blob, (
+                f"Tecnologia declarada '{tech}' não aparece em nenhum ticket"
+            )
+
+    def test_includes_concepts_outside_declared_stack_when_needed(self):
+        """Aluno pediu React/FastAPI/PostgreSQL mas o projeto envolve auth →
+        a IA tem liberdade de incluir conceitos fora da lista (auth, testes,
+        infra mínima). O FakeProvider sempre acrescenta esse tipo de conceito
+        para comprovar que o modo PROJECT não fica preso na stack declarada.
+        """
+        provider = FakeAIProvider()
+        content = provider.generate_project_trail(
+            PROJECT_SCOPE, technologies=TECHNOLOGIES
+        )
+        all_concepts = " ".join(
+            c.lower() for t in content.tickets for c in t.concepts
+        )
+        # Pelo menos um conceito complementar fora da stack declarada.
+        complementary = ("autentic", "test", "deploy", "ci/cd", "log", "docker")
+        assert any(token in all_concepts for token in complementary), (
+            "Trilha de modo PROJECT precisa cobrir conceitos auxiliares "
+            "necessários ao escopo, não só a stack declarada."
+        )
+
+    def test_personalization_notes_cite_technologies(self):
+        provider = FakeAIProvider()
+        content = provider.generate_project_trail(
+            PROJECT_SCOPE, technologies=TECHNOLOGIES
+        )
+        joined = " ".join(t.personalization_notes or "" for t in content.tickets)
+        # Pelo menos uma das tecnologias declaradas é citada nas notas.
+        assert any(tech in joined for tech in TECHNOLOGIES)
+
+    def test_last_ticket_is_capstone_delivering_the_project(self):
+        provider = FakeAIProvider()
+        content = provider.generate_project_trail(
+            PROJECT_SCOPE, technologies=TECHNOLOGIES
+        )
+        last = content.tickets[-1]
+        title_lower = last.title.lower()
+        assert any(
+            keyword in title_lower
+            for keyword in (
+                "release",
+                "entrega",
+                "capstone",
+                "demo",
+                "ponta a ponta",
+                "end-to-end",
+                "versão 1.0",
+                "publica",
+            )
+        ), f"Último ticket não é capstone: {last.title!r}"
+        assert content.final_deliverable
+
+    def test_low_familiarity_assessment_adds_foundation_ticket(self):
+        """Aluno que marcou 'nunca usei FastAPI' recebe TG-1 fundacional."""
+        provider = FakeAIProvider()
+        baseline = provider.generate_project_trail(
+            PROJECT_SCOPE, technologies=TECHNOLOGIES
+        )
+        with_low = provider.generate_project_trail(
+            PROJECT_SCOPE,
+            technologies=TECHNOLOGIES,
+            assessment=[
+                TopicAnswer(
+                    question_id="q1",
+                    question="Você já trabalhou com FastAPI antes?",
+                    answer="Nunca usei FastAPI",
+                )
+            ],
+        )
+        assert baseline.tickets[0].title != with_low.tickets[0].title
+        assert "Primeiros passos" in with_low.tickets[0].title
+        # E o ticket fundacional cita a resposta do aluno.
+        assert "Nunca usei FastAPI" in (
+            with_low.tickets[0].personalization_notes or ""
+        )
+
+    def test_skills_are_reflected_in_target_audience(self):
+        provider = FakeAIProvider()
+        content = provider.generate_project_trail(
+            PROJECT_SCOPE,
+            technologies=TECHNOLOGIES,
+            skills=[
+                UserSkillInput(name="React", level=3, label="intermediate"),
+            ],
+        )
+        assert "intermediate" in content.target_audience
+
+    def test_deterministic_for_same_inputs(self):
+        provider = FakeAIProvider()
+        a = provider.generate_project_trail(
+            PROJECT_SCOPE, technologies=TECHNOLOGIES
+        )
+        b = provider.generate_project_trail(
+            PROJECT_SCOPE, technologies=TECHNOLOGIES
+        )
+        assert a.model_dump() == b.model_dump()
+
+
+@pytest.mark.unit
+class TestProjectAdaptiveQuestions:
+    def test_first_question_asks_about_main_technology(self):
+        provider = FakeAIProvider()
+        question = provider.generate_next_project_question(
+            PROJECT_SCOPE, technologies=TECHNOLOGIES
+        )
+        assert isinstance(question, TopicQuestion)
+        assert question.id == "q1"
+        # Tecnologia principal (a primeira declarada) precisa aparecer ou na
+        # pergunta ou em pelo menos uma alternativa.
+        main_tech = TECHNOLOGIES[0]
+        blob = " ".join([question.question, *(opt.label for opt in question.options)])
+        assert main_tech in blob
+
+    def test_second_question_depends_on_first_answer(self):
+        provider = FakeAIProvider()
+        low = provider.generate_next_project_question(
+            PROJECT_SCOPE,
+            technologies=TECHNOLOGIES,
+            previous_answers=[
+                TopicAnswer(
+                    question_id="q1",
+                    question="Você já trabalhou com FastAPI antes?",
+                    answer="Nunca usei FastAPI",
+                )
+            ],
+        )
+        high = provider.generate_next_project_question(
+            PROJECT_SCOPE,
+            technologies=TECHNOLOGIES,
+            previous_answers=[
+                TopicAnswer(
+                    question_id="q1",
+                    question="Você já trabalhou com FastAPI antes?",
+                    answer="Uso FastAPI no dia a dia",
+                )
+            ],
+        )
+        assert low is not None and high is not None
+        assert low.id == "q2" and high.id == "q2"
+        assert low.question != high.question
+
+    def test_returns_none_after_max_questions(self):
+        provider = FakeAIProvider()
+        previous = [
+            TopicAnswer(question_id=f"q{i}", question=f"P{i}?", answer=f"R{i}")
+            for i in range(1, 6)
+        ]
+        assert (
+            provider.generate_next_project_question(
+                PROJECT_SCOPE, technologies=TECHNOLOGIES, previous_answers=previous
+            )
+            is None
+        )
+
+    def test_rejects_empty_technologies_with_friendly_default(self):
+        """Se nenhuma tecnologia foi declarada, ainda devolve uma pergunta
+        sensata (sondando objetivo/contexto), porque o usuário pode estar
+        decidindo a stack."""
+        provider = FakeAIProvider()
+        question = provider.generate_next_project_question(
+            PROJECT_SCOPE, technologies=[]
+        )
+        assert isinstance(question, TopicQuestion)
+        assert question.id == "q1"
+

@@ -31,6 +31,7 @@ class LearningTrailRepository:
         summary: str,
         content_json: str,
         assessment_json: str | None = None,
+        creation_input_json: str | None = None,
     ) -> LearningTrail:
         trail = LearningTrail(
             user_id=user_id,
@@ -39,6 +40,7 @@ class LearningTrailRepository:
             summary=summary,
             content_json=content_json,
             assessment_json=assessment_json,
+            creation_input_json=creation_input_json,
         )
         self.db.add(trail)
         self.db.commit()

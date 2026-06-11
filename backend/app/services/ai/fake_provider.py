@@ -761,6 +761,62 @@ class FakeAIProvider(AIProvider):
             out.append(category)
         return out
 
+    # ------------------------------------------------------------------ #
+    # Modo PROJECT — aluno descreve escopo + tecnologias
+    # ------------------------------------------------------------------ #
+    def generate_next_project_question(
+        self,
+        project_scope: str,
+        *,
+        technologies: Sequence[str] = (),
+        skills: Sequence[UserSkillInput] = (),
+        previous_answers: Sequence[TopicAnswer] = (),
+    ) -> TopicQuestion | None:
+        """Reaproveita a lógica adaptativa do modo TOPIC usando a tecnologia
+        principal (primeira declarada) como eixo. Quando não há tecnologia,
+        cai num rótulo genérico que ainda gera perguntas úteis sobre o projeto.
+        """
+        techs = [t.strip() for t in technologies if t and t.strip()]
+        main_tech = techs[0] if techs else "este projeto"
+        return self.generate_next_topic_question(
+            main_tech, skills=skills, previous_answers=previous_answers
+        )
+
+    def generate_project_trail(
+        self,
+        project_scope: str,
+        *,
+        technologies: Sequence[str] = (),
+        skills: Sequence[UserSkillInput] = (),
+        assessment: Sequence[TopicAnswer] = (),
+    ) -> TrailContent:
+        """Gera uma trilha cujo eixo é o PROJETO descrito pelo aluno.
+
+        Estratégia determinística: usa a tecnologia principal como base para
+        ``generate_learning_trail`` (que já cobre personalização por skills,
+        diagnóstico adaptativo e ticket de release) e depois ENRIQUECE o
+        resultado para refletir o escopo + a stack completa + conceitos
+        complementares fora da stack declarada (auth, testes, etc.).
+        """
+        scope = project_scope.strip()
+        techs = [t.strip() for t in technologies if t and t.strip()]
+        main_tech = techs[0] if techs else "este projeto"
+
+        base = self.generate_learning_trail(
+            main_tech, skills=skills, assessment=assessment
+        )
+        enriched_tickets = _enrich_project_tickets(base.tickets, scope, techs)
+
+        return TrailContent(
+            project_title=_project_title_from_scope(scope, main_tech),
+            project_summary=_project_summary_from_scope(scope, techs),
+            why_realistic=base.why_realistic,
+            target_audience=base.target_audience,
+            prerequisites=base.prerequisites,
+            final_deliverable=_project_deliverable_from_scope(scope, techs, main_tech),
+            tickets=enriched_tickets,
+        )
+
     @staticmethod
     def _make_ticket(
         index: int,
@@ -843,3 +899,121 @@ class FakeAIProvider(AIProvider):
             rationale=spec["rationale"],
             options=options,
         )
+
+
+# ====================================================================== #
+# Helpers do modo PROJECT
+# ====================================================================== #
+def _short_scope(scope: str, max_chars: int = 140) -> str:
+    """Resumo curto do escopo, cortado em fronteira de frase/palavra."""
+    cleaned = scope.strip()
+    if not cleaned:
+        return ""
+    # Tenta cortar na primeira frase (até o primeiro ponto final).
+    first_sentence = cleaned.split(".", 1)[0].strip()
+    if 0 < len(first_sentence) <= max_chars:
+        return first_sentence
+    # Fallback: corte por palavra.
+    if len(cleaned) <= max_chars:
+        return cleaned
+    truncated = cleaned[:max_chars].rsplit(" ", 1)[0].rstrip(",;:")
+    return f"{truncated}..."
+
+
+def _project_title_from_scope(scope: str, main_tech: str) -> str:
+    """Título curto e específico extraído do escopo do projeto.
+
+    Cai no padrão do modo TOPIC quando o escopo é vazio (não deveria acontecer
+    porque o schema valida, mas blindamos pra não estourar).
+    """
+    summary = _short_scope(scope, max_chars=120)
+    if not summary:
+        return f"Plataforma prática de {main_tech}"
+    return summary[:200]
+
+
+def _project_summary_from_scope(scope: str, technologies: Sequence[str]) -> str:
+    """Resumo do projeto que CITA o escopo e a stack declarada."""
+    cleaned = scope.strip()
+    if not cleaned:
+        cleaned = "o projeto descrito"
+    if technologies:
+        stack = ", ".join(technologies)
+        stack_sentence = (
+            f"A stack pedida — {stack} — será usada como espinha dorsal, mas a "
+            "trilha também cobre conceitos complementares que o projeto exige "
+            "(ex.: autenticação, testes, infra mínima)."
+        )
+    else:
+        stack_sentence = (
+            "Como nenhuma stack foi declarada, escolhemos uma combinação mínima "
+            "e justificada no primeiro ticket."
+        )
+    return (
+        f"Você vai construir, do zero, o seguinte projeto: {cleaned} "
+        f"{stack_sentence} Cada ticket entrega um incremento utilizável."
+    )
+
+
+def _project_deliverable_from_scope(
+    scope: str, technologies: Sequence[str], main_tech: str
+) -> str:
+    short = _short_scope(scope, max_chars=140) or main_tech
+    stack = ", ".join(technologies) if technologies else main_tech
+    return (
+        f"Ao final desta trilha você terá rodando: **{short}** — construído "
+        f"com {stack}, com README documentando como subir, suite de testes "
+        "verde e tag v1.0 no repositório, pronto para outra pessoa clonar e "
+        "reproduzir."
+    )
+
+
+# Sinais textuais no escopo que disparam a inclusão de conceitos complementares
+# fora da stack declarada (auth, multiusuário, etc.).
+_AUTH_HINTS = ("login", "auth", "cadastr", "usuári", "usuario", "perfil", "conta")
+
+
+def _enrich_project_tickets(
+    tickets: Sequence[Ticket], scope: str, technologies: Sequence[str]
+) -> list[Ticket]:
+    """Anota cada ticket com a tecnologia que está sendo praticada e enxerta
+    conceitos complementares no primeiro ticket "de implementação" (TG-2+).
+
+    Estratégia:
+    - Cicla pelas tecnologias declaradas, anexando "Tecnologia praticada nesta
+      etapa: {tech}." ao `personalization_notes` (sem sobrescrever o que já
+      estava lá).
+    - No primeiro ticket que NÃO seja TG-1 nem o último (capstone), prepende
+      um conceito complementar: "Autenticação" quando o escopo menciona
+      login/cadastro de usuário e "Testes automatizados" sempre.
+    """
+    scope_lower = scope.lower()
+    needs_auth = any(hint in scope_lower for hint in _AUTH_HINTS)
+    techs = [t for t in technologies if t]
+    complementary_target = 1 if len(tickets) > 2 else 0  # TG-2 ou primeiro disponível
+    enriched: list[Ticket] = []
+    for i, ticket in enumerate(tickets):
+        notes = ticket.personalization_notes or ""
+        if techs:
+            tech_note = (
+                f"Tecnologia praticada nesta etapa: {techs[i % len(techs)]}."
+            )
+            notes = f"{notes} {tech_note}".strip() if notes else tech_note
+        concepts = list(ticket.concepts)
+        if i == complementary_target and i != len(tickets) - 1:
+            extras: list[str] = []
+            if needs_auth and not any("autentic" in c.lower() for c in concepts):
+                extras.append("Autenticação")
+            if not any("test" in c.lower() or "tdd" in c.lower() for c in concepts):
+                extras.append("Testes automatizados")
+            if extras:
+                concepts = [*extras, *concepts]
+                notes = (
+                    f"{notes} Inclui conceitos fora da stack declarada "
+                    f"({', '.join(extras)}) porque o escopo do projeto exige."
+                )
+        enriched.append(ticket.model_copy(update={
+            "personalization_notes": notes,
+            "concepts": concepts,
+        }))
+    return enriched

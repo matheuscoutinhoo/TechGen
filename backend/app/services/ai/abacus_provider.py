@@ -26,11 +26,15 @@ from app.services.ai.base import AIProvider, ConceptContext, UserSkillInput
 from app.services.ai.prompts import (
     CATEGORIZER_SYSTEM_PROMPT,
     CONCEPT_SYSTEM_PROMPT,
+    NEXT_PROJECT_QUESTION_SYSTEM_PROMPT,
     NEXT_QUESTION_SYSTEM_PROMPT,
+    PROJECT_SYSTEM_PROMPT,
     SYSTEM_PROMPT,
     build_categorizer_prompt,
     build_concept_prompt,
+    build_next_project_question_prompt,
     build_next_question_prompt,
+    build_project_user_prompt,
     build_user_prompt,
 )
 
@@ -132,6 +136,66 @@ class AbacusAIProvider(AIProvider):
                 "A IA retornou uma trilha em formato inesperado. Tente novamente."
             ) from exc
 
+    def generate_next_project_question(
+        self,
+        project_scope: str,
+        *,
+        technologies: Sequence[str] = (),
+        skills: Sequence[UserSkillInput] = (),
+        previous_answers: Sequence[TopicAnswer] = (),
+    ) -> TopicQuestion | None:
+        payload = self._build_next_project_question_payload(
+            project_scope, technologies, skills, previous_answers
+        )
+        raw = self._call_api(payload)
+        text = self._extract_text(raw)
+        data = self._parse_json(text)
+
+        if data.get("done") is True:
+            return None
+
+        question_data = data.get("question")
+        if not isinstance(question_data, dict):
+            raise AIProviderError(
+                "A IA não retornou nem uma pergunta nem o sinal de encerramento."
+            )
+        question_data["id"] = f"q{len(previous_answers) + 1}"
+        try:
+            return TopicQuestion.model_validate(question_data)
+        except ValidationError as exc:
+            logger.warning(
+                "Resposta da Abacus (modo PROJECT) não casou com o schema de pergunta: %s",
+                exc,
+            )
+            raise AIProviderError(
+                "A IA retornou uma pergunta em formato inesperado. Tente novamente."
+            ) from exc
+
+    def generate_project_trail(
+        self,
+        project_scope: str,
+        *,
+        technologies: Sequence[str] = (),
+        skills: Sequence[UserSkillInput] = (),
+        assessment: Sequence[TopicAnswer] = (),
+    ) -> TrailContent:
+        payload = self._build_project_trail_payload(
+            project_scope, technologies, skills, assessment
+        )
+        raw = self._call_api(payload)
+        text = self._extract_text(raw)
+        data = self._parse_json(text)
+        try:
+            return TrailContent.model_validate(data)
+        except ValidationError as exc:
+            logger.warning(
+                "Resposta da Abacus (modo PROJECT) não casou com o schema de trilha: %s",
+                exc,
+            )
+            raise AIProviderError(
+                "A IA retornou uma trilha em formato inesperado. Tente novamente."
+            ) from exc
+
     def explain_concept(
         self,
         concept: str,
@@ -215,6 +279,54 @@ class AbacusAIProvider(AIProvider):
                     "role": "user",
                     "content": build_next_question_prompt(
                         topic,
+                        skills=_serialize_skills(skills),
+                        previous_answers=previous_answers,
+                    ),
+                },
+            ],
+        }
+
+    def _build_project_trail_payload(
+        self,
+        project_scope: str,
+        technologies: Sequence[str],
+        skills: Sequence[UserSkillInput],
+        assessment: Sequence[TopicAnswer],
+    ) -> dict[str, Any]:
+        return {
+            "model": self.model,
+            "stream": False,
+            "messages": [
+                {"role": "system", "content": PROJECT_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": build_project_user_prompt(
+                        project_scope,
+                        technologies=technologies,
+                        skills=_serialize_skills(skills),
+                        assessment=assessment,
+                    ),
+                },
+            ],
+        }
+
+    def _build_next_project_question_payload(
+        self,
+        project_scope: str,
+        technologies: Sequence[str],
+        skills: Sequence[UserSkillInput],
+        previous_answers: Sequence[TopicAnswer],
+    ) -> dict[str, Any]:
+        return {
+            "model": self.questions_model,
+            "stream": False,
+            "messages": [
+                {"role": "system", "content": NEXT_PROJECT_QUESTION_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": build_next_project_question_prompt(
+                        project_scope,
+                        technologies=technologies,
                         skills=_serialize_skills(skills),
                         previous_answers=previous_answers,
                     ),

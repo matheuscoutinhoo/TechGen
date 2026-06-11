@@ -9,8 +9,10 @@ from app.schemas.learning_trail import (
     LearningTrailCreate,
     LearningTrailListItem,
     LearningTrailRead,
+    ProjectNextQuestionRequest,
     TopicNextQuestionRequest,
     TopicNextQuestionResponse,
+    TrailCreationMode,
 )
 from app.services.learning_trail_service import LearningTrailService
 
@@ -33,7 +35,7 @@ def list_trails(
 @router.post(
     "/assessment/next",
     response_model=TopicNextQuestionResponse,
-    summary="Próxima pergunta do diagnóstico adaptativo",
+    summary="Próxima pergunta do diagnóstico adaptativo (modo TOPIC)",
 )
 def next_assessment_question(
     payload: TopicNextQuestionRequest,
@@ -48,21 +50,47 @@ def next_assessment_question(
 
 
 @router.post(
+    "/assessment/project/next",
+    response_model=TopicNextQuestionResponse,
+    summary="Próxima pergunta do diagnóstico adaptativo (modo PROJECT)",
+)
+def next_project_assessment_question(
+    payload: ProjectNextQuestionRequest,
+    current_user: User = Depends(get_current_user),
+    service: LearningTrailService = Depends(get_learning_trail_service),
+) -> TopicNextQuestionResponse:
+    return service.build_next_project_question_for_user(
+        current_user,
+        project_scope=payload.project_scope,
+        technologies=payload.technologies,
+        previous_answers=payload.previous_answers,
+    )
+
+
+@router.post(
     "",
     response_model=LearningTrailRead,
     status_code=status.HTTP_201_CREATED,
-    summary="Solicita à IA a geração de uma nova trilha",
+    summary="Solicita à IA a geração de uma nova trilha (modo TOPIC ou PROJECT)",
 )
 def create_trail(
     payload: LearningTrailCreate,
     current_user: User = Depends(get_current_user),
     service: LearningTrailService = Depends(get_learning_trail_service),
 ) -> LearningTrailRead:
-    trail = service.create_for_user(
-        current_user,
-        topic=payload.topic,
-        assessment=payload.assessment,
-    )
+    if payload.mode == TrailCreationMode.PROJECT:
+        trail = service.create_project_for_user(
+            current_user,
+            project_scope=payload.project_scope or "",
+            technologies=payload.technologies,
+            assessment=payload.assessment,
+        )
+    else:
+        trail = service.create_for_user(
+            current_user,
+            topic=payload.topic or "",
+            assessment=payload.assessment,
+        )
     return service.to_read_model(trail)
 
 

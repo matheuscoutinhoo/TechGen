@@ -416,3 +416,166 @@ class TestAbacusAIProvider:
         )
         with pytest.raises(AIProviderError):
             _provider().categorize_concepts(["JWT"])
+
+
+# ====================================================================== #
+# Modo PROJECT — aluno descreve escopo + tecnologias
+# ====================================================================== #
+PROJECT_SCOPE = (
+    "Plataforma web onde pessoas cadastram livros usados para doação. "
+    "Tem login, busca por título/autor e dashboard com ranking de doadores."
+)
+TECHNOLOGIES = ["FastAPI", "PostgreSQL", "React"]
+
+
+@pytest.mark.unit
+class TestAbacusProjectMode:
+    @respx.mock
+    def test_generate_project_trail_sends_scope_and_technologies(self):
+        route = respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(
+                200, json=_openai_response(json.dumps(VALID_TRAIL_JSON))
+            )
+        )
+        trail = _provider().generate_project_trail(
+            PROJECT_SCOPE, technologies=TECHNOLOGIES
+        )
+        assert trail.project_title == "Plataforma de exemplo"
+        assert route.called
+        body = json.loads(route.calls.last.request.content)
+        # Usa o modelo principal (não o leve de questions).
+        assert body["model"] == "gpt-5"
+        user_content = body["messages"][1]["content"]
+        # Escopo é colocado verbatim no prompt:
+        assert "livros usados para doação" in user_content
+        # Cada tecnologia declarada aparece no prompt:
+        for tech in TECHNOLOGIES:
+            assert tech in user_content
+
+    @respx.mock
+    def test_generate_project_trail_raises_when_schema_mismatch(self):
+        respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(
+                200, json=_openai_response(json.dumps({"oops": True}))
+            )
+        )
+        with pytest.raises(AIProviderError):
+            _provider().generate_project_trail(
+                PROJECT_SCOPE, technologies=TECHNOLOGIES
+            )
+
+    @respx.mock
+    def test_next_project_question_uses_questions_model(self):
+        provider = AbacusAIProvider(
+            api_url=API_URL,
+            api_key="fake",
+            model="claude-sonnet-4",
+            questions_model="gemini-3.5-flash",
+            timeout_seconds=5,
+        )
+        payload = {
+            "done": False,
+            "question": {
+                "id": "q1",
+                "question": "Você já trabalhou com FastAPI antes?",
+                "rationale": "Familiaridade com a stack principal.",
+                "options": [
+                    {"id": "a", "label": "Nunca usei FastAPI"},
+                    {"id": "b", "label": "Uso em produção"},
+                ],
+            },
+        }
+        route = respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(200, json=_openai_response(json.dumps(payload)))
+        )
+        question = provider.generate_next_project_question(
+            PROJECT_SCOPE, technologies=TECHNOLOGIES
+        )
+        assert question is not None
+        assert question.id == "q1"
+        sent = json.loads(route.calls.last.request.content)
+        assert sent["model"] == "gemini-3.5-flash"
+        user_content = sent["messages"][1]["content"]
+        assert "livros usados para doação" in user_content
+        for tech in TECHNOLOGIES:
+            assert tech in user_content
+
+    @respx.mock
+    def test_next_project_question_includes_previous_answers_in_prompt(self):
+        from app.schemas.learning_trail import TopicAnswer
+
+        payload = {
+            "done": False,
+            "question": {
+                "id": "q2",
+                "question": "Confortável com Python?",
+                "rationale": "Pré-requisito da stack.",
+                "options": [
+                    {"id": "a", "label": "Não"},
+                    {"id": "b", "label": "Sim"},
+                ],
+            },
+        }
+        route = respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(200, json=_openai_response(json.dumps(payload)))
+        )
+        _provider().generate_next_project_question(
+            PROJECT_SCOPE,
+            technologies=TECHNOLOGIES,
+            previous_answers=[
+                TopicAnswer(
+                    question_id="q1",
+                    question="Você já trabalhou com FastAPI antes?",
+                    answer="Nunca usei FastAPI",
+                )
+            ],
+        )
+        body = json.loads(route.calls.last.request.content)
+        user_content = body["messages"][1]["content"]
+        assert "Nunca usei FastAPI" in user_content
+        assert "Número de perguntas já feitas: 1" in user_content
+
+    @respx.mock
+    def test_next_project_question_returns_none_when_done_true(self):
+        respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(
+                200,
+                json=_openai_response(json.dumps({"done": True, "question": None})),
+            )
+        )
+        assert (
+            _provider().generate_next_project_question(
+                PROJECT_SCOPE, technologies=TECHNOLOGIES
+            )
+            is None
+        )
+
+    @respx.mock
+    def test_next_project_question_overrides_id_to_keep_sequence(self):
+        from app.schemas.learning_trail import TopicAnswer
+
+        payload = {
+            "done": False,
+            "question": {
+                "id": "q99",
+                "question": "Pergunta nova?",
+                "rationale": "Algo útil.",
+                "options": [
+                    {"id": "a", "label": "Opção A"},
+                    {"id": "b", "label": "Opção B"},
+                ],
+            },
+        }
+        respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(200, json=_openai_response(json.dumps(payload)))
+        )
+        result = _provider().generate_next_project_question(
+            PROJECT_SCOPE,
+            technologies=TECHNOLOGIES,
+            previous_answers=[
+                TopicAnswer(question_id="q1", question="?", answer="!"),
+                TopicAnswer(question_id="q2", question="?", answer="!"),
+            ],
+        )
+        assert result is not None
+        assert result.id == "q3"

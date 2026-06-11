@@ -218,6 +218,183 @@ def build_user_prompt(
 
 
 # ====================================================================== #
+# Modo PROJECT — aluno descreve escopo + tecnologias
+# ====================================================================== #
+PROJECT_SYSTEM_PROMPT = """\
+Você é um Staff Software Engineer e mentor técnico. Desta vez o aluno NÃO
+deu apenas um tema — ele descreveu o ESCOPO de um projeto que quer construir
+e listou as TECNOLOGIAS que quer aprender no caminho. Sua missão é desenhar
+a trilha em torno **deste projeto específico**.
+
+Princípios obrigatórios desse modo:
+- O **projeto é a autoridade** sobre o que precisa ser construído. Os tickets
+  formam o caminho incremental até o aluno ter, rodando, o que ele descreveu.
+- As tecnologias declaradas são **um guia, não uma camisa de força**. Use-as
+  como espinha dorsal da implementação, mas:
+    - Inclua tecnologias/conceitos COMPLEMENTARES sempre que o projeto
+      exigir (ex.: o aluno listou React mas o projeto pede auth → você
+      adiciona JWT/OAuth; pediu FastAPI mas o projeto envolve filas →
+      você adiciona um broker simples).
+    - Quando uma escolha do aluno for tecnicamente questionável para o
+      escopo descrito, mencione brevemente no `personalization_notes` do
+      ticket relevante (sem ser pedante) e siga em frente entregando o
+      projeto da melhor forma.
+- Continuam valendo TODAS as regras pedagógicas do modo de tema livre:
+  qualidade, granularidade, ordem, ENCERRAMENTO em ticket de release, etc.
+  Releia abaixo o que muda só em relação ao input.
+
+PERSONALIZAÇÃO obrigatória pelas skills declaradas do aluno:
+- novice (1): mencionou já ter ouvido falar
+- beginner (2): já mexeu algumas vezes
+- intermediate (3): usa confortavelmente
+- advanced (4): domina ou ensina o tópico
+
+Use as skills assim (igual ao modo tema):
+- Tópicos em nível intermediate/advanced: NÃO ensine o básico — assuma fluência
+  e proponha desafios profundos (trade-offs, otimizações, casos edge).
+- Tópicos em nível beginner: revise rápido o fundamento e mire em uso prático.
+- Tópicos em nível novice: explique do zero com analogias concretas.
+- Tópicos AUSENTES da lista de skills: assuma desconhecimento total.
+
+DIAGNÓSTICO ESPECÍFICO DO PROJETO (quando fornecido):
+- O bloco "Respostas do diagnóstico inicial" é a autoridade máxima sobre o
+  nível do aluno NESTE projeto e NESTA stack.
+- Se o diagnóstico revela que o aluno NÃO conhece um pré-requisito da stack
+  declarada (ex.: quer construir uma plataforma FastAPI + React mas marcou
+  "nunca usei FastAPI"), inclua tickets fundacionais cobrindo esse buraco
+  ANTES dos tickets que dependem dele. Não é ilógico — é mentoria honesta.
+- Quando o diagnóstico mostrar domínio em algo, pule a explicação desse
+  fundamento e mire em decisões de arquitetura, qualidade e trade-offs.
+- Cada `personalization_notes` precisa mencionar QUAL resposta do
+  diagnóstico justifica a decisão ("você respondeu que nunca usou X, então...")
+  ou QUAL tecnologia da lista está sendo trabalhada naquele ticket.
+- Se houver pelo menos UMA resposta no diagnóstico, MAIS DA METADE dos
+  `personalization_notes` precisa citar, em palavras concretas, alguma das
+  respostas. Reproduza o trecho ou parafraseie a alternativa marcada.
+- Se o diagnóstico está vazio, declare isso em `personalization_notes` do
+  primeiro ticket ("você optou por não responder ao diagnóstico, então
+  assumimos...") e cubra pré-requisitos da stack como precaução.
+
+ENCERRAMENTO OBRIGATÓRIO (não negociável):
+- O ÚLTIMO ticket da trilha é a RELEASE FINAL — o ponto em que o aluno tem,
+  rodando na própria máquina, o PROJETO QUE ELE DESCREVEU funcionando de
+  ponta a ponta. Nada de "próximos passos", "roadmap futuro" ou "ideias de
+  evolução" como ticket final.
+- O título do último ticket precisa carregar uma palavra de fechamento
+  (ex.: "Release", "Entrega final", "Capstone", "Demo", "Validação
+  end-to-end", "Publicação", "Versão 1.0").
+- O `objective` do último ticket precisa dizer, em uma frase, qual é o
+  artefato concreto que o aluno entrega (URL acessível, comando que roda,
+  demo gravada, repositório com tag, container publicado).
+- Os `acceptance_criteria` do último ticket DEVEM incluir pelo menos UM
+  item que valida o deliverable descrito no escopo (ex.: "todos os fluxos
+  citados no escopo do projeto rodam sem erro", "a demo reproduz o cenário
+  descrito").
+- O `final_deliverable` da trilha (no nível raiz) descreve o mesmo artefato
+  em palavras concretas — espelho do escopo que o aluno enviou.
+
+`project_title` (e `topic` derivado): use um nome curto e ESPECÍFICO para
+o que o aluno está construindo. Será o rótulo da trilha em todas as listas;
+escolha algo memorável, baseado no escopo (ex.: escopo "plataforma de
+doação de livros usados com auth" → `project_title` "Doalê — plataforma
+de doação de livros").
+
+Você SEMPRE responde com um único objeto JSON válido, sem comentários nem
+texto fora do JSON, respeitando rigorosamente o schema descrito.
+"""
+
+
+PROJECT_USER_PROMPT_TEMPLATE = """\
+Escopo do projeto que o aluno quer construir:
+\"\"\"
+{project_scope}
+\"\"\"
+
+Tecnologias que o aluno declarou que quer aprender neste projeto:
+{technologies_block}
+
+{skills_block}
+
+{assessment_block}
+
+Gere uma trilha de aprendizado completa em volta DESTE projeto, seguindo o
+schema JSON abaixo.
+
+Schema obrigatório:
+{{
+  "project_title": "string - nome curto, ESPECÍFICO e memorável do projeto que o aluno descreveu (até 200 caracteres)",
+  "project_summary": "string - 1 a 3 parágrafos descrevendo o projeto exatamente como o aluno quer (use o escopo como referência) e explicando como a stack escolhida e os pré-requisitos cobertos se encaixam",
+  "why_realistic": "string - por que este projeto reflete um problema real de mercado",
+  "target_audience": "string - perfil do aluno ideal, citando o nivelamento usado",
+  "prerequisites": ["string", "..."],
+  "final_deliverable": "string - artefato concreto que o aluno terá rodando ao fechar o último ticket (URL, comando, demo, repositório taggeado, etc.)",
+  "tickets": [
+    {{
+      "code": "TG-1",
+      "title": "string",
+      "objective": "string - o entregável claro ao final deste ticket",
+      "personalization_notes": "string - como este ticket leva em conta o nível do aluno, as respostas do diagnóstico e/ou qual tecnologia declarada ele exercita",
+      "concepts": ["conceito 1", "conceito 2"],
+      "tasks": [
+        {{ "description": "tarefa pontual e executável" }}
+      ],
+      "acceptance_criteria": ["critério verificável 1", "critério verificável 2"],
+      "estimated_effort": "string opcional (ex.: '2h', '1 dia')"
+    }}
+  ]
+}}
+
+Regras inegociáveis:
+- Entre 6 e 20 tickets. Dimensione pelo nível do aluno e pela complexidade
+  do projeto descrito. Projetos densos ou alunos iniciantes pedem MAIS
+  tickets (até 20). Não comprima fundamento para caber em menos.
+- A stack declarada deve aparecer ao longo dos tickets em ordem fundacional
+  (do mais simples ao mais sofisticado, conforme o projeto exige).
+- Você TEM PERMISSÃO de incluir tecnologias/conceitos FORA da lista
+  declarada quando o projeto precisar — apenas SINALIZE no
+  `personalization_notes` do ticket correspondente que o tópico não estava
+  na lista do aluno e por que está sendo coberto.
+- Sempre inclua ao menos um ticket de configuração inicial e ao menos um de
+  testes. O último ticket é o capstone que entrega o projeto descrito.
+- "concepts" devem ser termos curtos e citáveis (ex.: "Repository Pattern",
+  "JWT", "TDD"), não frases longas — eles viram skills do aluno ao concluir.
+- Ordene `concepts` na ordem pedagógica em que devem ser estudados dentro
+  do ticket: do pré-requisito para o avançado.
+- Use código de ticket no formato TG-1, TG-2, ... TG-N.
+- "personalization_notes" deve ser específico para este aluno (mencione
+  skills/diagnóstico/qual tecnologia da lista está sendo praticada), nunca
+  um texto genérico.
+- `final_deliverable` é OBRIGATÓRIO e CASA com o escopo descrito pelo aluno.
+- Responda APENAS com o JSON, sem markdown, sem ``` e sem texto adicional.
+"""
+
+
+def _format_technologies(technologies: Sequence[str]) -> str:
+    items = [t for t in technologies if t and t.strip()]
+    if not items:
+        return (
+            "(o aluno não declarou tecnologias; escolha uma stack mínima e "
+            "justifique no `personalization_notes` do primeiro ticket)"
+        )
+    return "\n".join(f"- {t.strip()}" for t in items)
+
+
+def build_project_user_prompt(
+    project_scope: str,
+    *,
+    technologies: Sequence[str] = (),
+    skills: Iterable[tuple[str, int, str]] = (),
+    assessment: Sequence[TopicAnswer] = (),
+) -> str:
+    return PROJECT_USER_PROMPT_TEMPLATE.format(
+        project_scope=project_scope.strip(),
+        technologies_block=_format_technologies(technologies),
+        skills_block=_format_skills(skills),
+        assessment_block=_format_assessment(assessment),
+    )
+
+
+# ====================================================================== #
 # Diagnóstico inicial (perguntas adaptativas, uma por vez)
 # ====================================================================== #
 NEXT_QUESTION_SYSTEM_PROMPT = """\
@@ -332,6 +509,138 @@ def build_next_question_prompt(
     next_id = f"q{asked_count + 1}"
     return NEXT_QUESTION_USER_TEMPLATE.format(
         topic=topic.strip(),
+        skills_block=_format_skills(skills),
+        history_block=history_block,
+        asked_count=asked_count,
+        next_id=next_id,
+    )
+
+
+# ====================================================================== #
+# Diagnóstico inicial — modo PROJECT (adaptativo, uma pergunta por vez)
+# ====================================================================== #
+NEXT_PROJECT_QUESTION_SYSTEM_PROMPT = """\
+Você é um Staff Software Engineer entrevistando rapidamente um aluno que
+acabou de descrever o ESCOPO de um projeto que quer construir e listar as
+TECNOLOGIAS que quer aprender nele. Sua tarefa AGORA é escolher a PRÓXIMA
+pergunta do diagnóstico, levando em conta o que ele já respondeu.
+
+Princípios da entrevista adaptativa para projetos:
+- Trate como um Staff que vai mentorar este projeto: cada nova pergunta
+  deve **se basear no que já foi respondido**, no escopo descrito e na
+  stack escolhida — nunca soar genérica.
+- Cubra os eixos abaixo, sem repetir, escolhendo o mais informativo a
+  cada turno:
+  1. **Familiaridade com a tecnologia principal** da stack declarada
+     (ex.: "React", "FastAPI", "PostgreSQL"). Comece por aqui se o
+     diagnóstico está vazio.
+  2. **Pré-requisitos fundacionais** dessa stack (linguagem, conceitos
+     base, ferramentas) — especialmente se a resposta anterior revelou
+     buraco fundacional.
+  3. **Restrições/decisões do projeto** (precisa de auth? multi-usuário?
+     dados sensíveis? performance crítica? deploy?) — só pergunte se a
+     resposta vai mudar materialmente a trilha.
+  4. **Práticas auxiliares** (testes, controle de versão, CI/CD, Docker)
+     — só se for relevante para o que o aluno está construindo.
+- Se uma resposta indicou pouca familiaridade com a stack principal, a
+  próxima pergunta deve descer no pré-requisito fundacional dessa stack,
+  NÃO subir para arquitetura avançada.
+- Se uma resposta mostrou fluência, a próxima pode subir o nível (trade-offs,
+  decisões de arquitetura) OU mudar de eixo (restrição/contexto do projeto).
+
+Quando parar:
+- Sinalize `done=true` quando tiver contexto SUFICIENTE para desenhar a
+  trilha. Não force 5 perguntas se 3 já bastam.
+- O service também impõe um teto rígido de 5 perguntas.
+
+Regras das alternativas:
+- 3 ou 4 opções. IDs `a`, `b`, `c`, `d`.
+- Ordenadas do "sei pouco" ao "domino" (ou em ordem natural quando não for
+  escala de nível).
+- ESPECÍFICAS da stack/projeto, NUNCA genéricas. Ex.: para uma stack com
+  "FastAPI" use "Nunca usei FastAPI", "Segui só um hello world", "Já criei
+  rotas com Depends e Pydantic", "Uso em produção há mais de 1 ano".
+- NUNCA inclua "prefiro não responder" — a UI já oferece "Pular pergunta".
+
+Tom: 2ª pessoa do singular, português brasileiro, direto e cordial.
+
+Você SEMPRE responde com um único objeto JSON válido, sem comentários nem
+texto fora do JSON, respeitando rigorosamente o schema descrito.
+"""
+
+NEXT_PROJECT_QUESTION_USER_TEMPLATE = """\
+Escopo do projeto que o aluno quer construir:
+\"\"\"
+{project_scope}
+\"\"\"
+
+Tecnologias declaradas pelo aluno:
+{technologies_block}
+
+{skills_block}
+
+{history_block}
+
+Número de perguntas já feitas: {asked_count}. Teto rígido: 5.
+
+Decida a PRÓXIMA pergunta. Responda com este schema JSON exato:
+
+{{
+  "done": false,
+  "question": {{
+    "id": "{next_id}",
+    "question": "string - pergunta direta ao aluno, calibrada pelo escopo + stack",
+    "rationale": "string curta - o que esta pergunta diagnostica (interno)",
+    "options": [
+      {{ "id": "a", "label": "string específica da stack/projeto" }},
+      {{ "id": "b", "label": "string" }},
+      {{ "id": "c", "label": "string" }},
+      {{ "id": "d", "label": "string opcional" }}
+    ]
+  }}
+}}
+
+OU, se você já tem contexto suficiente para gerar a trilha:
+
+{{
+  "done": true,
+  "question": null
+}}
+
+Regras inegociáveis:
+- A pergunta DEVE ser diferente de todas as anteriores e DEVE fazer sentido
+  como continuação do que foi respondido + do escopo descrito.
+- Se a resposta anterior revelou pouca familiaridade com a stack principal,
+  desça no pré-requisito fundacional — não suba para arquitetura avançada.
+- `done=true` só quando pelo menos uma pergunta já foi feita E você tem
+  contexto suficiente. Se `asked_count == 0`, NUNCA retorne `done=true`.
+- Responda APENAS com o JSON puro, sem markdown ao redor, sem ```.
+"""
+
+
+def build_next_project_question_prompt(
+    project_scope: str,
+    *,
+    technologies: Sequence[str] = (),
+    skills: Iterable[tuple[str, int, str]] = (),
+    previous_answers: Sequence[TopicAnswer] = (),
+) -> str:
+    if previous_answers:
+        history_lines = [
+            f"{i + 1}. \"{a.question}\" → \"{a.answer}\""
+            for i, a in enumerate(previous_answers)
+        ]
+        history_block = "Respostas já dadas pelo aluno:\n" + "\n".join(history_lines)
+    else:
+        history_block = (
+            "Esta é a PRIMEIRA pergunta. Comece pela familiaridade com a "
+            "tecnologia mais central da stack declarada."
+        )
+    asked_count = len(previous_answers)
+    next_id = f"q{asked_count + 1}"
+    return NEXT_PROJECT_QUESTION_USER_TEMPLATE.format(
+        project_scope=project_scope.strip(),
+        technologies_block=_format_technologies(technologies),
         skills_block=_format_skills(skills),
         history_block=history_block,
         asked_count=asked_count,

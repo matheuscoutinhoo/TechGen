@@ -123,6 +123,165 @@ class TestRegenerate:
         assert "Nunca usei FastAPI" in regenerated_notes
 
 
+# ====================================================================== #
+# Modo PROJECT
+# ====================================================================== #
+PROJECT_SCOPE = (
+    "Plataforma web onde pessoas cadastram livros usados para doação. "
+    "Tem login, busca por título/autor e dashboard com ranking de doadores."
+)
+TECHNOLOGIES = ["FastAPI", "PostgreSQL", "React"]
+
+
+@pytest.mark.unit
+class TestCreateProject:
+    def test_creates_project_trail(self, service, user_a):
+        trail = service.create_project_for_user(
+            user_a, project_scope=PROJECT_SCOPE, technologies=TECHNOLOGIES
+        )
+        assert trail.id is not None
+        assert trail.user_id == user_a.id
+        # `topic` da trilha é o project_title gerado pela IA — vira o rótulo
+        # de listagem.
+        read = service.to_read_model(trail)
+        assert trail.topic == read.content.project_title
+
+    def test_persists_creation_input_for_regenerate(self, service, user_a):
+        trail = service.create_project_for_user(
+            user_a, project_scope=PROJECT_SCOPE, technologies=TECHNOLOGIES
+        )
+        assert trail.creation_input_json
+        import json as _json
+
+        data = _json.loads(trail.creation_input_json)
+        assert data["mode"] == "project"
+        assert data["project_scope"] == PROJECT_SCOPE
+        assert data["technologies"] == TECHNOLOGIES
+
+    def test_assessment_propagates_to_project_personalization(self, service, user_a):
+        from app.schemas.learning_trail import TopicAnswer
+
+        trail = service.create_project_for_user(
+            user_a,
+            project_scope=PROJECT_SCOPE,
+            technologies=TECHNOLOGIES,
+            assessment=[
+                TopicAnswer(
+                    question_id="q1",
+                    question="Você já trabalhou com FastAPI antes?",
+                    answer="Nunca usei FastAPI",
+                )
+            ],
+        )
+        content = service.to_read_model(trail).content
+        joined = " ".join(t.personalization_notes or "" for t in content.tickets)
+        assert "Nunca usei FastAPI" in joined
+
+    def test_topic_mode_create_persists_creation_input_too(self, service, user_a):
+        """Por simetria/regenerate, o modo topic também grava o input."""
+        trail = service.create_for_user(user_a, topic="Docker")
+        assert trail.creation_input_json
+        import json as _json
+
+        data = _json.loads(trail.creation_input_json)
+        assert data["mode"] == "topic"
+        assert data["topic"] == "Docker"
+
+
+@pytest.mark.unit
+class TestRegenerateProject:
+    def test_regenerate_uses_stored_project_input(self, service, user_a):
+        from app.schemas.learning_trail import TopicAnswer
+
+        trail = service.create_project_for_user(
+            user_a,
+            project_scope=PROJECT_SCOPE,
+            technologies=TECHNOLOGIES,
+            assessment=[
+                TopicAnswer(
+                    question_id="q1",
+                    question="Você já trabalhou com FastAPI antes?",
+                    answer="Nunca usei FastAPI",
+                )
+            ],
+        )
+        regenerated = service.regenerate_for_user(user_a, trail.id)
+        content = service.to_read_model(regenerated).content
+        # As tecnologias declaradas continuam aparecendo (escopo preservado).
+        blob = " ".join(
+            [
+                content.project_summary,
+                content.final_deliverable,
+                *(t.personalization_notes or "" for t in content.tickets),
+            ]
+        )
+        assert any(tech in blob for tech in TECHNOLOGIES)
+        # Assessment reaproveitado.
+        assert "Nunca usei FastAPI" in " ".join(
+            t.personalization_notes or "" for t in content.tickets
+        )
+
+    def test_regenerate_topic_legacy_trail_without_creation_input(
+        self, service, user_a
+    ):
+        """Trilha antiga (sem creation_input_json) regenera no modo topic."""
+        trail = service.create_for_user(user_a, topic="Erlang")
+        # Simula trilha legada: zera o snapshot do input.
+        trail.creation_input_json = None
+        service.repository.update(trail)
+
+        regenerated = service.regenerate_for_user(user_a, trail.id)
+        # Funcionou — não estourou, topic preservado.
+        assert regenerated.topic == "Erlang"
+
+
+@pytest.mark.unit
+class TestProjectAssessment:
+    def test_build_next_project_question_returns_first_for_empty_history(
+        self, service, user_a
+    ):
+        result = service.build_next_project_question_for_user(
+            user_a, project_scope=PROJECT_SCOPE, technologies=TECHNOLOGIES
+        )
+        assert result.done is False
+        assert result.question is not None
+        assert result.question.id == "q1"
+
+    def test_build_next_project_question_respects_ceiling(self, service, user_a):
+        from app.schemas.learning_trail import TopicAnswer
+
+        answers = [
+            TopicAnswer(question_id=f"q{i}", question=f"P{i}?", answer=f"R{i}")
+            for i in range(1, 6)
+        ]
+        result = service.build_next_project_question_for_user(
+            user_a,
+            project_scope=PROJECT_SCOPE,
+            technologies=TECHNOLOGIES,
+            previous_answers=answers,
+        )
+        assert result.done is True
+        assert result.question is None
+
+    def test_build_next_project_question_returns_done_when_provider_signals_end(
+        self, service, user_a
+    ):
+        from app.schemas.learning_trail import TopicAnswer
+
+        answers = [
+            TopicAnswer(question_id=f"q{i}", question=f"P{i}?", answer=f"R{i}")
+            for i in range(1, 4)
+        ]
+        result = service.build_next_project_question_for_user(
+            user_a,
+            project_scope=PROJECT_SCOPE,
+            technologies=TECHNOLOGIES,
+            previous_answers=answers,
+        )
+        assert result.done is True
+        assert result.question is None
+
+
 @pytest.mark.unit
 class TestAssessment:
     def test_build_next_question_returns_first_for_empty_history(self, service, user_a):
@@ -165,6 +324,23 @@ class TestAssessment:
         answers = [
             TopicAnswer(question_id=f"q{i}", question=f"P{i}?", answer=f"R{i}")
             for i in range(1, 6)
+        ]
+        result = service.build_next_question_for_user(
+            user_a, topic="FastAPI", previous_answers=answers
+        )
+        assert result.done is True
+        assert result.question is None
+
+    def test_build_next_question_returns_done_when_provider_signals_end(
+        self, service, user_a
+    ):
+        """Provider pode sinalizar fim ANTES do teto rígido — service respeita."""
+        from app.schemas.learning_trail import TopicAnswer
+
+        # FakeProvider encerra após 3 respostas (sufficient_context).
+        answers = [
+            TopicAnswer(question_id=f"q{i}", question=f"P{i}?", answer=f"R{i}")
+            for i in range(1, 4)
         ]
         result = service.build_next_question_for_user(
             user_a, topic="FastAPI", previous_answers=answers

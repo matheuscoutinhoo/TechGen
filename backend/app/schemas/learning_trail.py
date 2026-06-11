@@ -5,8 +5,23 @@ Inclui também o diagnóstico inicial: a IA pergunta ao aluno para calibrar
 profundidade, pré-requisitos e ordem dos tickets antes de gerar a trilha.
 """
 from datetime import datetime
+from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+class TrailCreationMode(str, Enum):
+    """Como o aluno descreveu o que quer aprender.
+
+    - ``topic``: ele dita um tema; a IA propõe o projeto inteiro (modo original).
+    - ``project``: ele dita o ESCOPO de um projeto + as TECNOLOGIAS que quer
+      praticar; a IA monta a trilha em volta disso, mas com liberdade de
+      acrescentar conceitos que a stack escolhida exige (não fica refém da
+      lista).
+    """
+
+    TOPIC = "topic"
+    PROJECT = "project"
 
 
 # ====================================================================== #
@@ -38,7 +53,7 @@ class TopicAnswer(BaseModel):
 
 
 class TopicNextQuestionRequest(BaseModel):
-    """Entrada para pedir a PRÓXIMA pergunta do diagnóstico adaptativo.
+    """Entrada para pedir a PRÓXIMA pergunta do diagnóstico adaptativo (modo TOPIC).
 
     O cliente envia o que já foi respondido até agora; a IA decide a próxima
     pergunta com base nesse histórico, sondando lacunas reais. Quando a IA
@@ -46,6 +61,26 @@ class TopicNextQuestionRequest(BaseModel):
     """
     topic: str = Field(min_length=3, max_length=200)
     previous_answers: list[TopicAnswer] = Field(default_factory=list, max_length=10)
+
+
+class ProjectNextQuestionRequest(BaseModel):
+    """Entrada para pedir a PRÓXIMA pergunta do diagnóstico adaptativo (modo PROJECT).
+
+    Carrega o escopo do projeto + as tecnologias declaradas pelo aluno, para
+    que a IA possa fazer perguntas calibradas pela stack escolhida e pelo
+    nível de complexidade do que ele quer construir.
+    """
+    project_scope: str = Field(min_length=20, max_length=2000)
+    technologies: list[str] = Field(default_factory=list, max_length=15)
+    previous_answers: list[TopicAnswer] = Field(default_factory=list, max_length=10)
+
+    @model_validator(mode="after")
+    def _require_technologies(self) -> "ProjectNextQuestionRequest":
+        cleaned = _clean_technologies(self.technologies)
+        if not cleaned:
+            raise ValueError("Informe ao menos uma tecnologia.")
+        self.technologies = cleaned
+        return self
 
 
 class TopicNextQuestionResponse(BaseModel):
@@ -96,15 +131,70 @@ class TrailContent(BaseModel):
     tickets: list[Ticket] = Field(min_length=1)
 
 
-class LearningTrailCreate(BaseModel):
-    """Entrada para criar uma trilha.
+def _clean_technologies(raw: list[str]) -> list[str]:
+    """Normaliza a lista de tecnologias: trim, remove vazios, dedup case-insensitive."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for item in raw or []:
+        if not isinstance(item, str):
+            continue
+        cleaned = item.strip()
+        if not cleaned:
+            continue
+        key = cleaned.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(cleaned)
+    return out
 
-    O ``topic`` é o tema bruto do aluno. ``assessment`` é a lista de respostas
-    do diagnóstico inicial (vazia quando o aluno pulou todas as perguntas),
-    usada pela IA para calibrar profundidade e pré-requisitos.
+
+class LearningTrailCreate(BaseModel):
+    """Entrada para criar uma trilha — dois modos.
+
+    - **TOPIC** (default): ``topic`` é o tema bruto e a IA propõe o projeto.
+    - **PROJECT**: ``project_scope`` descreve o que o aluno quer construir e
+      ``technologies`` é a lista de stacks que ele quer aprender no caminho.
+      A IA usa a stack como guia, mas tem liberdade de cobrir pré-requisitos
+      e conceitos fora dela quando o projeto exigir.
+
+    ``assessment`` é a lista de respostas do diagnóstico inicial (vazia
+    quando o aluno pulou todas as perguntas), usada pela IA para calibrar
+    profundidade e pré-requisitos. O formato é igual nos dois modos.
     """
-    topic: str = Field(min_length=3, max_length=200)
+    mode: TrailCreationMode = TrailCreationMode.TOPIC
+    topic: str | None = Field(default=None, max_length=200)
+    project_scope: str | None = Field(default=None, max_length=2000)
+    technologies: list[str] = Field(default_factory=list, max_length=15)
     assessment: list[TopicAnswer] = Field(default_factory=list, max_length=10)
+
+    @model_validator(mode="after")
+    def _validate_mode_fields(self) -> "LearningTrailCreate":
+        if self.mode == TrailCreationMode.TOPIC:
+            cleaned_topic = (self.topic or "").strip()
+            if len(cleaned_topic) < 3:
+                raise ValueError(
+                    "No modo 'topic', 'topic' precisa ter ao menos 3 caracteres."
+                )
+            self.topic = cleaned_topic
+            # Limpa campos do outro modo para não vazarem na persistência.
+            self.project_scope = None
+            self.technologies = []
+        else:  # PROJECT
+            cleaned_scope = (self.project_scope or "").strip()
+            if len(cleaned_scope) < 20:
+                raise ValueError(
+                    "No modo 'project', 'project_scope' precisa ter ao menos 20 caracteres."
+                )
+            cleaned_tech = _clean_technologies(self.technologies)
+            if not cleaned_tech:
+                raise ValueError(
+                    "No modo 'project' informe ao menos uma tecnologia."
+                )
+            self.project_scope = cleaned_scope
+            self.technologies = cleaned_tech
+            self.topic = None
+        return self
 
 
 class LearningTrailRead(BaseModel):

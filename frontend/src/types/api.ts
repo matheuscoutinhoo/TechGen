@@ -144,6 +144,14 @@ export interface TopicNextQuestionResponse {
    done: boolean;
 }
 
+/**
+ * Modo de criação de trilha.
+ * - `topic`: aluno descreve um tema; a IA propõe o projeto inteiro.
+ * - `project`: aluno descreve o escopo do projeto + as tecnologias que
+ *   quer aprender no caminho.
+ */
+export type TrailCreationMode = 'topic' | 'project';
+
 export interface ApiErrorPayload {
    error: {
       code: string;

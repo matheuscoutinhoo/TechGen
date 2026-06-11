@@ -10,6 +10,72 @@
    margin-bottom: var(--space-5);
 }
 
+.modeToggle {
+   display: grid;
+   grid-template-columns: 1fr 1fr;
+   gap: var(--space-2);
+   padding: var(--space-1);
+   background-color: var(--color-bg-elevated);
+   border: 1px solid var(--color-border);
+   border-radius: var(--radius-lg);
+   margin-bottom: var(--space-5);
+}
+
+.modeButton {
+   display: flex;
+   flex-direction: column;
+   align-items: flex-start;
+   gap: var(--space-1);
+   padding: var(--space-3) var(--space-4);
+   background: transparent;
+   border: 1px solid transparent;
+   border-radius: var(--radius-md);
+   color: var(--color-text-muted);
+   cursor: pointer;
+   text-align: left;
+   transition: background-color var(--transition-fast), color var(--transition-fast),
+      border-color var(--transition-fast);
+}
+
+.modeButton:hover:not(:disabled) {
+   background-color: var(--color-surface);
+   color: var(--color-text);
+}
+
+.modeButton:disabled {
+   cursor: not-allowed;
+   opacity: 0.5;
+}
+
+.modeButtonActive {
+   background-color: var(--color-bg-elevated);
+   border-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
+   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 8%, transparent),
+      0 8px 28px -18px var(--color-primary-glow);
+   color: var(--color-text);
+}
+
+.modeButtonActive:hover:not(:disabled) {
+   background-color: var(--color-bg-elevated);
+   border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 18%, transparent),
+      0 14px 36px -16px var(--color-primary-glow);
+}
+
+.modeButtonTitle {
+   font-size: var(--font-size-base);
+   font-weight: 600;
+}
+
+.modeButtonHint {
+   font-size: var(--font-size-xs);
+   color: var(--color-text-subtle);
+}
+
+.modeButtonActive .modeButtonHint {
+   color: var(--color-text-muted);
+}
+
 .form {
    display: flex;
    flex-direction: column;
@@ -113,15 +179,138 @@
    color: var(--color-text-muted);
 }
 
-.suggestion:hover {
+.suggestion:hover:not(:disabled) {
    border-color: var(--color-primary);
    color: var(--color-primary-strong);
+}
+
+.suggestion:disabled {
+   cursor: not-allowed;
+   opacity: 0.5;
 }
 
 .suggestionList {
    display: flex;
    flex-wrap: wrap;
    gap: var(--space-2);
+}
+
+/* ---- modo PROJECT: chip input de tecnologias ---- */
+.techField {
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-2);
+}
+
+.techLabel {
+   font-size: var(--font-size-sm);
+   font-weight: 600;
+}
+
+.techComposer {
+   display: flex;
+   gap: var(--space-2);
+}
+
+.techInput {
+   flex: 1;
+   padding: 0.6rem 0.85rem;
+   border-radius: var(--radius-md);
+   border: 1px solid transparent;
+   background-color: var(--color-surface-strong);
+   font-size: var(--font-size-base);
+   color: var(--color-text);
+   font-family: inherit;
+   transition: border-color var(--transition-fast),
+      background-color var(--transition-fast);
+}
+
+.techInput:focus,
+.techInput:focus-visible {
+   outline: none;
+   border-color: var(--color-primary);
+   background-color: color-mix(in srgb, var(--color-surface-strong) 100%, white 4%);
+}
+
+.techAddBtn {
+   padding: 0 var(--space-4);
+   border-radius: var(--radius-md);
+   border: 1px solid var(--color-border-strong);
+   background: transparent;
+   color: var(--color-text);
+   font-size: var(--font-size-sm);
+   font-weight: 600;
+   cursor: pointer;
+   transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.techAddBtn:hover:not(:disabled) {
+   border-color: var(--color-primary);
+   background-color: var(--color-surface);
+}
+
+.techAddBtn:disabled {
+   cursor: not-allowed;
+   opacity: 0.4;
+}
+
+.techHint {
+   font-size: var(--font-size-xs);
+   color: var(--color-text-subtle);
+}
+
+.techChips {
+   margin: 0;
+   padding: 0;
+   list-style: none;
+   display: flex;
+   flex-wrap: wrap;
+   gap: var(--space-2);
+}
+
+.techChip {
+   display: inline-flex;
+   align-items: center;
+   gap: var(--space-2);
+   padding: var(--space-1) var(--space-3);
+   border-radius: 999px;
+   background-color: var(--color-primary-soft);
+   color: var(--color-primary-strong);
+   font-size: var(--font-size-sm);
+   font-weight: 600;
+   border: 1px solid transparent;
+}
+
+.techChipRemove {
+   background: none;
+   border: none;
+   color: var(--color-primary-strong);
+   cursor: pointer;
+   padding: 0;
+   font-size: 1.1rem;
+   line-height: 1;
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   width: 1.1rem;
+   height: 1.1rem;
+   border-radius: 50%;
+   transition: background-color var(--transition-fast);
+}
+
+.techChipRemove:hover:not(:disabled) {
+   background-color: var(--color-primary);
+   color: var(--color-bg);
+}
+
+.techChipRemove:disabled {
+   cursor: not-allowed;
+   opacity: 0.5;
+}
+
+.techError {
+   font-size: var(--font-size-xs);
+   color: var(--color-danger);
 }
 
 .loadingPanel {

@@ -6,10 +6,23 @@ import type {
    LearningTrailSummary,
    TopicAnswer,
    TopicNextQuestionResponse,
+   TrailCreationMode,
 } from '../types/api';
 
+/**
+ * Payload de criação de trilha.
+ *
+ * - Modo `topic`: campo `topic` obrigatório.
+ * - Modo `project`: campos `project_scope` e `technologies` obrigatórios.
+ *
+ * A validação real é do backend (Pydantic). Aqui mantemos os campos
+ * opcionais para permitir tipos discriminados sem fricção.
+ */
 export interface CreateTrailPayload {
-   topic: string;
+   mode?: TrailCreationMode;
+   topic?: string;
+   project_scope?: string;
+   technologies?: string[];
    assessment?: TopicAnswer[];
 }
 
@@ -18,13 +31,33 @@ export const learningTrailsApi = {
    get: (id: number) => apiClient.get<LearningTrail>(`/learning-trails/${id}`),
    create: (payload: CreateTrailPayload) =>
       apiClient.post<LearningTrail>('/learning-trails', {
-         topic: payload.topic,
+         mode: payload.mode ?? 'topic',
+         ...(payload.topic !== undefined ? { topic: payload.topic } : {}),
+         ...(payload.project_scope !== undefined
+            ? { project_scope: payload.project_scope }
+            : {}),
+         ...(payload.technologies !== undefined
+            ? { technologies: payload.technologies }
+            : {}),
          assessment: payload.assessment ?? [],
       }),
    nextAssessmentQuestion: (topic: string, previousAnswers: TopicAnswer[]) =>
       apiClient.post<TopicNextQuestionResponse>(
          '/learning-trails/assessment/next',
          { topic, previous_answers: previousAnswers },
+      ),
+   nextProjectAssessmentQuestion: (
+      projectScope: string,
+      technologies: string[],
+      previousAnswers: TopicAnswer[],
+   ) =>
+      apiClient.post<TopicNextQuestionResponse>(
+         '/learning-trails/assessment/project/next',
+         {
+            project_scope: projectScope,
+            technologies,
+            previous_answers: previousAnswers,
+         },
       ),
    regenerate: (id: number) =>
       apiClient.post<LearningTrail>(`/learning-trails/${id}/regenerate`),

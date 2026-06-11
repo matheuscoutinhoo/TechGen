@@ -71,6 +71,43 @@ class AIProvider(ABC):
         """
 
     @abstractmethod
+    def generate_next_project_question(
+        self,
+        project_scope: str,
+        *,
+        technologies: Sequence[str] = (),
+        skills: Sequence[UserSkillInput] = (),
+        previous_answers: Sequence[TopicAnswer] = (),
+    ) -> TopicQuestion | None:
+        """Versão PROJECT do diagnóstico adaptativo.
+
+        Recebe o escopo do projeto + a lista de tecnologias que o aluno quer
+        aprender + as skills declaradas + o histórico. As perguntas devem
+        sondar familiaridade com a stack escolhida, restrições do projeto,
+        práticas auxiliares e pré-requisitos fundacionais ainda não cobertos.
+        """
+
+    @abstractmethod
+    def generate_project_trail(
+        self,
+        project_scope: str,
+        *,
+        technologies: Sequence[str] = (),
+        skills: Sequence[UserSkillInput] = (),
+        assessment: Sequence[TopicAnswer] = (),
+    ) -> TrailContent:
+        """Gera uma trilha cujo eixo é o PROJETO descrito pelo aluno.
+
+        ``technologies`` é a stack que o aluno quer praticar; deve ser usada
+        como guia, mas a IA tem liberdade para incluir conceitos/ferramentas
+        fora dela quando forem necessários para o projeto funcionar (ex.:
+        autenticação, testes, infra mínima).
+
+        O ``project_title`` retornado deve sumarizar o projeto em palavras
+        curtas — é ele que vira o ``topic`` da trilha pra fins de listagem.
+        """
+
+    @abstractmethod
     def explain_concept(
         self,
         concept: str,

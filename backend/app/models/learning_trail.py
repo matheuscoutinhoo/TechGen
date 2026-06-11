@@ -32,6 +32,10 @@ class LearningTrail(Base, TimestampMixin):
     # Persistido para que ``regenerate`` use as mesmas respostas sem incomodar
     # o aluno de novo.
     assessment_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Snapshot do payload de criação (mode + topic OU project_scope/technologies).
+    # Permite regenerar uma trilha de modo projeto sem perder o contexto inicial.
+    # Nullable para trilhas geradas antes deste campo existir (sempre topic mode).
+    creation_input_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

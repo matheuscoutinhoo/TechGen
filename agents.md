@@ -638,7 +638,8 @@ Checklist antes de migrar:
     skills genéricas no momento da criação/regeneração da trilha. Fallback
     transparente em `ABACUS_MODEL` quando vazio.
   - `ABACUS_TIMEOUT_SECONDS` (padrão 300 — 5 min; trilhas longas com modelos top-tier podem se aproximar disso)
-- A interface `AIProvider` expõe quatro métodos obrigatórios:
+- A interface `AIProvider` expõe seis métodos obrigatórios. Os quatro
+  primeiros cobrem o **modo TOPIC** (aluno dita um tema, IA propõe o projeto):
   - `generate_next_topic_question(topic, *, skills, previous_answers)` —
     gera a **próxima** pergunta de diagnóstico levando em conta o histórico
     de respostas. Retorna `None` quando a IA decide que já tem contexto
@@ -655,6 +656,16 @@ Checklist antes de migrar:
     categorias genéricas ("autenticação", "banco de dados"). Chamado pelo
     `LearningTrailService` no `create_for_user`/`regenerate_for_user` para
     popular `TrailContent.skill_categories`. Usa `categorizer_model`.
+  Os dois métodos extras cobrem o **modo PROJECT** (aluno dita o escopo do
+  projeto + as tecnologias que quer aprender — detalhes em §40):
+  - `generate_next_project_question(project_scope, *, technologies, skills, previous_answers)`
+    — mesma semântica do `generate_next_topic_question`, porém a entrevista
+    é calibrada pelo escopo + pela stack declarada (não por um tema solto).
+    Usa `questions_model`.
+  - `generate_project_trail(project_scope, *, technologies, skills, assessment)`
+    — gera a trilha em torno do projeto descrito. A stack declarada é
+    espinha dorsal, **mas a IA tem liberdade de incluir conceitos fora dela
+    quando o projeto exigir** (auth, testes, infra mínima). Usa `model`.
 - Prompts ficam em `app/services/ai/prompts.py` — versionados, revisados via PR. Princípios não-negociáveis:
   - **Sem conteúdo genérico.** O modelo é instruído a sempre escolher um cenário concreto.
   - **Personalização explícita por skill E pelo diagnóstico.** Cada ticket
@@ -715,10 +726,18 @@ Checklist antes de migrar:
 
 A experiência de gerar uma trilha deve transmitir intenção pedagógica clara:
 
-1. **Coleta de tema**: campo amplo, exemplos sugeridos, dica visível sobre o que torna um tema bom.
+1. **Escolha do modo + coleta**: na topo do formulário, um toggle
+   segmentado ("Por tema" / "Por projeto") deixa o aluno escolher como
+   quer descrever o que vai aprender. Modo **tema** mostra um único campo
+   amplo com sugestões. Modo **projeto** mostra uma `TextArea` para o
+   escopo + um chip-input de tecnologias com sugestões e botão remover
+   por chip. As dicas laterais trocam de conteúdo conforme o modo. O modo
+   padrão é **tema** (preserva o fluxo clássico). Detalhes do modo projeto
+   em §40.
 2. **Diagnóstico inicial obrigatório (modal sobreposto)**: ao continuar, a IA
    gera até 5 perguntas curtas de múltipla escolha para calibrar nível,
-   contexto e pré-requisitos sobre o tema. Detalhes em §39.
+   contexto e pré-requisitos. Detalhes em §39 (versão tema) e §40 (versão
+   projeto, com endpoint dedicado).
 3. **Loading explícito**: durante a geração (que pode levar dezenas de segundos), mostrar mensagem como _"O mentor está desenhando o projeto e os tickets..."_, com indicador de progresso.
 4. **Resultado estruturado**:
    - Título do projeto proposto.
@@ -909,6 +928,10 @@ geração. O objetivo é evitar trilhas ilógicas (alguém querendo "API design
 com FastAPI" sem nunca ter usado FastAPI) e calibrar profundidade, ordem
 dos tickets e pré-requisitos cobertos.
 
+Esta seção descreve o diagnóstico do **modo TOPIC**. O modo PROJECT usa
+as mesmas regras (teto rígido, adaptatividade, schemas), mas com endpoint
+e prompts dedicados — ver §40.
+
 **Princípio central:** cada resposta é contexto para a **próxima** pergunta.
 Não geramos um set fixo upfront — a IA conduz a entrevista uma pergunta de
 cada vez, sondando lacunas ou subindo o nível conforme o aluno responde.
@@ -1020,6 +1043,104 @@ cada vez, sondando lacunas ou subindo o nível conforme o aluno responde.
 
 ---
 
+## 40. Modo "Por projeto" (escopo + tecnologias)
+
+Modo alternativo de criação de trilha. Em vez de ditar um tema, o aluno
+descreve o **escopo de um projeto** e lista as **tecnologias que quer
+aprender** nele. A IA usa esses dados para desenhar a trilha, mas
+**não fica refém da stack declarada** — tem permissão (e dever) de incluir
+conceitos auxiliares fora dela quando o projeto exigir.
+
+### Princípio central
+- **O projeto é a autoridade** sobre o que precisa ser construído.
+- A stack declarada é **guia**, não restrição. Se o projeto pedir auth e
+  o aluno não listou autenticação, a IA inclui — sinalizando no
+  `personalization_notes` do ticket que o tópico está fora da lista
+  declarada e por quê.
+
+### Schemas (`app/schemas/learning_trail.py`)
+- `TrailCreationMode` (`topic` | `project`) — discriminante.
+- `LearningTrailCreate` é discriminado por `mode`:
+  - `topic`: exige `topic` (≥3 chars).
+  - `project`: exige `project_scope` (≥20 chars) e `technologies` (lista
+    não vazia, deduplicada case-insensitive, normalizada).
+  - `assessment` é compartilhado entre os modos.
+- `ProjectNextQuestionRequest`: `{ project_scope, technologies, previous_answers }`.
+
+### Endpoints
+- `POST /api/v1/learning-trails` aceita o payload discriminado; o router
+  despacha pra `create_for_user` ou `create_project_for_user` conforme o
+  `mode`.
+- `POST /api/v1/learning-trails/assessment/project/next` com
+  `{ project_scope, technologies, previous_answers }` →
+  `TopicNextQuestionResponse`. Autenticado. Não persiste nada. Mesmo teto
+  rígido de 5 perguntas do modo TOPIC, imposto no service.
+
+### Persistência (`learning_trails`)
+- Coluna `creation_input_json` (Text, nullable) guarda o snapshot do payload
+  de criação:
+  - TOPIC: `{"mode": "topic", "topic": "..."}`.
+  - PROJECT: `{"mode": "project", "project_scope": "...", "technologies": [...]}`.
+- `regenerate_for_user` lê esse snapshot e despacha para o método correto
+  do provider (`generate_project_trail` quando mode=project). Trilhas
+  legadas sem snapshot caem no fallback de modo TOPIC usando `trail.topic`
+  — sem migração de dados retroativa.
+- `trail.topic` no modo PROJECT é populado com o `project_title` que a IA
+  retornou (rótulo curto, vai para listagens, cabeçalhos e o card da
+  Dashboard).
+
+### Provider (`AIProvider`)
+- Métodos `generate_next_project_question` e `generate_project_trail`
+  detalhados em §32.
+- `FakeAIProvider` reaproveita o pipeline do modo TOPIC usando a primeira
+  tecnologia declarada como eixo, e depois ENRIQUECE o resultado:
+  - sobrescreve `project_title`/`project_summary`/`final_deliverable` com
+    o escopo do aluno;
+  - cicla pelas tecnologias declaradas anexando "Tecnologia praticada
+    nesta etapa: X." em cada `personalization_notes`;
+  - adiciona conceitos complementares ("Autenticação" quando o escopo
+    menciona login/cadastro/usuário, "Testes automatizados" sempre) em
+    um ticket intermediário — comprovando que o modo PROJECT cobre
+    pré-requisitos fora da stack declarada.
+- `AbacusAIProvider` usa `PROJECT_SYSTEM_PROMPT` +
+  `build_project_user_prompt` para a trilha e
+  `NEXT_PROJECT_QUESTION_SYSTEM_PROMPT` +
+  `build_next_project_question_prompt` para as perguntas. Ambos os prompts
+  são versionados em `prompts.py`.
+
+### Princípios pedagógicos do prompt da trilha
+- O **escopo** é citado verbatim e tratado como autoridade do que construir.
+- A **stack declarada** é a espinha dorsal da implementação, mas pode (e
+  deve) ser estendida quando o projeto pedir.
+- O `project_title` precisa ser curto, específico e memorável — vira o
+  rótulo da trilha em todas as listagens.
+- `personalization_notes` cita ou (a) qual tecnologia da lista está sendo
+  praticada naquele ticket, ou (b) qual resposta do diagnóstico justificou
+  a decisão. Quando o assessment está presente, mais da metade dos notes
+  precisa referenciá-lo (mesma regra do modo TOPIC).
+- Encerramento obrigatório segue igual: o último ticket é a release final
+  que entrega o projeto descrito; `final_deliverable` casa com o escopo.
+
+### UX (frontend)
+- Página `/trails/new` tem um toggle segmentado no topo: **"Por tema"** /
+  **"Por projeto"**. O modo default é tema.
+- Modo PROJECT mostra:
+  - `TextArea` "Escopo do projeto" (mínimo 20 caracteres, hint visível).
+  - Chip-input "Tecnologias que quer aprender": input + botão Adicionar,
+    Enter/vírgula adicionam, dedup case-insensitive, chips removíveis via
+    "×", sugestões clicáveis abaixo.
+  - Dicas laterais específicas do modo (descrever em uma frase, listar
+    fluxos principais, citar restrições reais, listar só o que QUER
+    aprender).
+- O `AssessmentModal` é reutilizado — recebe um rótulo curto derivado do
+  escopo (primeira frase ou primeiros 80 chars com elipses) como o `topic`
+  exibido no header, e usa `loadNextQuestion` apontando para o endpoint
+  `assessment/project/next`.
+- Validação cliente: escopo ≥20 chars + ≥1 tecnologia antes do submit.
+  Backend (Pydantic) é a autoridade final e devolve 422.
+
+---
+
 ## 36. Como Usar Este Documento
 
 - Antes de implementar qualquer coisa, **consulte a seção relevante**.
@@ -1029,4 +1150,4 @@ cada vez, sondando lacunas ou subindo o nível conforme o aluno responde.
 
 ---
 
-_Última atualização: v0.2.0_
+_Última atualização: v0.3.0 — adicionado modo "Por projeto" (escopo + tecnologias) na criação de trilhas._

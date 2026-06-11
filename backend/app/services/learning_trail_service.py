@@ -24,6 +24,7 @@ from app.schemas.learning_trail import (
     TopicNextQuestionResponse,
     TopicQuestion,
     TrailContent,
+    TrailCreationMode,
 )
 from app.services.ai.base import AIProvider, ConceptContext, UserSkillInput
 from app.services.skill_service import SkillService
@@ -102,6 +103,35 @@ class LearningTrailService:
             return TopicNextQuestionResponse(question=None, done=True)
         return TopicNextQuestionResponse(question=next_question, done=False)
 
+    def build_next_project_question_for_user(
+        self,
+        user: User,
+        *,
+        project_scope: str,
+        technologies: Sequence[str] = (),
+        previous_answers: Sequence[TopicAnswer] = (),
+    ) -> TopicNextQuestionResponse:
+        """Versão PROJECT do diagnóstico adaptativo. Mesma semântica de teto.
+
+        Encaminha escopo + tecnologias para o provider, que calibra a
+        pergunta pela stack escolhida e pelas restrições do projeto.
+        """
+        answers = list(previous_answers)
+        if len(answers) >= MAX_ASSESSMENT_QUESTIONS:
+            return TopicNextQuestionResponse(question=None, done=True)
+
+        next_question: TopicQuestion | None = (
+            self.ai_provider.generate_next_project_question(
+                project_scope,
+                technologies=technologies,
+                skills=_to_skill_inputs(user),
+                previous_answers=answers,
+            )
+        )
+        if next_question is None:
+            return TopicNextQuestionResponse(question=None, done=True)
+        return TopicNextQuestionResponse(question=next_question, done=False)
+
     # ------------------------------------------------------------------ #
     # Commands
     # ------------------------------------------------------------------ #
@@ -123,17 +153,69 @@ class LearningTrailService:
             summary=content.project_summary,
             content_json=content.model_dump_json(),
             assessment_json=_serialize_assessment(assessment),
+            creation_input_json=_serialize_topic_input(topic),
+        )
+
+    def create_project_for_user(
+        self,
+        user: User,
+        *,
+        project_scope: str,
+        technologies: Sequence[str] = (),
+        assessment: Sequence[TopicAnswer] = (),
+    ) -> LearningTrail:
+        """Cria uma trilha no modo PROJECT.
+
+        O ``topic`` persistido vira o ``project_title`` gerado pela IA, que é
+        o rótulo curto usado em listagens e cabeçalhos. O escopo + a stack
+        ficam guardados em ``creation_input_json`` pra serem reaproveitados
+        em ``regenerate_for_user``.
+        """
+        techs = list(technologies)
+        content = self.ai_provider.generate_project_trail(
+            project_scope,
+            technologies=techs,
+            skills=_to_skill_inputs(user),
+            assessment=assessment,
+        )
+        content = self._with_skill_categories(content)
+        return self.repository.create(
+            user_id=user.id,
+            topic=content.project_title[:200],
+            title=content.project_title,
+            summary=content.project_summary,
+            content_json=content.model_dump_json(),
+            assessment_json=_serialize_assessment(assessment),
+            creation_input_json=_serialize_project_input(project_scope, techs),
         )
 
     def regenerate_for_user(self, user: User, trail_id: int) -> LearningTrail:
         trail = self.get_for_user(user, trail_id)
-        stored = _deserialize_assessment(trail.assessment_json)
-        content = self.ai_provider.generate_learning_trail(
-            trail.topic,
-            skills=_to_skill_inputs(user),
-            assessment=stored,
-        )
+        stored_assessment = _deserialize_assessment(trail.assessment_json)
+        creation_input = _deserialize_creation_input(trail.creation_input_json)
+
+        if creation_input and creation_input.get("mode") == TrailCreationMode.PROJECT.value:
+            content = self.ai_provider.generate_project_trail(
+                creation_input.get("project_scope") or "",
+                technologies=creation_input.get("technologies") or [],
+                skills=_to_skill_inputs(user),
+                assessment=stored_assessment,
+            )
+            new_topic = content.project_title[:200]
+        else:
+            # Modo TOPIC (default e fallback para trilhas antigas sem snapshot).
+            topic = (
+                creation_input.get("topic") if creation_input else None
+            ) or trail.topic
+            content = self.ai_provider.generate_learning_trail(
+                topic,
+                skills=_to_skill_inputs(user),
+                assessment=stored_assessment,
+            )
+            new_topic = topic
+
         content = self._with_skill_categories(content)
+        trail.topic = new_topic
         trail.title = content.project_title
         trail.summary = content.project_summary
         trail.content_json = content.model_dump_json()
@@ -368,3 +450,36 @@ def _deserialize_assessment(raw: str | None) -> list[TopicAnswer]:
         return _ASSESSMENT_LIST_ADAPTER.validate_python(data)
     except ValidationError:
         return []
+
+
+def _serialize_topic_input(topic: str) -> str:
+    return json.dumps(
+        {"mode": TrailCreationMode.TOPIC.value, "topic": topic.strip()},
+        ensure_ascii=False,
+    )
+
+
+def _serialize_project_input(project_scope: str, technologies: Sequence[str]) -> str:
+    return json.dumps(
+        {
+            "mode": TrailCreationMode.PROJECT.value,
+            "project_scope": project_scope.strip(),
+            "technologies": [t.strip() for t in technologies if t and t.strip()],
+        },
+        ensure_ascii=False,
+    )
+
+
+def _deserialize_creation_input(raw: str | None) -> dict | None:
+    """Lê o snapshot do payload de criação. Tolerante a JSON inválido —
+    trilhas antigas (campo nulo) caem no fallback de modo TOPIC.
+    """
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    return data

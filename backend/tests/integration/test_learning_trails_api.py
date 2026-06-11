@@ -453,3 +453,191 @@ class TestExplainConcept:
         client.get(f"{base_url}?refresh=true", headers=auth_headers)
 
         assert calls["count"] == 2
+
+
+# ====================================================================== #
+# Modo PROJECT — aluno descreve escopo + tecnologias
+# ====================================================================== #
+PROJECT_SCOPE = (
+    "Plataforma web onde pessoas cadastram livros usados para doação. "
+    "Tem login, busca por título/autor e dashboard com ranking de doadores."
+)
+TECHNOLOGIES = ["FastAPI", "PostgreSQL", "React"]
+
+
+@pytest.mark.integration
+class TestCreateProjectTrail:
+    def test_creates_trail_in_project_mode(self, client, auth_headers):
+        response = client.post(
+            "/api/v1/learning-trails",
+            headers=auth_headers,
+            json={
+                "mode": "project",
+                "project_scope": PROJECT_SCOPE,
+                "technologies": TECHNOLOGIES,
+            },
+        )
+        assert response.status_code == 201, response.text
+        body = response.json()
+        # `topic` virou o título curto do projeto (vai pra listagem).
+        assert body["topic"] == body["content"]["project_title"]
+        # Conteúdo cita as tecnologias declaradas e o escopo do projeto.
+        summary_lower = body["content"]["project_summary"].lower()
+        assert "livros" in summary_lower or "doação" in summary_lower
+        blob = " ".join(
+            [
+                body["content"]["project_summary"],
+                body["content"]["final_deliverable"],
+                *(t.get("personalization_notes") or "" for t in body["content"]["tickets"]),
+            ]
+        )
+        assert all(tech in blob for tech in TECHNOLOGIES)
+        # Capstone permanece como último ticket.
+        last_title = body["content"]["tickets"][-1]["title"].lower()
+        assert any(
+            kw in last_title
+            for kw in ("release", "entrega", "ponta a ponta", "end-to-end")
+        )
+
+    def test_rejects_project_mode_without_scope(self, client, auth_headers):
+        response = client.post(
+            "/api/v1/learning-trails",
+            headers=auth_headers,
+            json={
+                "mode": "project",
+                "project_scope": "curto",
+                "technologies": ["FastAPI"],
+            },
+        )
+        assert response.status_code == 422
+
+    def test_rejects_project_mode_without_technologies(self, client, auth_headers):
+        response = client.post(
+            "/api/v1/learning-trails",
+            headers=auth_headers,
+            json={
+                "mode": "project",
+                "project_scope": PROJECT_SCOPE,
+                "technologies": [],
+            },
+        )
+        assert response.status_code == 422
+
+    def test_project_mode_assessment_propagates(self, client, auth_headers):
+        response = client.post(
+            "/api/v1/learning-trails",
+            headers=auth_headers,
+            json={
+                "mode": "project",
+                "project_scope": PROJECT_SCOPE,
+                "technologies": TECHNOLOGIES,
+                "assessment": [
+                    {
+                        "question_id": "q1",
+                        "question": "Você já trabalhou com FastAPI antes?",
+                        "answer": "Nunca usei FastAPI",
+                    }
+                ],
+            },
+        )
+        assert response.status_code == 201
+        body = response.json()
+        notes = " ".join(
+            t.get("personalization_notes") or "" for t in body["content"]["tickets"]
+        )
+        assert "Nunca usei FastAPI" in notes
+
+
+@pytest.mark.integration
+class TestProjectAssessmentEndpoint:
+    def test_returns_first_question_for_empty_history(self, client, auth_headers):
+        response = client.post(
+            "/api/v1/learning-trails/assessment/project/next",
+            headers=auth_headers,
+            json={
+                "project_scope": PROJECT_SCOPE,
+                "technologies": TECHNOLOGIES,
+                "previous_answers": [],
+            },
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["done"] is False
+        question = body["question"]
+        assert question["id"] == "q1"
+        # Tecnologia principal aparece nas alternativas.
+        joined = " ".join(opt["label"] for opt in question["options"])
+        assert TECHNOLOGIES[0] in joined or TECHNOLOGIES[0] in question["question"]
+
+    def test_rejects_empty_technologies(self, client, auth_headers):
+        response = client.post(
+            "/api/v1/learning-trails/assessment/project/next",
+            headers=auth_headers,
+            json={
+                "project_scope": PROJECT_SCOPE,
+                "technologies": [],
+                "previous_answers": [],
+            },
+        )
+        assert response.status_code == 422
+
+    def test_returns_done_when_history_full(self, client, auth_headers):
+        previous = [
+            {"question_id": f"q{i}", "question": f"P{i}?", "answer": f"R{i}"}
+            for i in range(1, 6)
+        ]
+        response = client.post(
+            "/api/v1/learning-trails/assessment/project/next",
+            headers=auth_headers,
+            json={
+                "project_scope": PROJECT_SCOPE,
+                "technologies": TECHNOLOGIES,
+                "previous_answers": previous,
+            },
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["done"] is True
+        assert body["question"] is None
+
+    def test_rejects_unauthenticated(self, client):
+        response = client.post(
+            "/api/v1/learning-trails/assessment/project/next",
+            json={
+                "project_scope": PROJECT_SCOPE,
+                "technologies": TECHNOLOGIES,
+            },
+        )
+        assert response.status_code == 401
+
+
+@pytest.mark.integration
+class TestRegenerateProjectTrail:
+    def test_regenerate_preserves_project_input(self, client, auth_headers):
+        created = client.post(
+            "/api/v1/learning-trails",
+            headers=auth_headers,
+            json={
+                "mode": "project",
+                "project_scope": PROJECT_SCOPE,
+                "technologies": TECHNOLOGIES,
+            },
+        ).json()
+        response = client.post(
+            f"/api/v1/learning-trails/{created['id']}/regenerate",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        regenerated = response.json()
+        # As tecnologias declaradas continuam aparecendo após o regenerate.
+        blob = " ".join(
+            [
+                regenerated["content"]["project_summary"],
+                regenerated["content"]["final_deliverable"],
+                *(
+                    t.get("personalization_notes") or ""
+                    for t in regenerated["content"]["tickets"]
+                ),
+            ]
+        )
+        assert all(tech in blob for tech in TECHNOLOGIES)
