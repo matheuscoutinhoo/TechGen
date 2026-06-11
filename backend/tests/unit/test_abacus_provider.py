@@ -76,6 +76,30 @@ class TestAbacusAIProvider:
         assert route.calls.last.request.headers["authorization"] == "Bearer fake-key"
 
     @respx.mock
+    def test_trail_generation_uses_creative_temperature(self):
+        """A geração de trilha sobe a temperatura para diversificar projetos."""
+        route = respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(
+                200, json=_openai_response(json.dumps(VALID_TRAIL_JSON))
+            ),
+        )
+        _provider().generate_learning_trail("FastAPI")
+        sent = json.loads(route.calls.last.request.content)
+        assert sent.get("temperature", 0) >= 0.7
+
+    @respx.mock
+    def test_trail_prompt_carries_diversity_directive(self):
+        route = respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(
+                200, json=_openai_response(json.dumps(VALID_TRAIL_JSON))
+            ),
+        )
+        _provider().generate_learning_trail("FastAPI")
+        sent = json.loads(route.calls.last.request.content)
+        user_content = sent["messages"][1]["content"]
+        assert "DIVERSIDADE E ORIGINALIDADE" in user_content
+
+    @respx.mock
     def test_parses_json_wrapped_in_markdown_fence(self):
         wrapped = "```json\n" + json.dumps(VALID_TRAIL_JSON) + "\n```"
         respx.post(ENDPOINT).mock(return_value=httpx.Response(200, json=_openai_response(wrapped)))
@@ -445,12 +469,16 @@ class TestAbacusProjectMode:
         body = json.loads(route.calls.last.request.content)
         # Usa o modelo principal (não o leve de questions).
         assert body["model"] == "gpt-5"
+        # Geração criativa também sobe a temperatura.
+        assert body.get("temperature", 0) >= 0.7
         user_content = body["messages"][1]["content"]
         # Escopo é colocado verbatim no prompt:
         assert "livros usados para doação" in user_content
         # Cada tecnologia declarada aparece no prompt:
         for tech in TECHNOLOGIES:
             assert tech in user_content
+        # E carrega a diretiva de diversidade (com domínio travado pelo escopo).
+        assert "DIVERSIDADE E ORIGINALIDADE" in user_content
 
     @respx.mock
     def test_generate_project_trail_raises_when_schema_mismatch(self):

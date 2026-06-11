@@ -40,6 +40,13 @@ from app.services.ai.prompts import (
 
 logger = logging.getLogger(__name__)
 
+# Temperatura das gerações CRIATIVAS (trilha por tema e por projeto). Mais
+# alta do que o default para diversificar os projetos propostos — combinada
+# com o bloco de diversidade dos prompts, evita que o mesmo tema gere sempre
+# a mesma trilha. O parser de JSON é tolerante (fences/regex), então o leve
+# aumento de criatividade não compromete a validação do schema.
+_GENERATION_TEMPERATURE = 0.85
+
 _JSON_BLOCK_RE = re.compile(r"\{.*\}", re.DOTALL)
 
 
@@ -253,6 +260,7 @@ class AbacusAIProvider(AIProvider):
         return {
             "model": self.model,
             "stream": False,
+            "temperature": _GENERATION_TEMPERATURE,
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {
@@ -296,6 +304,7 @@ class AbacusAIProvider(AIProvider):
         return {
             "model": self.model,
             "stream": False,
+            "temperature": _GENERATION_TEMPERATURE,
             "messages": [
                 {"role": "system", "content": PROJECT_SYSTEM_PROMPT},
                 {

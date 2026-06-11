@@ -695,6 +695,20 @@ Checklist antes de migrar:
     nível raiz do `TrailContent`, o artefato concreto que o aluno terá
     rodando ao fechar o último ticket (URL, comando, demo, repositório
     taggeado). Sem isso, a trilha não fecha.
+  - **Diversidade / anti-clichê (não negociável).** O mesmo tema NÃO pode
+    sempre gerar o mesmo projeto. `_variation_directive()` em `prompts.py`
+    injeta, a CADA chamada de `build_user_prompt`/`build_project_user_prompt`,
+    um bloco "DIVERSIDADE E ORIGINALIDADE" sorteado: uma `seed` aleatória +
+    um domínio de negócio (`_SCENARIO_DOMAINS`) + um recorte de produto
+    (`_PRODUCT_ANGLES`), além da ordem de "imagine 3 cenários e descarte o
+    óbvio". No modo TEMA o domínio é sorteado (a menos que o tema já o fixe,
+    quando se varia o sub-nicho); no modo PROJECT o domínio é travado pelo
+    escopo (`lock_domain=True`) e a variação recai sobre
+    arquitetura/modelagem/ordem/exemplos. Como a diretiva é sorteada por
+    chamada, o `regenerate` também muda de projeto. O `AbacusAIProvider`
+    complementa com `temperature=_GENERATION_TEMPERATURE` (0.85) nas duas
+    gerações pesadas de trilha — a seed só existe para empurrar a variação e
+    NUNCA aparece na saída.
 - Resposta esperada: `choices[0].message.content` contendo o JSON; é validado contra `TopicQuestion`/`TrailContent`/`ConceptExplanation` antes de virar domínio.
 - Erros do provider viram `AIProviderError` com mensagem amigável; timeout cita o valor configurado e a env var a ajustar.
 - Streaming não é usado (sempre `"stream": false`).

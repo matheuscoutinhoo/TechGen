@@ -5,6 +5,7 @@ histórico. Mudanças aqui são tratadas como mudança de comportamento.
 """
 from __future__ import annotations
 
+import random
 from typing import Iterable, Sequence
 
 from app.schemas.learning_trail import TopicAnswer
@@ -21,6 +22,12 @@ Princípios obrigatórios:
   Sempre escolha um cenário concreto (ex.: "API de reservas com locks otimistas",
   "dashboard de métricas em tempo real com WebSocket", "CLI de migração entre
   bancos").
+- **ORIGINALIDADE é obrigatória.** Cada trilha precisa ser única, mesmo para
+  o MESMO tema. O aluno pode regenerar a trilha ou pedir várias do mesmo
+  tema — e cada uma deve propor um projeto DIFERENTE (outro cenário, outro
+  domínio de negócio, outras entidades, outro recorte do problema). É
+  inaceitável devolver sempre o mesmo "projeto-reflexo". Siga rigorosamente
+  o bloco "DIVERSIDADE E ORIGINALIDADE" do prompt do usuário.
 - Quebre o projeto em tickets estilo Jira, em ordem progressiva e incremental.
 - Cada ticket é um entregável claro, com escopo bem definido.
 - Para cada ticket, explique profundamente os conceitos técnicos envolvidos
@@ -117,6 +124,103 @@ NO_ASSESSMENT_HINT = (
 )
 
 
+# ====================================================================== #
+# Diversidade / anti-clichê — quebra a repetição entre gerações do mesmo tema
+# ====================================================================== #
+# Domínios de negócio para ancorar cenários concretos quando o tema não fixa
+# um domínio próprio. Sorteados a cada geração para empurrar o modelo para
+# longe do exemplo-reflexo.
+_SCENARIO_DOMAINS: tuple[str, ...] = (
+    "logística e entregas last-mile",
+    "saúde e telemedicina",
+    "educação e edtech",
+    "finanças pessoais e fintech",
+    "jogos e entretenimento",
+    "agronegócio e rastreabilidade",
+    "e-commerce e marketplaces",
+    "mídia, podcasts e streaming",
+    "viagens e turismo",
+    "imobiliário e proptech",
+    "energia e sustentabilidade",
+    "esportes e fitness",
+    "música e produção de áudio",
+    "gastronomia e delivery",
+    "mobilidade urbana e transporte",
+    "RH, recrutamento e gestão de pessoas",
+    "jurídico e legaltech",
+    "indústria, manufatura e IoT",
+    "ONGs e impacto social",
+    "ferramentas internas de produtividade",
+    "ciência de dados e pesquisa acadêmica",
+    "varejo físico e ponto de venda",
+    "segurança, identidade e antifraude",
+    "construção civil e engenharia",
+    "petshops e veterinária",
+    "cultura, eventos e ingressos",
+)
+
+# Recortes de produto para variar o formato/arquitetura do que é construído.
+_PRODUCT_ANGLES: tuple[str, ...] = (
+    "uma ferramenta de uso interno para um time específico",
+    "um produto B2B SaaS multiusuário",
+    "um app B2C voltado ao consumidor final",
+    "uma CLI ou automação para pessoas desenvolvedoras",
+    "um serviço de back-office que integra sistemas legados",
+    "um MVP enxuto de uma startup buscando product-market fit",
+    "uma plataforma de dados/analytics quase em tempo real",
+    "um sistema orientado a eventos com mensageria",
+    "uma API pública consumida por terceiros",
+    "uma integração/bot que vive dentro de outra ferramenta (chat, planilha)",
+)
+
+
+def _variation_directive(*, lock_domain: bool) -> str:
+    """Gera um bloco de diretiva de diversidade SORTEADO a cada chamada.
+
+    É o que impede o modelo de devolver sempre o mesmo projeto para o mesmo
+    tema (inclusive em regenerações). Quando ``lock_domain`` é True (modo
+    PROJECT, em que o escopo manda no domínio), a variação recai sobre
+    arquitetura/modelagem/exemplos em vez do domínio.
+
+    A ``seed`` é só um empurrão de aleatoriedade — o modelo é instruído a
+    NUNCA citá-la na saída.
+    """
+    seed = random.randint(1000, 9999)
+    domain = random.choice(_SCENARIO_DOMAINS)
+    angle = random.choice(_PRODUCT_ANGLES)
+    if lock_domain:
+        focus_lines = (
+            "- O escopo informado é a autoridade do DOMÍNIO — NÃO troque de "
+            "domínio nem invente outro produto. Varie, em vez disso, as "
+            "decisões de arquitetura, a modelagem de entidades, a ordem dos "
+            "tickets e os cenários de exemplo, para que duas trilhas do mesmo "
+            "escopo nunca saiam idênticas."
+        )
+    else:
+        focus_lines = (
+            f"- Se o tema NÃO amarra um domínio de negócio, ancore o cenário "
+            f"no domínio: **{domain}**. Se o tema já fixa um domínio, escolha "
+            f"um SUB-NICHO específico e menos óbvio dentro dele (ex.: "
+            f"e-commerce → peças automotivas usadas; agenda → estúdios de "
+            f"tatuagem).\n"
+            f"- Enquadre o produto, quando fizer sentido para o tema, como: "
+            f"**{angle}**."
+        )
+    return (
+        f"DIVERSIDADE E ORIGINALIDADE (seed {seed} — use APENAS para variar; "
+        "NUNCA mencione esta seed na saída):\n"
+        "- Trate esta geração como um brainstorm NOVO e único. Antes de fixar "
+        "o cenário, imagine mentalmente 3 projetos concretos e DIFERENTES para "
+        "o tema e DESCARTE o mais óbvio — aquele que apareceria em qualquer "
+        "tutorial. Comprometa-se com um caminho menos batido.\n"
+        f"{focus_lines}\n"
+        "- Varie o nome do produto, as entidades de domínio e o problema de "
+        "negócio central a cada geração. Fuja do exemplo-reflexo (ex.: para "
+        "'API REST' não recorra automaticamente a 'lista de tarefas/todo' ou "
+        "'blog'; para 'WebSocket' não vá direto a 'chat')."
+    )
+
+
 def _format_skills(skills: Iterable[tuple[str, int, str]]) -> str:
     items = list(skills)
     if not items:
@@ -138,6 +242,8 @@ Tema solicitado pelo aluno: "{topic}"
 {skills_block}
 
 {assessment_block}
+
+{variation_block}
 
 Gere uma trilha de aprendizado completa, seguindo o schema JSON abaixo.
 
@@ -215,6 +321,7 @@ def build_user_prompt(
         topic=topic.strip(),
         skills_block=_format_skills(skills),
         assessment_block=_format_assessment(assessment),
+        variation_block=_variation_directive(lock_domain=False),
     )
 
 
@@ -244,6 +351,11 @@ Princípios obrigatórios desse modo:
 - Continuam valendo TODAS as regras pedagógicas do modo de tema livre:
   qualidade, granularidade, ordem, ENCERRAMENTO em ticket de release, etc.
   Releia abaixo o que muda só em relação ao input.
+- **ORIGINALIDADE mesmo com escopo fixo.** O aluno pode regenerar a trilha
+  do mesmo projeto — e cada versão deve variar decisões de arquitetura,
+  modelagem de entidades, ordem dos tickets e exemplos. NUNCA devolva uma
+  trilha idêntica à anterior. Siga o bloco "DIVERSIDADE E ORIGINALIDADE"
+  do prompt do usuário (sem trocar o domínio que o escopo definiu).
 
 PERSONALIZAÇÃO obrigatória pelas skills declaradas do aluno:
 - novice (1): mencionou já ter ouvido falar
@@ -319,6 +431,8 @@ Tecnologias que o aluno declarou que quer aprender neste projeto:
 
 {assessment_block}
 
+{variation_block}
+
 Gere uma trilha de aprendizado completa em volta DESTE projeto, seguindo o
 schema JSON abaixo.
 
@@ -393,6 +507,7 @@ def build_project_user_prompt(
         technologies_block=_format_technologies(technologies),
         skills_block=_format_skills(skills),
         assessment_block=_format_assessment(assessment),
+        variation_block=_variation_directive(lock_domain=True),
     )
 
 
