@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { authApi, type LoginPayload, type RegisterPayload } from '../api/auth';
 import { usersApi } from '../api/users';
-import { ApiError } from '../api/client';
+import { ApiError, setUnauthorizedHandler } from '../api/client';
 import type { User } from '../types/api';
 import { tokenStorage } from '../utils/storage';
 
@@ -83,6 +83,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
    const logout = useCallback(() => {
       tokenStorage.clear();
       setUser(null);
+   }, []);
+
+   // Hook global: qualquer chamada autenticada que receba 401 dispara
+   // logout. Cobre o caso de token expirado em endpoints novos (ex.:
+   // /assessment/project/next) sem precisar de try/catch caso a caso.
+   useEffect(() => {
+      setUnauthorizedHandler(() => {
+         tokenStorage.clear();
+         setUser(null);
+      });
+      return () => setUnauthorizedHandler(null);
    }, []);
 
    const applyUser = useCallback((updated: User) => {

@@ -30,6 +30,19 @@ interface RequestOptions {
    auth?: boolean;
 }
 
+/**
+ * Handler global disparado quando uma chamada autenticada recebe 401.
+ * O `AuthProvider` registra um callback que limpa o token e o usuário —
+ * sem isso a sessão fica "fantasma": token expirado, mas a UI continua
+ * renderizando rotas protegidas e estourando 401 em cada chamada.
+ */
+type UnauthorizedHandler = () => void;
+let unauthorizedHandler: UnauthorizedHandler | null = null;
+
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): void {
+   unauthorizedHandler = handler;
+}
+
 async function parseErrorBody(response: Response): Promise<ApiErrorPayload | null> {
    try {
       return (await response.json()) as ApiErrorPayload;
@@ -51,10 +64,15 @@ export async function request<TResponse>(
       headers['Content-Type'] = 'application/json';
    }
 
+   // Marca se a requisição foi enviada autenticada — só nesse caso 401
+   // significa "token expirou/inválido". Sem isso, um 401 de login mal
+   // sucedido também dispararia logout, que seria absurdo.
+   let sentWithToken = false;
    if (auth) {
       const token = tokenStorage.get();
       if (token) {
          headers.Authorization = `Bearer ${token}`;
+         sentWithToken = true;
       }
    }
 
@@ -83,6 +101,11 @@ export async function request<TResponse>(
       const errorBody = await parseErrorBody(response);
       const message = errorBody?.error?.message ?? `Erro ${response.status}`;
       const code = errorBody?.error?.code ?? 'HTTP_ERROR';
+      if (response.status === 401 && sentWithToken && unauthorizedHandler) {
+         // Sessão expirada: limpa token/usuário globalmente. Roteamento
+         // protegido cuida do redirect pra /login.
+         unauthorizedHandler();
+      }
       throw new ApiError(message, response.status, code, errorBody?.error?.details);
    }
 
