@@ -158,7 +158,7 @@ describe('<AssessmentModal />', () => {
       expect(highCallback.mock.calls[0][0][0].answer).toBe('Uso em produção');
    });
 
-   it('finaliza com onSubmit quando a IA devolve done=true', async () => {
+   it('finaliza com onSubmit quando o Mentor devolve done=true', async () => {
       const user = userEvent.setup();
       const onSubmit = vi.fn();
       const loadNextQuestion = vi

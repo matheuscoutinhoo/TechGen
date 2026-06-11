@@ -56,7 +56,7 @@ export interface TrailContent {
    /** Artefato concreto que o aluno terá ao concluir o último ticket. */
    final_deliverable?: string;
    /**
-    * Skills genéricas (já abstraídas pela IA) que entram/elevam no perfil
+    * Skills genéricas (já abstraídas pelo Mentor) que entram/elevam no perfil
     * ao concluir a trilha. Ex.: ["python", "api rest", "autenticação"].
     * Vazio em trilhas geradas antes do campo existir.
     */
@@ -146,7 +146,7 @@ export interface TopicNextQuestionResponse {
 
 /**
  * Modo de criação de trilha.
- * - `topic`: aluno descreve um tema; a IA propõe o projeto inteiro.
+ * - `topic`: aluno descreve um tema; o Mentor propõe o projeto inteiro.
  * - `project`: aluno descreve o escopo do projeto + as tecnologias que
  *   quer aprender no caminho.
  */

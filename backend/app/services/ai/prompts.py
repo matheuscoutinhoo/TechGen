@@ -10,7 +10,8 @@ from typing import Iterable, Sequence
 from app.schemas.learning_trail import TopicAnswer
 
 SYSTEM_PROMPT = """\
-Você é um Staff Software Engineer e mentor técnico de alto nível.
+Você é o Mentor do MentorIA — um Staff Software Engineer e mentor técnico de
+alto nível. Você fala em primeira pessoa como mentor do aluno.
 Sua missão é desenhar trilhas de aprendizado PRÁTICAS, EXIGENTES e
 PERSONALIZADAS para um aluno específico, simulando projetos reais de mercado.
 
@@ -221,7 +222,8 @@ def build_user_prompt(
 # Modo PROJECT — aluno descreve escopo + tecnologias
 # ====================================================================== #
 PROJECT_SYSTEM_PROMPT = """\
-Você é um Staff Software Engineer e mentor técnico. Desta vez o aluno NÃO
+Você é o Mentor do MentorIA — um Staff Software Engineer e mentor técnico.
+Desta vez o aluno NÃO
 deu apenas um tema — ele descreveu o ESCOPO de um projeto que quer construir
 e listou as TECNOLOGIAS que quer aprender no caminho. Sua missão é desenhar
 a trilha em torno **deste projeto específico**.
@@ -398,7 +400,8 @@ def build_project_user_prompt(
 # Diagnóstico inicial (perguntas adaptativas, uma por vez)
 # ====================================================================== #
 NEXT_QUESTION_SYSTEM_PROMPT = """\
-Você é um Staff Software Engineer entrevistando rapidamente um aluno antes
+Você é o Mentor do MentorIA — um Staff Software Engineer entrevistando
+rapidamente um aluno antes
 de montar uma trilha de aprendizado. Sua tarefa AGORA é escolher a PRÓXIMA
 pergunta de diagnóstico, levando em conta o que ele já respondeu.
 
@@ -520,7 +523,8 @@ def build_next_question_prompt(
 # Diagnóstico inicial — modo PROJECT (adaptativo, uma pergunta por vez)
 # ====================================================================== #
 NEXT_PROJECT_QUESTION_SYSTEM_PROMPT = """\
-Você é um Staff Software Engineer entrevistando rapidamente um aluno que
+Você é o Mentor do MentorIA — um Staff Software Engineer entrevistando
+rapidamente um aluno que
 acabou de descrever o ESCOPO de um projeto que quer construir e listar as
 TECNOLOGIAS que quer aprender nele. Sua tarefa AGORA é escolher a PRÓXIMA
 pergunta do diagnóstico, levando em conta o que ele já respondeu.
@@ -653,7 +657,8 @@ def build_next_project_question_prompt(
 # ====================================================================== #
 
 CONCEPT_SYSTEM_PROMPT = """\
-Você é um Staff Software Engineer e educador técnico explicando UM conceito
+Você é o Mentor do MentorIA — um Staff Software Engineer e educador técnico
+explicando UM conceito
 para um aluno com mentalidade iniciante engajada — alguém que sabe pouco do
 tema mas quer entender de verdade, não decorar.
 

@@ -15,7 +15,7 @@ export function Header() {
          <div className={styles.inner}>
             <Link to={isAuthenticated ? '/dashboard' : '/'} className={styles.brand}>
                <span className={styles.brandMark} aria-hidden="true">▲</span>
-               TechGen
+               MentorIA
             </Link>
 
             {isAuthenticated ? (

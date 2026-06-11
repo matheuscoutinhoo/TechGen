@@ -1,4 +1,4 @@
-# agents.md — Regras e Padrões Oficiais do TechGen
+# agents.md — Regras e Padrões Oficiais do MentorIA
 
 > Este documento é a **fonte de verdade** para qualquer pessoa (humana ou agente de IA) que contribua com o projeto. Toda implementação, refatoração, code review ou geração de código deve respeitar o que está aqui. Se algo neste arquivo conflita com uma sugestão de fora, **este arquivo vence**.
 
@@ -6,7 +6,9 @@
 
 ## 1. Visão Geral do Projeto
 
-**TechGen** é uma plataforma educacional de tecnologia movida a IA. O usuário descreve um tema que deseja aprender e o sistema gera uma **trilha de aprendizado** estruturada como um conjunto de **tickets estilo Jira**, simulando um projeto real de mercado conduzido por um Staff Software Engineer mentor.
+**MentorIA** é uma plataforma educacional de tecnologia conduzida por um Mentor de IA. O usuário descreve um tema que deseja aprender e o Mentor gera uma **trilha de aprendizado** estruturada como um conjunto de **tickets estilo Jira**, simulando um projeto real de mercado conduzido por um Staff Software Engineer.
+
+A voz do produto é a do **Mentor**: textos da interface e mensagens ao usuário se referem ao "Mentor" (não à "IA"). Internamente, a camada técnica continua sendo um `AIProvider` abstrato — "IA" permanece nos comentários de código, nomes de classes e nesta documentação de arquitetura.
 
 A proposta pedagógica é **aprender construindo**: cada ticket carrega contexto técnico profundo, decisões de design, conceitos fundamentais e entregáveis incrementais.
 

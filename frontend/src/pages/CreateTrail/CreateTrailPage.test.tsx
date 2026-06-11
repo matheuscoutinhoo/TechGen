@@ -128,7 +128,7 @@ describe('<CreateTrailPage />', () => {
          expect(screen.getByText('Você se sente confortável com Python?')).toBeInTheDocument(),
       );
 
-      // Responde Q2 → IA encerra → gera trilha.
+      // Responde Q2 → o Mentor encerra → gera trilha.
       await user.click(within(dialog).getByLabelText('Não'));
       await user.click(within(dialog).getByRole('button', { name: 'Continuar' }));
 
@@ -176,7 +176,7 @@ describe('<CreateTrailPage />', () => {
       expect(screen.getByLabelText('Tema')).toHaveValue('Microsserviços em Go');
    });
 
-   it('gera a trilha direto quando a IA retorna done=true na primeira chamada', async () => {
+   it('gera a trilha direto quando o Mentor retorna done=true na primeira chamada', async () => {
       const nextSpy = vi.fn(() => jsonResponse({ question: null, done: true }));
       const createSpy = vi.fn(() => jsonResponse(TRAIL_RESPONSE, 201));
       globalThis.fetch = fetchMock({

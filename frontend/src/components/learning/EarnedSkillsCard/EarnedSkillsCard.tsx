@@ -5,7 +5,7 @@ import styles from './EarnedSkillsCard.module.css';
 export interface EarnedSkillsCardProps {
    /**
     * Skills genéricas que o aluno vai adicionar/elevar ao concluir.
-    * Geradas pela IA na criação da trilha (`TrailContent.skill_categories`).
+    * Geradas pelo Mentor na criação da trilha (`TrailContent.skill_categories`).
     */
    categories: string[];
    /**

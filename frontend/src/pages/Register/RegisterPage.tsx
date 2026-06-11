@@ -140,7 +140,7 @@ export function RegisterPage() {
                <h2 className={styles.sectionTitle}>Suas skills (opcional)</h2>
                <p className={styles.sectionHint}>
                   Liste tecnologias e conceitos que você já conhece, com o seu nível.
-                  A IA usa essa informação para calibrar o nivelamento das trilhas.
+                  O Mentor usa essa informação para calibrar o nivelamento das trilhas.
                </p>
                <SkillEditor
                   skills={skills}

@@ -103,7 +103,7 @@ class AbacusAIProvider(AIProvider):
         question_data = data.get("question")
         if not isinstance(question_data, dict):
             raise AIProviderError(
-                "A IA não retornou nem uma pergunta nem o sinal de encerramento."
+                "O Mentor não retornou nem uma pergunta nem o sinal de encerramento."
             )
         # Garante id sequencial mesmo se a IA repetir/errar a numeração.
         question_data["id"] = f"q{len(previous_answers) + 1}"
@@ -114,7 +114,7 @@ class AbacusAIProvider(AIProvider):
                 "Resposta da Abacus não casou com o schema de pergunta: %s", exc
             )
             raise AIProviderError(
-                "A IA retornou uma pergunta em formato inesperado. Tente novamente."
+                "O Mentor retornou uma pergunta em formato inesperado. Tente novamente."
             ) from exc
 
     def generate_learning_trail(
@@ -133,7 +133,7 @@ class AbacusAIProvider(AIProvider):
         except ValidationError as exc:
             logger.warning("Resposta da Abacus não casou com o schema de trilha: %s", exc)
             raise AIProviderError(
-                "A IA retornou uma trilha em formato inesperado. Tente novamente."
+                "O Mentor retornou uma trilha em formato inesperado. Tente novamente."
             ) from exc
 
     def generate_next_project_question(
@@ -157,7 +157,7 @@ class AbacusAIProvider(AIProvider):
         question_data = data.get("question")
         if not isinstance(question_data, dict):
             raise AIProviderError(
-                "A IA não retornou nem uma pergunta nem o sinal de encerramento."
+                "O Mentor não retornou nem uma pergunta nem o sinal de encerramento."
             )
         question_data["id"] = f"q{len(previous_answers) + 1}"
         try:
@@ -168,7 +168,7 @@ class AbacusAIProvider(AIProvider):
                 exc,
             )
             raise AIProviderError(
-                "A IA retornou uma pergunta em formato inesperado. Tente novamente."
+                "O Mentor retornou uma pergunta em formato inesperado. Tente novamente."
             ) from exc
 
     def generate_project_trail(
@@ -193,7 +193,7 @@ class AbacusAIProvider(AIProvider):
                 exc,
             )
             raise AIProviderError(
-                "A IA retornou uma trilha em formato inesperado. Tente novamente."
+                "O Mentor retornou uma trilha em formato inesperado. Tente novamente."
             ) from exc
 
     def explain_concept(
@@ -212,7 +212,7 @@ class AbacusAIProvider(AIProvider):
         except ValidationError as exc:
             logger.warning("Resposta da Abacus não casou com o schema de conceito: %s", exc)
             raise AIProviderError(
-                "A IA retornou a explicação em formato inesperado. Tente novamente."
+                "O Mentor retornou a explicação em formato inesperado. Tente novamente."
             ) from exc
 
     def categorize_concepts(self, concepts: Sequence[str]) -> list[str]:
@@ -226,7 +226,7 @@ class AbacusAIProvider(AIProvider):
         categories = data.get("categories")
         if not isinstance(categories, list):
             raise AIProviderError(
-                "A IA não retornou a lista de categorias esperada."
+                "O Mentor não retornou a lista de categorias esperada."
             )
         # Normaliza: lowercase, trim, dedup (preservando ordem).
         seen: set[str] = set()
@@ -391,12 +391,12 @@ class AbacusAIProvider(AIProvider):
         except httpx.TimeoutException as exc:
             logger.warning("Timeout (%ss) ao chamar Abacus", self.timeout_seconds)
             raise AIProviderError(
-                f"A IA demorou mais que {self.timeout_seconds}s para responder. "
+                f"O Mentor demorou mais que {self.timeout_seconds}s para responder. "
                 "Aumente ABACUS_TIMEOUT_SECONDS no .env ou use um modelo mais rápido."
             ) from exc
         except httpx.HTTPError as exc:
             logger.exception("Falha de rede ao chamar Abacus")
-            raise AIProviderError("Falha ao contatar a IA. Tente novamente em instantes.") from exc
+            raise AIProviderError("Falha ao contatar o Mentor. Tente novamente em instantes.") from exc
 
         if response.status_code >= 400:
             body_snippet = response.text[:500].strip()
@@ -407,14 +407,14 @@ class AbacusAIProvider(AIProvider):
                 body_snippet,
             )
             raise AIProviderError(
-                f"A IA respondeu com erro (HTTP {response.status_code}). "
+                f"O Mentor respondeu com erro (HTTP {response.status_code}). "
                 "Verifique credenciais, modelo e a URL configurados."
             )
 
         try:
             return response.json()
         except ValueError as exc:
-            raise AIProviderError("Resposta da IA não é JSON válido.") from exc
+            raise AIProviderError("Resposta do Mentor não é JSON válido.") from exc
 
     @staticmethod
     def _extract_text(raw: dict[str, Any]) -> str:
@@ -434,7 +434,7 @@ class AbacusAIProvider(AIProvider):
                     content = delta.get("content")
                     if isinstance(content, str) and content.strip():
                         return content
-        raise AIProviderError("Resposta da IA não contém texto utilizável.")
+        raise AIProviderError("Resposta do Mentor não contém texto utilizável.")
 
     @staticmethod
     def _parse_json(text: str) -> dict[str, Any]:
@@ -447,8 +447,8 @@ class AbacusAIProvider(AIProvider):
         except json.JSONDecodeError:
             match = _JSON_BLOCK_RE.search(cleaned)
             if not match:
-                raise AIProviderError("A IA não retornou JSON reconhecível.")
+                raise AIProviderError("O Mentor não retornou JSON reconhecível.")
             try:
                 return json.loads(match.group(0))
             except json.JSONDecodeError as exc:
-                raise AIProviderError("Não foi possível interpretar o JSON da IA.") from exc
+                raise AIProviderError("Não foi possível interpretar o JSON do Mentor.") from exc

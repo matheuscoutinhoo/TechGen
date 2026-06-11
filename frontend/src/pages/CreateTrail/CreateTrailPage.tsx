@@ -171,7 +171,7 @@ export function CreateTrailPage() {
       try {
          const result = await fetchFirstQuestion();
          if (result.done || !result.question) {
-            // IA decidiu pular o diagnóstico (caso raro) → gera direto.
+            // O Mentor decidiu pular o diagnóstico (caso raro) → gera direto.
             await generateTrail([]);
             return;
          }
@@ -196,21 +196,21 @@ export function CreateTrailPage() {
    const showLoadingPanel = phase === 'loading-questions' || phase === 'generating';
    const loadingLabel =
       phase === 'loading-questions'
-         ? 'O mentor está preparando a primeira pergunta...'
-         : 'O mentor está desenhando o projeto e os tickets...';
+         ? 'O Mentor está preparando a primeira pergunta...'
+         : 'O Mentor está desenhando o projeto e os tickets...';
    const loadingHint =
       phase === 'loading-questions'
-         ? 'A IA vai te entrevistar de forma adaptativa — cada resposta calibra a próxima pergunta.'
+         ? 'O Mentor vai te entrevistar de forma adaptativa — cada resposta calibra a próxima pergunta.'
          : 'Suas respostas estão guiando a quebra dos tickets, os conceitos abordados e os pré-requisitos cobertos. Isso pode levar alguns segundos.';
 
    const pageDescription =
       mode === 'project'
-         ? 'Descreva o projeto que quer construir e as tecnologias que quer praticar. A IA monta a trilha em volta disso e cobre pré-requisitos quando o projeto exigir.'
-         : 'Descreva o tema. A IA atua como um Staff Software Engineer mentor e desenha um projeto realista, decomposto em tickets estilo Jira.';
+         ? 'Descreva o projeto que quer construir e as tecnologias que quer praticar. O Mentor monta a trilha em volta disso e cobre pré-requisitos quando o projeto exigir.'
+         : 'Descreva o tema. O Mentor desenha um projeto realista, decomposto em tickets entregáveis a nível de mercado.';
 
    const introMessage =
       mode === 'project'
-         ? 'Conte o que você quer construir e quais tecnologias quer praticar. A IA não fica refém da stack — adiciona o que o projeto precisar.'
+         ? 'Conte o que você quer construir e quais tecnologias quer praticar. O Mentor não fica refém da stack — adiciona o que o projeto precisar.'
          : 'Quanto mais específico for o tema, melhor o projeto resultante. Você pode editar a trilha depois.';
 
    const assessmentTopic =
@@ -244,7 +244,7 @@ export function CreateTrailPage() {
                   >
                      <span className={styles.modeButtonTitle}>Por tema</span>
                      <span className={styles.modeButtonHint}>
-                        A IA propõe o projeto
+                        O Mentor propõe o projeto
                      </span>
                   </button>
                   <button
@@ -347,7 +347,7 @@ export function CreateTrailPage() {
                               </button>
                            </div>
                            <span className={styles.techHint}>
-                              Pressione Enter ou clique em Adicionar. A IA pode incluir
+                              Pressione Enter ou clique em Adicionar. O Mentor pode incluir
                               outras tecnologias se o projeto exigir.
                            </span>
 
@@ -440,7 +440,7 @@ export function CreateTrailPage() {
                         Cite restrições reais (multi-usuário, dados sensíveis, deploy).
                      </li>
                      <li>
-                        Liste apenas tecnologias que você QUER aprender — a IA cobre
+                        Liste apenas tecnologias que você QUER aprender — o Mentor cobre
                         o resto.
                      </li>
                   </ul>

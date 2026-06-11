@@ -12,8 +12,8 @@ export function HomePage() {
                Trilhas de tecnologia <em>personalizadas</em> como projetos reais de mercado.
             </h1>
             <p className={styles.lead}>
-               Diga o tema que você quer aprender e declare suas skills atuais. A IA
-               do TechGen — atuando como um Staff Software Engineer mentor — desenha
+               Diga o tema que você quer aprender e declare suas skills atuais. O Mentor
+               do MentorIA — atuando como um Staff Software Engineer — desenha
                um projeto e o quebra em tickets estilo Jira, calibrados ao seu nível
                e com fundamentos profundos.
             </p>
@@ -31,7 +31,7 @@ export function HomePage() {
             <Card className={styles.pillar}>
                <h3>Personalizada por skills</h3>
                <p>
-                  Você lista as tecnologias e conceitos que já domina. A IA assume
+                  Você lista as tecnologias e conceitos que já domina. O Mentor assume
                   fluência onde você é forte e ensina do zero o que falta.
                </p>
             </Card>

@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     )
 
     # App
-    app_name: str = "TechGen API"
+    app_name: str = "MentorIA API"
     app_version: str = "0.1.0"
     api_v1_prefix: str = "/api/v1"
 

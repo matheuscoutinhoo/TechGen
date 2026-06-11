@@ -103,7 +103,7 @@ export function TrailsPage() {
          {!isLoading && !error && trails.length === 0 && (
             <EmptyState
                title="Você ainda não criou nenhuma trilha"
-               description="Diga o tema que quer aprender e a IA constrói um projeto pedagógico em poucos segundos."
+               description="Diga o tema que quer aprender e o Mentor constrói um projeto pedagógico em poucos segundos."
                actions={
                   <Button variant="primary" onClick={() => navigate('/trails/new')}>
                      Criar primeira trilha

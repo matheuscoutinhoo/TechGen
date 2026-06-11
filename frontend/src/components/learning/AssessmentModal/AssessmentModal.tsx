@@ -13,7 +13,7 @@ export interface AssessmentModalProps {
    firstQuestion: TopicQuestion;
    /**
     * Busca a próxima pergunta com o histórico atual. Retorna `done=true`
-    * quando a IA decide que já tem contexto suficiente.
+    * quando o Mentor decide que já tem contexto suficiente.
     */
    loadNextQuestion: (
       previousAnswers: TopicAnswer[],
@@ -261,7 +261,7 @@ export function AssessmentModal({
                   Antes de gerar a trilha
                </h2>
                <p className={styles.subtitle}>
-                  Cada resposta calibra a próxima pergunta. A IA usa esse contexto
+                  Cada resposta calibra a próxima pergunta. O Mentor usa esse contexto
                   para ajustar a profundidade e os pré-requisitos sobre{' '}
                   <strong>{topic}</strong>.
                </p>
@@ -303,7 +303,7 @@ export function AssessmentModal({
                   <>
                      <Spinner label="Preparando a próxima pergunta..." />
                      <p className={styles.stageLoadingHint}>
-                        A IA está usando suas respostas anteriores para escolher
+                        O Mentor está usando suas respostas anteriores para escolher
                         a próxima sondagem.
                      </p>
                   </>

@@ -308,7 +308,7 @@ export function AccountPage() {
             <section className={styles.section}>
                <h2>Skills</h2>
                <p className="lead">
-                  Suas skills nivelam o conteúdo gerado pela IA: tópicos que você
+                  Suas skills nivelam o conteúdo gerado pelo Mentor: tópicos que você
                   domina recebem desafios profundos, tópicos desconhecidos são
                   ensinados do zero. Concluir trilhas também adiciona conceitos aqui
                   automaticamente.

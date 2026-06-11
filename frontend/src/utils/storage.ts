@@ -1,4 +1,4 @@
-const TOKEN_KEY = 'techgen:token';
+const TOKEN_KEY = 'mentoria:token';
 
 export const tokenStorage = {
    get(): string | null {

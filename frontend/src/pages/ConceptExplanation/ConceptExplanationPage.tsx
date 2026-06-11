@@ -40,7 +40,7 @@ export function ConceptExplanationPage() {
                options,
             );
             setExplanation(data);
-            document.title = `${data.concept} · TechGen`;
+            document.title = `${data.concept} · MentorIA`;
          } catch (err) {
             setError(
                err instanceof ApiError

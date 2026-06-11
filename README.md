@@ -1,6 +1,6 @@
-# TechGen
+# MentorIA
 
-**TechGen** é uma plataforma educacional de tecnologia movida a IA. O usuário escolhe como descrever o que quer aprender — **por tema** (a IA propõe o projeto) ou **por projeto** (o usuário dita escopo + tecnologias) — e o sistema gera uma **trilha de aprendizado** estruturada como tickets estilo Jira, simulando um projeto real conduzido por um Staff Software Engineer mentor.
+**MentorIA** é uma plataforma educacional de tecnologia conduzida por um Mentor de IA. O usuário escolhe como descrever o que quer aprender — **por tema** (o Mentor propõe o projeto) ou **por projeto** (o usuário dita escopo + tecnologias) — e o Mentor gera uma **trilha de aprendizado** estruturada como tickets estilo Jira, simulando um projeto real conduzido por um Staff Software Engineer.
 
 > Antes de qualquer contribuição, leia [agents.md](./agents.md) — é a fonte oficial de regras, padrões e Definition of Done do projeto.
 
@@ -23,7 +23,7 @@
 ## Estrutura
 
 ```
-TechGen/
+MentorIA/
 ├── agents.md           # Regras oficiais do projeto
 ├── README.md
 ├── backend/            # FastAPI + SQLite
