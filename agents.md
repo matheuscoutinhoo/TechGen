@@ -631,10 +631,17 @@ Checklist antes de migrar:
   - `ABACUS_API_URL` (padrão `https://routellm.abacus.ai`)
   - `ABACUS_API_KEY` (header `Authorization: Bearer <key>`)
   - `ABACUS_MODEL` (ex.: `gpt-5`, `claude-sonnet-4`, etc.) — modelo das
-    chamadas pesadas (geração de trilha e explicação de conceito).
+    chamadas pesadas (geração de trilha por tema e por projeto).
   - `ABACUS_QUESTIONS_MODEL` (ex.: `gemini-3.5-flash`) — modelo dedicado
     às perguntas de diagnóstico inicial. Curtas, baratas, mais rápidas.
     Quando vazio, faz fallback transparente em `ABACUS_MODEL`.
+  - `ABACUS_CONCEPT_MODEL` (padrão `claude-sonnet-4-6`) — modelo das
+    explicações de conceito. A explicação é um payload estruturado e
+    limitado (bem menor que uma trilha), então a classe Sonnet entrega a
+    mesma qualidade pedagógica com latência bem menor que o `ABACUS_MODEL`
+    top-tier. Fallback transparente em `ABACUS_MODEL` quando vazio. Como a
+    explicação é cacheada (§38), o ganho de velocidade é sentido no primeiro
+    clique de cada conceito.
   - `ABACUS_CATEGORIZER_MODEL` (padrão `claude-haiku-4-5-20251001`) —
     modelo barato usado para abstrair os concepts dos tickets em poucas
     skills genéricas no momento da criação/regeneração da trilha. Fallback
@@ -652,7 +659,7 @@ Checklist antes de migrar:
     Usa `model`.
   - `explain_concept(concept, *, context, skills)` — gera uma explicação
     aprofundada de um conceito específico, calibrada pelo nível do aluno.
-    Usa `model`.
+    Usa `concept_model` (Sonnet por padrão; fallback em `model`).
   - `categorize_concepts(concepts)` — colapsa uma lista de concepts
     específicos ("JWT", "OAuth2", "Repository", "Migrations") em poucas
     categorias genéricas ("autenticação", "banco de dados"). Chamado pelo

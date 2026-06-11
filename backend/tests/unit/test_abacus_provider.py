@@ -222,6 +222,85 @@ class TestAbacusAIProvider:
         assert explanation.examples[0].title == "Ex1"
 
     @respx.mock
+    def test_explain_concept_uses_concept_model(self):
+        """Explicação de conceito usa o modelo dedicado (mais rápido), não o pesado."""
+        from app.services.ai.base import ConceptContext
+
+        provider = AbacusAIProvider(
+            api_url=API_URL,
+            api_key="fake",
+            model="gpt-5",
+            concept_model="claude-sonnet-4-6",
+            timeout_seconds=5,
+        )
+        payload = {
+            "concept": "Repository",
+            "definition": "Definição com profundidade suficiente para passar.",
+            "why_it_matters": "Importa porque desacopla camadas.",
+            "patterns": ["P1", "P2"],
+            "pitfalls": ["X1", "X2"],
+            "tips": ["T1", "T2", "T3"],
+            "examples": [
+                {"title": "Ex1", "description": "Descrição razoável.", "code": "pass"}
+            ],
+            "hands_on_steps": ["Passo 1", "Passo 2", "Passo 3"],
+            "further_reading": ["DDD"],
+            "glossary": [{"term": "ORM", "brief": "Mapeamento objeto-relacional."}],
+        }
+        route = respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(200, json=_openai_response(json.dumps(payload))),
+        )
+        provider.explain_concept(
+            "Repository",
+            context=ConceptContext(
+                project_title="X",
+                ticket_title="Persistência",
+                ticket_objective="Implementar repositório.",
+            ),
+        )
+        body = json.loads(route.calls.last.request.content)
+        assert body["model"] == "claude-sonnet-4-6"
+
+    @respx.mock
+    def test_explain_concept_falls_back_to_model_when_concept_model_absent(self):
+        """Sem concept_model configurado, cai no modelo principal."""
+        from app.services.ai.base import ConceptContext
+
+        provider = AbacusAIProvider(
+            api_url=API_URL,
+            api_key="fake",
+            model="gpt-5",
+            timeout_seconds=5,
+        )
+        payload = {
+            "concept": "Repository",
+            "definition": "Definição com profundidade suficiente para passar.",
+            "why_it_matters": "Importa porque desacopla camadas.",
+            "patterns": ["P1", "P2"],
+            "pitfalls": ["X1", "X2"],
+            "tips": ["T1", "T2", "T3"],
+            "examples": [
+                {"title": "Ex1", "description": "Descrição razoável.", "code": "pass"}
+            ],
+            "hands_on_steps": ["Passo 1", "Passo 2", "Passo 3"],
+            "further_reading": ["DDD"],
+            "glossary": [{"term": "ORM", "brief": "Mapeamento objeto-relacional."}],
+        }
+        route = respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(200, json=_openai_response(json.dumps(payload))),
+        )
+        provider.explain_concept(
+            "Repository",
+            context=ConceptContext(
+                project_title="X",
+                ticket_title="Persistência",
+                ticket_objective="Implementar repositório.",
+            ),
+        )
+        body = json.loads(route.calls.last.request.content)
+        assert body["model"] == "gpt-5"
+
+    @respx.mock
     def test_explain_concept_raises_when_schema_mismatch(self):
         from app.services.ai.base import ConceptContext
 

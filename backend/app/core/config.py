@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     # Modelo usado nas perguntas de diagnóstico (curtas, baratas). Fallback no
     # ``abacus_model`` quando vazio.
     abacus_questions_model: str = ""
+    # Modelo dedicado às explicações de conceito. A explicação é um payload
+    # estruturado e limitado (bem menor que uma trilha inteira), então um
+    # modelo da classe Sonnet entrega a mesma qualidade pedagógica com
+    # latência bem menor que o ``abacus_model`` top-tier. Fallback no
+    # ``abacus_model`` quando vazio.
+    abacus_concept_model: str = "claude-sonnet-4-6"
     # Modelo usado para abstrair os concepts dos tickets em poucas skills
     # genéricas (chamada barata, output pequeno). Fallback no ``abacus_model``
     # quando vazio.

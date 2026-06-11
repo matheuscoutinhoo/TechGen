@@ -16,6 +16,7 @@ def get_ai_provider() -> AIProvider:
             api_key=settings.abacus_api_key,
             model=settings.abacus_model,
             questions_model=settings.abacus_questions_model or None,
+            concept_model=settings.abacus_concept_model or None,
             categorizer_model=settings.abacus_categorizer_model or None,
             timeout_seconds=settings.abacus_timeout_seconds,
         )

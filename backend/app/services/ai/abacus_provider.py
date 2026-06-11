@@ -64,6 +64,7 @@ class AbacusAIProvider(AIProvider):
         api_key: str,
         model: str,
         questions_model: str | None = None,
+        concept_model: str | None = None,
         categorizer_model: str | None = None,
         timeout_seconds: int = 300,
         http_client: httpx.Client | None = None,
@@ -85,6 +86,9 @@ class AbacusAIProvider(AIProvider):
         # Modelo dedicado para perguntas de diagnóstico (mais leve/barato).
         # Fallback transparente no ``model`` principal quando não configurado.
         self.questions_model = (questions_model or "").strip() or model
+        # Modelo dedicado para explicações de conceito (classe Sonnet: rápida
+        # e com qualidade pedagógica). Fallback transparente no ``model``.
+        self.concept_model = (concept_model or "").strip() or model
         # Modelo dedicado para categorização de skills (chamada barata).
         # Fallback transparente no ``model`` principal quando não configurado.
         self.categorizer_model = (categorizer_model or "").strip() or model
@@ -365,7 +369,7 @@ class AbacusAIProvider(AIProvider):
         skills: Sequence[UserSkillInput],
     ) -> dict[str, Any]:
         return {
-            "model": self.model,
+            "model": self.concept_model,
             "stream": False,
             "messages": [
                 {"role": "system", "content": CONCEPT_SYSTEM_PROMPT},
