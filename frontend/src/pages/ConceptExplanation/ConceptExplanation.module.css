@@ -143,28 +143,45 @@
 
 .listGrid {
    display: grid;
-   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-   gap: var(--space-2);
+   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+   /* Linhas com a mesma altura: cards lado a lado ficam alinhados mesmo
+      quando um termo ocupa 1 linha e o vizinho ocupa 3. */
+   grid-auto-rows: 1fr;
+   gap: var(--space-3);
    margin: 0;
    padding: 0;
    list-style: none;
 }
 
 .listGrid>li {
-   padding: 0.55rem 0.9rem;
+   display: flex;
+   align-items: flex-start;
+   gap: var(--space-2);
+   padding: var(--space-3) var(--space-4);
    border: 1px solid var(--color-border);
-   border-radius: 999px;
-   background-color: var(--color-bg);
+   border-radius: var(--radius-md);
+   background-color: var(--color-bg-elevated);
    line-height: var(--line-height-base);
    font-size: var(--font-size-sm);
    color: var(--color-text-muted);
-   text-align: center;
-   transition: border-color var(--transition-fast), color var(--transition-fast);
+   text-align: left;
+   transition: border-color var(--transition-fast),
+      background-color var(--transition-fast), color var(--transition-fast);
+}
+
+/* Marcador de "termo a explorar", no mesmo idioma visual das dicas (seta). */
+.listGrid>li::before {
+   content: '→';
+   color: var(--color-primary);
+   font-weight: 700;
+   line-height: var(--line-height-base);
+   flex-shrink: 0;
 }
 
 .listGrid>li:hover {
-   border-color: var(--color-primary);
-   color: var(--color-primary-strong);
+   border-color: var(--color-border-strong);
+   background-color: var(--color-surface);
+   color: var(--color-text);
 }
 
 .tipsList {
