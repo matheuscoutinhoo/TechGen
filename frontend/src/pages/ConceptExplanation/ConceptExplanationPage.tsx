@@ -25,6 +25,9 @@ export function ConceptExplanationPage() {
    const [isLoading, setLoading] = useState(true);
    const [isRefreshing, setRefreshing] = useState(false);
    const [error, setError] = useState<string | null>(null);
+   // Concepts do MESMO ticket que vêm DEPOIS do atual, na ordem pedagógica.
+   // São os próximos passos naturais de estudo — links para gerar cada um.
+   const [nextConcepts, setNextConcepts] = useState<string[]>([]);
 
    const load = useCallback(
       async (options: { refresh?: boolean } = {}) => {
@@ -58,6 +61,32 @@ export function ConceptExplanationPage() {
    useEffect(() => {
       void load();
    }, [load]);
+
+   // Busca a trilha para descobrir os próximos concepts do ticket atual.
+   // Resiliente: qualquer falha apenas oculta a navegação (não quebra a página).
+   useEffect(() => {
+      if (!trailId || !ticketCode || !conceptName) return;
+      let cancelled = false;
+      void (async () => {
+         try {
+            const trail = await learningTrailsApi.get(trailId);
+            const ticket = trail.content.tickets.find(
+               (t) => t.code.toLowerCase() === ticketCode.toLowerCase(),
+            );
+            const concepts = ticket?.concepts ?? [];
+            const currentIdx = concepts.findIndex(
+               (c) => c.toLowerCase() === conceptName.toLowerCase(),
+            );
+            const next = currentIdx >= 0 ? concepts.slice(currentIdx + 1) : [];
+            if (!cancelled) setNextConcepts(next);
+         } catch {
+            if (!cancelled) setNextConcepts([]);
+         }
+      })();
+      return () => {
+         cancelled = true;
+      };
+   }, [trailId, ticketCode, conceptName]);
 
    if (!trailId || !ticketCode || !conceptName) {
       return (
@@ -258,22 +287,38 @@ export function ConceptExplanationPage() {
             </section>
          )}
 
-         {/* 8. Para ir além */}
-         {explanation.further_reading.length > 0 && (
-            <section className={styles.section}>
-               <header className={styles.sectionHead}>
-                  <span className={styles.sectionLabel}>Para ir além</span>
-                  <h2 className={styles.sectionTitle}>Próximos termos para pesquisar</h2>
-               </header>
-               <ul className={styles.listGrid}>
-                  {explanation.further_reading.map((item, i) => (
-                     <li key={i}>
-                        <RichText>{item}</RichText>
+         {/* 8. Próximos conceitos do ticket */}
+         <section className={styles.section}>
+            <header className={styles.sectionHead}>
+               <span className={styles.sectionLabel}>Continue estudando</span>
+               <h2 className={styles.sectionTitle}>Próximos conceitos deste ticket</h2>
+               <p className={styles.sectionHint}>
+                  Siga a ordem pedagógica — cada conceito abre uma nova explicação
+                  calibrada ao seu nível.
+               </p>
+            </header>
+            {nextConcepts.length > 0 ? (
+               <ul className={styles.nextGrid}>
+                  {nextConcepts.map((item) => (
+                     <li key={item}>
+                        <Link
+                           to={`/trails/${trailId}/tickets/${encodeURIComponent(
+                              ticketCode,
+                           )}/concepts/${encodeURIComponent(item)}`}
+                           className={styles.nextCard}
+                        >
+                           {item}
+                        </Link>
                      </li>
                   ))}
                </ul>
-            </section>
-         )}
+            ) : (
+               <p className={styles.nextDone}>
+                  Você cobriu todos os conceitos deste ticket.{' '}
+                  <Link to={`/trails/${trailId}`}>Voltar para a trilha →</Link>
+               </p>
+            )}
+         </section>
       </article>
    );
 }

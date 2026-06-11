@@ -141,11 +141,11 @@
    line-height: var(--line-height-loose);
 }
 
-.listGrid {
+.nextGrid {
    display: grid;
-   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
    /* Linhas com a mesma altura: cards lado a lado ficam alinhados mesmo
-      quando um termo ocupa 1 linha e o vizinho ocupa 3. */
+      quando um conceito tem nome curto e o vizinho quebra em 2 linhas. */
    grid-auto-rows: 1fr;
    gap: var(--space-3);
    margin: 0;
@@ -153,35 +153,45 @@
    list-style: none;
 }
 
-.listGrid>li {
+.nextCard {
    display: flex;
-   align-items: flex-start;
-   gap: var(--space-2);
-   padding: var(--space-3) var(--space-4);
+   align-items: center;
+   justify-content: center;
+   text-align: center;
+   height: 100%;
+   padding: var(--space-4);
    border: 1px solid var(--color-border);
    border-radius: var(--radius-md);
    background-color: var(--color-bg-elevated);
-   line-height: var(--line-height-base);
+   color: var(--color-text);
    font-size: var(--font-size-sm);
-   color: var(--color-text-muted);
-   text-align: left;
+   font-weight: 500;
+   line-height: var(--line-height-base);
+   text-decoration: none;
    transition: border-color var(--transition-fast),
       background-color var(--transition-fast), color var(--transition-fast);
 }
 
-/* Marcador de "termo a explorar", no mesmo idioma visual das dicas (seta). */
-.listGrid>li::before {
-   content: '→';
-   color: var(--color-primary);
-   font-weight: 700;
-   line-height: var(--line-height-base);
-   flex-shrink: 0;
+.nextCard:hover {
+   border-color: var(--color-primary);
+   background-color: var(--color-surface);
+   color: var(--color-primary-strong);
 }
 
-.listGrid>li:hover {
-   border-color: var(--color-border-strong);
-   background-color: var(--color-surface);
-   color: var(--color-text);
+.nextCard:focus-visible {
+   outline: 2px solid var(--color-primary);
+   outline-offset: 2px;
+}
+
+.nextDone {
+   font-size: var(--font-size-sm);
+   color: var(--color-text-muted);
+   line-height: var(--line-height-loose);
+}
+
+.nextDone a {
+   color: var(--color-primary-strong);
+   font-weight: 600;
 }
 
 .tipsList {

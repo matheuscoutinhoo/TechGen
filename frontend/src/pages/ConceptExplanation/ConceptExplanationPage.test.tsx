@@ -44,6 +44,45 @@ const EXPLANATION = {
    ],
 };
 
+// Trilha com o ticket TG-1 e seus concepts em ordem pedagógica. "Repository"
+// (o conceito aberto) é seguido por "Migrations" e "Transações".
+const TRAIL = {
+   id: 1,
+   topic: 'Backend',
+   title: 'Trilha',
+   summary: 'resumo',
+   completed_at: null,
+   created_at: '2025-01-01T00:00:00Z',
+   updated_at: '2025-01-01T00:00:00Z',
+   content: {
+      project_title: 'Trilha',
+      project_summary: 'resumo',
+      why_realistic: 'real',
+      target_audience: 'devs',
+      prerequisites: [],
+      tickets: [
+         {
+            code: 'TG-1',
+            title: 'Persistência',
+            objective: 'obj',
+            concepts: ['Tipagem', 'Repository', 'Migrations', 'Transações'],
+            tasks: [],
+            acceptance_criteria: [],
+         },
+      ],
+   },
+};
+
+/** Mock que responde tanto o endpoint de conceito quanto o da trilha. */
+function fetchMock(): typeof fetch {
+   return vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/concepts/')) return jsonResponse(EXPLANATION);
+      if (/\/learning-trails\/\d+(\?|$)/.test(url)) return jsonResponse(TRAIL);
+      throw new Error(`URL inesperada no teste: ${url}`);
+   }) as unknown as typeof fetch;
+}
+
 function renderPage(initialPath = '/trails/1/tickets/TG-1/concepts/Repository') {
    return render(
       <MemoryRouter initialEntries={[initialPath]}>
@@ -69,9 +108,7 @@ describe('<ConceptExplanationPage />', () => {
    });
 
    it('renderiza todas as seções na ordem pedagógica', async () => {
-      globalThis.fetch = vi.fn().mockResolvedValue(
-         jsonResponse(EXPLANATION),
-      ) as unknown as typeof fetch;
+      globalThis.fetch = fetchMock();
 
       renderPage();
       await waitFor(() =>
@@ -80,7 +117,7 @@ describe('<ConceptExplanationPage />', () => {
 
       // labels das seções na ordem
       const labels = screen.getAllByText(
-         /O que é|Por que isso importa|Como funciona|Exemplos|Passo a passo|Como aplicar|O que evitar|Para ir além/,
+         /O que é|Por que isso importa|Como funciona|Exemplos|Passo a passo|Como aplicar|O que evitar|Continue estudando/,
       );
       const labelTexts = labels.map((el) => el.textContent ?? '');
       const firstIdx = (text: string) => labelTexts.findIndex((t) => t.includes(text));
@@ -91,7 +128,34 @@ describe('<ConceptExplanationPage />', () => {
       expect(firstIdx('Exemplos')).toBeLessThan(firstIdx('Passo a passo'));
       expect(firstIdx('Passo a passo')).toBeLessThan(firstIdx('Como aplicar'));
       expect(firstIdx('Como aplicar')).toBeLessThan(firstIdx('O que evitar'));
-      expect(firstIdx('O que evitar')).toBeLessThan(firstIdx('Para ir além'));
+      expect(firstIdx('O que evitar')).toBeLessThan(firstIdx('Continue estudando'));
+   });
+
+   it('lista os próximos conceitos do ticket como links de navegação', async () => {
+      globalThis.fetch = fetchMock();
+
+      renderPage();
+      await waitFor(() =>
+         expect(
+            screen.getByRole('heading', { name: 'Próximos conceitos deste ticket' }),
+         ).toBeInTheDocument(),
+      );
+
+      // "Repository" é o conceito atual; os próximos do TG-1 são Migrations e
+      // Transações (Tipagem vem ANTES, então não aparece).
+      const migrations = screen.getByRole('link', { name: 'Migrations' });
+      const transacoes = screen.getByRole('link', { name: 'Transações' });
+      expect(migrations).toHaveAttribute(
+         'href',
+         '/trails/1/tickets/TG-1/concepts/Migrations',
+      );
+      expect(transacoes).toHaveAttribute(
+         'href',
+         '/trails/1/tickets/TG-1/concepts/Transa%C3%A7%C3%B5es',
+      );
+      expect(
+         screen.queryByRole('link', { name: 'Tipagem' }),
+      ).not.toBeInTheDocument();
    });
 
    it('renderiza os passos numerados do hands_on_steps', async () => {
