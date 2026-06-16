@@ -8,9 +8,31 @@ import pytest
 
 from app.schemas.learning_trail import TopicAnswer
 from app.services.ai.prompts import (
+    PROJECT_SYSTEM_PROMPT,
+    SYSTEM_PROMPT,
     build_project_user_prompt,
     build_user_prompt,
 )
+
+
+@pytest.mark.unit
+class TestEfficiencyDirective:
+    """A diretiva de concisão reduz tokens de saída (geração mais rápida) sem
+    abrir mão da qualidade — deve estar presente nos dois modos."""
+
+    def test_system_prompts_carry_efficiency_block(self):
+        for sys_prompt in (SYSTEM_PROMPT, PROJECT_SYSTEM_PROMPT):
+            assert "EFICIÊNCIA" in sys_prompt
+            assert "JSON COMPACTO" in sys_prompt
+
+    def test_user_prompts_carry_concision_rule(self):
+        topic = build_user_prompt("API REST com FastAPI")
+        project = build_project_user_prompt(
+            "Plataforma de doação de livros usados com login e busca",
+            technologies=["FastAPI"],
+        )
+        assert "CONCISÃO" in topic
+        assert "CONCISÃO" in project
 
 
 @pytest.mark.unit

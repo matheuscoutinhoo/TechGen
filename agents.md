@@ -702,6 +702,15 @@ Checklist antes de migrar:
     nível raiz do `TrailContent`, o artefato concreto que o aluno terá
     rodando ao fechar o último ticket (URL, comando, demo, repositório
     taggeado). Sem isso, a trilha não fecha.
+  - **Eficiência / concisão (latência).** A geração é autoregressiva: o
+    tempo é dominado pelos tokens de SAÍDA. Os dois `*_SYSTEM_PROMPT` de
+    trilha carregam um bloco "EFICIÊNCIA" que exige texto denso, proíbe
+    floreio/repetição entre campos, limita prosa (`objective` 1 frase,
+    `personalization_notes` 1–2 frases, 3–5 `tasks` e 2–4
+    `acceptance_criteria` por ticket) e pede JSON compacto. Isso acelera a
+    geração SEM trocar de modelo e sem perder qualidade — a profundidade de
+    cada conceito vive nas páginas de conceito (§38), não no esqueleto da
+    trilha. Os `*_USER_PROMPT_TEMPLATE` reforçam a regra de CONCISÃO.
   - **Diversidade / anti-clichê (não negociável).** O mesmo tema NÃO pode
     sempre gerar o mesmo projeto. `_variation_directive()` em `prompts.py`
     injeta, a CADA chamada de `build_user_prompt`/`build_project_user_prompt`,
