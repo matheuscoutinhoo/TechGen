@@ -17,22 +17,24 @@ from app.services.ai.prompts import (
 
 @pytest.mark.unit
 class TestEfficiencyDirective:
-    """A diretiva de concisão reduz tokens de saída (geração mais rápida) sem
-    abrir mão da qualidade — deve estar presente nos dois modos."""
+    """A diretiva de densidade reduz desperdício (geração mais rápida) sem
+    abrir mão da profundidade técnica — deve estar presente nos dois modos."""
 
     def test_system_prompts_carry_efficiency_block(self):
         for sys_prompt in (SYSTEM_PROMPT, PROJECT_SYSTEM_PROMPT):
             assert "EFICIÊNCIA" in sys_prompt
             assert "JSON COMPACTO" in sys_prompt
+            # Preserva substância: não pode cortar profundidade técnica.
+            assert "PRESERVAR" in sys_prompt
 
-    def test_user_prompts_carry_concision_rule(self):
+    def test_user_prompts_carry_density_rule(self):
         topic = build_user_prompt("API REST com FastAPI")
         project = build_project_user_prompt(
             "Plataforma de doação de livros usados com login e busca",
             technologies=["FastAPI"],
         )
-        assert "CONCISÃO" in topic
-        assert "CONCISÃO" in project
+        assert "DENSIDADE" in topic
+        assert "DENSIDADE" in project
 
 
 @pytest.mark.unit

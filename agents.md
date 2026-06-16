@@ -704,13 +704,17 @@ Checklist antes de migrar:
     taggeado). Sem isso, a trilha não fecha.
   - **Eficiência / concisão (latência).** A geração é autoregressiva: o
     tempo é dominado pelos tokens de SAÍDA. Os dois `*_SYSTEM_PROMPT` de
-    trilha carregam um bloco "EFICIÊNCIA" que exige texto denso, proíbe
-    floreio/repetição entre campos, limita prosa (`objective` 1 frase,
-    `personalization_notes` 1–2 frases, 3–5 `tasks` e 2–4
-    `acceptance_criteria` por ticket) e pede JSON compacto. Isso acelera a
-    geração SEM trocar de modelo e sem perder qualidade — a profundidade de
-    cada conceito vive nas páginas de conceito (§38), não no esqueleto da
-    trilha. Os `*_USER_PROMPT_TEMPLATE` reforçam a regra de CONCISÃO.
+    trilha carregam um bloco "EFICIÊNCIA" que acelera cortando DESPERDÍCIO
+    (floreio, adjetivos vazios, frases de transição, repetição entre
+    campos) mas **preserva a substância técnica** — especificidade,
+    decisões de arquitetura, nomes concretos e granularidade fina dos
+    tickets. Calibragem de meio-termo: `objective` 1–2 frases,
+    `personalization_notes` 2–3 frases, `project_summary` 2–3 parágrafos
+    densos, 4–7 `tasks` e 3–5 `acceptance_criteria` por ticket, todos
+    específicos/verificáveis, + JSON compacto. Acelera SEM trocar de modelo
+    e sem rasurar a trilha — a profundidade de cada conceito segue nas
+    páginas de conceito (§38). Os `*_USER_PROMPT_TEMPLATE` reforçam a regra
+    de DENSIDADE.
   - **Diversidade / anti-clichê (não negociável).** O mesmo tema NÃO pode
     sempre gerar o mesmo projeto. `_variation_directive()` em `prompts.py`
     injeta, a CADA chamada de `build_user_prompt`/`build_project_user_prompt`,

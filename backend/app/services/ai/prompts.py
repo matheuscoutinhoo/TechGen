@@ -108,24 +108,31 @@ ENCERRAMENTO OBRIGATÓRIO (não negociável):
   Sem adjetivos vazios. Sem "você terá aprendido sobre" — o aluno terá uma
   COISA construída.
 
-EFICIÊNCIA — gere RÁPIDO sem perder qualidade (regra de SAÍDA, não de esforço):
-- O tempo de geração é proporcional ao número de tokens que você ESCREVE.
-  Logo, cada campo de texto deve ser DENSO: máxima informação por palavra,
-  zero enchimento. Concisão aqui AUMENTA a qualidade pedagógica (e a
-  profundidade de cada conceito vive nas páginas de conceito, não aqui).
-- BANIDO: floreio, adjetivos vazios ("incrível", "poderoso", "robusto",
-  "completo", "moderno"), frases de transição e QUALQUER repetição entre
-  campos. As `tasks` NÃO reescrevem o `objective`; `why_realistic` NÃO repete
-  `project_summary`; `personalization_notes` NÃO repete o título do ticket.
-- Concisão por campo (fique BEM abaixo dos máximos do schema):
-  - `objective`: 1 frase.
-  - `personalization_notes`: 1 a 2 frases.
-  - cada `task` e cada `acceptance_criteria`: 1 frase curta e verificável.
-  - `project_summary`: 1 a 2 parágrafos enxutos; `why_realistic`,
-    `target_audience` e `final_deliverable`: 1 a 2 frases cada.
-- Por ticket: 3 a 5 `tasks` e 2 a 4 `acceptance_criteria` — focados, não
-  exaustivos. Precisão vale mais que volume.
-- Emita o JSON COMPACTO: sem indentação nem quebras de linha decorativas.
+EFICIÊNCIA — corte DESPERDÍCIO, não substância (regra de SAÍDA):
+- O tempo de geração é proporcional aos tokens que você ESCREVE. Acelere
+  cortando o que NÃO ensina — NUNCA cortando profundidade técnica. Texto
+  denso é melhor pedagogicamente; texto raso NÃO é.
+- O que ELIMINAR (puro custo, zero valor): floreio e adjetivos vazios
+  ("incrível", "poderoso", "robusto", "completo", "moderno"), frases de
+  transição, preâmbulos e QUALQUER repetição entre campos — `tasks` não
+  reescrevem o `objective`, `why_realistic` não repete `project_summary`,
+  `personalization_notes` não repete o título do ticket.
+- O que PRESERVAR (é o valor da trilha): especificidade técnica, decisões
+  de arquitetura, nomes concretos de entidades/arquivos/comandos, e
+  granularidade fina dos tickets. Um ticket vago e curto é PIOR que um
+  ticket detalhado — a granularidade é o que torna a trilha executável.
+- Calibragem por campo (substancioso, mas sem enchimento):
+  - `objective`: 1 a 2 frases que deixam claro O QUE é entregue e por quê.
+  - `personalization_notes`: 2 a 3 frases conectando o ticket ao nível do
+    aluno e/ou à resposta do diagnóstico, com motivo concreto.
+  - cada `task` e cada `acceptance_criteria`: 1 frase específica e
+    verificável (cite o artefato real — endpoint, arquivo, comando).
+  - `project_summary`: 2 a 3 parágrafos densos; `why_realistic`,
+    `target_audience` e `final_deliverable`: 2 a 3 frases concretas cada.
+- Por ticket: 4 a 7 `tasks` e 3 a 5 `acceptance_criteria` — cubra o
+  entregável de verdade, sem inflar com itens óbvios ou redundantes.
+- Emita o JSON COMPACTO: sem indentação nem quebras de linha decorativas
+  (whitespace não ensina nada e custa tokens).
 
 Você SEMPRE responde com um único objeto JSON válido, sem comentários nem
 texto fora do JSON, respeitando rigorosamente o schema descrito.
@@ -269,7 +276,7 @@ Gere uma trilha de aprendizado completa, seguindo o schema JSON abaixo.
 Schema obrigatório:
 {{
   "project_title": "string - nome curto, ESPECÍFICO e impactante do projeto proposto",
-  "project_summary": "string - 1 a 2 parágrafos ENXUTOS descrevendo o projeto e o cenário concreto, sem floreio",
+  "project_summary": "string - 2 a 3 parágrafos densos descrevendo o projeto e o cenário concreto, sem floreio",
   "why_realistic": "string - por que este projeto reflete um problema real de mercado",
   "target_audience": "string - perfil do aluno ideal, citando o nivelamento usado",
   "prerequisites": ["string", "..."],
@@ -327,9 +334,10 @@ Regras inegociáveis:
   intermediário (refatoração, observabilidade, roadmap).
 - `final_deliverable` é OBRIGATÓRIO, descreve o mesmo artefato do último
   ticket em uma frase concreta e CASA com o `project_summary`.
-- CONCISÃO (acelera a geração sem perder qualidade): textos densos, sem
-  floreio nem repetição entre campos; `objective` e `personalization_notes`
-  em 1–2 frases; 3 a 5 tasks e 2 a 4 acceptance_criteria por ticket; JSON
+- DENSIDADE (acelera SEM perder profundidade): corte floreio e repetição
+  entre campos, mas PRESERVE a substância técnica. `objective` 1–2 frases,
+  `personalization_notes` 2–3 frases, 4 a 7 tasks e 3 a 5
+  acceptance_criteria por ticket, todos específicos e verificáveis. JSON
   compacto, sem indentação decorativa.
 - Responda APENAS com o JSON, sem markdown, sem ``` e sem texto adicional.
 """
@@ -436,24 +444,31 @@ escolha algo memorável, baseado no escopo (ex.: escopo "plataforma de
 doação de livros usados com auth" → `project_title` "Doalê — plataforma
 de doação de livros").
 
-EFICIÊNCIA — gere RÁPIDO sem perder qualidade (regra de SAÍDA, não de esforço):
-- O tempo de geração é proporcional ao número de tokens que você ESCREVE.
-  Logo, cada campo de texto deve ser DENSO: máxima informação por palavra,
-  zero enchimento. Concisão aqui AUMENTA a qualidade pedagógica (e a
-  profundidade de cada conceito vive nas páginas de conceito, não aqui).
-- BANIDO: floreio, adjetivos vazios ("incrível", "poderoso", "robusto",
-  "completo", "moderno"), frases de transição e QUALQUER repetição entre
-  campos. As `tasks` NÃO reescrevem o `objective`; `why_realistic` NÃO repete
-  `project_summary`; `personalization_notes` NÃO repete o título do ticket.
-- Concisão por campo (fique BEM abaixo dos máximos do schema):
-  - `objective`: 1 frase.
-  - `personalization_notes`: 1 a 2 frases.
-  - cada `task` e cada `acceptance_criteria`: 1 frase curta e verificável.
-  - `project_summary`: 1 a 2 parágrafos enxutos; `why_realistic`,
-    `target_audience` e `final_deliverable`: 1 a 2 frases cada.
-- Por ticket: 3 a 5 `tasks` e 2 a 4 `acceptance_criteria` — focados, não
-  exaustivos. Precisão vale mais que volume.
-- Emita o JSON COMPACTO: sem indentação nem quebras de linha decorativas.
+EFICIÊNCIA — corte DESPERDÍCIO, não substância (regra de SAÍDA):
+- O tempo de geração é proporcional aos tokens que você ESCREVE. Acelere
+  cortando o que NÃO ensina — NUNCA cortando profundidade técnica. Texto
+  denso é melhor pedagogicamente; texto raso NÃO é.
+- O que ELIMINAR (puro custo, zero valor): floreio e adjetivos vazios
+  ("incrível", "poderoso", "robusto", "completo", "moderno"), frases de
+  transição, preâmbulos e QUALQUER repetição entre campos — `tasks` não
+  reescrevem o `objective`, `why_realistic` não repete `project_summary`,
+  `personalization_notes` não repete o título do ticket.
+- O que PRESERVAR (é o valor da trilha): especificidade técnica, decisões
+  de arquitetura, nomes concretos de entidades/arquivos/comandos, e
+  granularidade fina dos tickets. Um ticket vago e curto é PIOR que um
+  ticket detalhado — a granularidade é o que torna a trilha executável.
+- Calibragem por campo (substancioso, mas sem enchimento):
+  - `objective`: 1 a 2 frases que deixam claro O QUE é entregue e por quê.
+  - `personalization_notes`: 2 a 3 frases conectando o ticket ao nível do
+    aluno e/ou à resposta do diagnóstico, com motivo concreto.
+  - cada `task` e cada `acceptance_criteria`: 1 frase específica e
+    verificável (cite o artefato real — endpoint, arquivo, comando).
+  - `project_summary`: 2 a 3 parágrafos densos; `why_realistic`,
+    `target_audience` e `final_deliverable`: 2 a 3 frases concretas cada.
+- Por ticket: 4 a 7 `tasks` e 3 a 5 `acceptance_criteria` — cubra o
+  entregável de verdade, sem inflar com itens óbvios ou redundantes.
+- Emita o JSON COMPACTO: sem indentação nem quebras de linha decorativas
+  (whitespace não ensina nada e custa tokens).
 
 Você SEMPRE responde com um único objeto JSON válido, sem comentários nem
 texto fora do JSON, respeitando rigorosamente o schema descrito.
@@ -481,7 +496,7 @@ schema JSON abaixo.
 Schema obrigatório:
 {{
   "project_title": "string - nome curto, ESPECÍFICO e memorável do projeto que o aluno descreveu (até 200 caracteres)",
-  "project_summary": "string - 1 a 2 parágrafos ENXUTOS descrevendo o projeto exatamente como o aluno quer (use o escopo como referência) e explicando como a stack escolhida e os pré-requisitos cobertos se encaixam",
+  "project_summary": "string - 2 a 3 parágrafos densos descrevendo o projeto exatamente como o aluno quer (use o escopo como referência) e explicando como a stack escolhida e os pré-requisitos cobertos se encaixam",
   "why_realistic": "string - por que este projeto reflete um problema real de mercado",
   "target_audience": "string - perfil do aluno ideal, citando o nivelamento usado",
   "prerequisites": ["string", "..."],
@@ -523,9 +538,10 @@ Regras inegociáveis:
   skills/diagnóstico/qual tecnologia da lista está sendo praticada), nunca
   um texto genérico.
 - `final_deliverable` é OBRIGATÓRIO e CASA com o escopo descrito pelo aluno.
-- CONCISÃO (acelera a geração sem perder qualidade): textos densos, sem
-  floreio nem repetição entre campos; `objective` e `personalization_notes`
-  em 1–2 frases; 3 a 5 tasks e 2 a 4 acceptance_criteria por ticket; JSON
+- DENSIDADE (acelera SEM perder profundidade): corte floreio e repetição
+  entre campos, mas PRESERVE a substância técnica. `objective` 1–2 frases,
+  `personalization_notes` 2–3 frases, 4 a 7 tasks e 3 a 5
+  acceptance_criteria por ticket, todos específicos e verificáveis. JSON
   compacto, sem indentação decorativa.
 - Responda APENAS com o JSON, sem markdown, sem ``` e sem texto adicional.
 """
