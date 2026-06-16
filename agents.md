@@ -686,6 +686,14 @@ Checklist antes de migrar:
     API REST com FastAPI" sem antes garantir que ele consegue subir uma
     rota básica.
   - **Concepts curtos e citáveis**, porque eles viram skills do aluno na conclusão.
+  - **Cobertura conceito ↔ tarefa (não negociável).** Tudo que as `tasks`
+    de um ticket pedem precisa ter o `concept` que ensina aquilo, no mesmo
+    ticket ou num anterior — o aluno só tem material de estudo para o que
+    está em `concepts` (cada concept abre uma página de explicação). Nenhuma
+    task pode exigir algo que o aluno nunca viu nos conceitos; inversamente,
+    não se listam `concepts` decorativos que nenhuma task exercita. A regra
+    está nos dois `*_SYSTEM_PROMPT` ("COBERTURA CONCEITO ↔ TAREFA") e
+    reforçada nos `*_USER_PROMPT_TEMPLATE`.
   - **`concepts` em ordem pedagógica.** Dentro de cada ticket, a lista
     `concepts` segue a ordem em que o aluno deve estudar: do pré-requisito
     para o avançado, do mais simples para o mais complexo. O backend NÃO

@@ -38,6 +38,25 @@ class TestEfficiencyDirective:
 
 
 @pytest.mark.unit
+class TestConceptTaskCoverage:
+    """Toda tarefa pedida num ticket precisa ter o conceito que a ensina —
+    senão o aluno recebe uma task sem material de estudo."""
+
+    def test_system_prompts_require_coverage(self):
+        for sys_prompt in (SYSTEM_PROMPT, PROJECT_SYSTEM_PROMPT):
+            assert "COBERTURA CONCEITO ↔ TAREFA" in sys_prompt
+
+    def test_user_prompts_require_coverage(self):
+        topic = build_user_prompt("API REST com FastAPI")
+        project = build_project_user_prompt(
+            "Plataforma de doação de livros usados com login e busca",
+            technologies=["FastAPI"],
+        )
+        assert "COBERTURA:" in topic
+        assert "COBERTURA:" in project
+
+
+@pytest.mark.unit
 class TestTopicPromptDiversity:
     def test_includes_diversity_block(self):
         prompt = build_user_prompt("API REST com FastAPI")

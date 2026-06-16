@@ -47,6 +47,18 @@ Princípios obrigatórios:
   complexo. O aluno vai estudar nessa sequência, então o primeiro item é
   o ponto de entrada natural e o último é o conceito mais sofisticado do
   ticket.
+- **COBERTURA CONCEITO ↔ TAREFA (não negociável).** O aluno só tem material
+  de estudo para o que está em `concepts` (cada concept abre uma página de
+  explicação). Portanto, TODA habilidade, técnica, padrão ou ferramenta que
+  as `tasks` do ticket exigem PRECISA estar coberta por um `concept` do
+  MESMO ticket — ou já ter sido ensinada em um ticket ANTERIOR. Nada de
+  pedir numa task algo que o aluno nunca viu nos conceitos. Antes de fechar
+  cada ticket, confira item a item: para cada `task`, existe o(s)
+  `concept`(s) que ensina(m) a fazê-la? Se faltar, ADICIONE o concept (ou
+  remova/reescreva a task). Ex.: se uma task diz "proteger a rota com JWT",
+  então "JWT" (e o pré-requisito "Autenticação stateless") tem de estar em
+  `concepts`. Inversamente, evite `concepts` decorativos que nenhuma task
+  exercita — todo conceito listado deve ser efetivamente USADO nas tarefas.
 
 PERSONALIZAÇÃO obrigatória pelas skills declaradas do aluno:
 - novice (1): mencionou já ter ouvido falar
@@ -318,6 +330,10 @@ Regras inegociáveis:
 - Use código de ticket no formato TG-1, TG-2, ... TG-N.
 - "concepts" devem ser termos curtos e citáveis (ex.: "Repository Pattern",
   "JWT", "TDD"), não frases longas — eles viram skills do aluno ao concluir.
+- **COBERTURA: cada `task` do ticket precisa ter seu fundamento em algum
+  `concept` do mesmo ticket (ou de um ticket anterior).** O aluno só estuda
+  o que está em `concepts`; uma task sem conceito correspondente deixa o
+  aluno sem base. E não liste `concepts` que nenhuma task exercita.
 - **Ordene `concepts` na ordem pedagógica em que devem ser estudados dentro
   do ticket: do pré-requisito para o avançado, e do mais simples para o mais
   complexo.** Se um conceito depende de outro pra fazer sentido (ex.:
@@ -387,6 +403,14 @@ Princípios obrigatórios desse modo:
   modelagem de entidades, ordem dos tickets e exemplos. NUNCA devolva uma
   trilha idêntica à anterior. Siga o bloco "DIVERSIDADE E ORIGINALIDADE"
   do prompt do usuário (sem trocar o domínio que o escopo definiu).
+- **COBERTURA CONCEITO ↔ TAREFA (não negociável).** O aluno só tem material
+  de estudo para o que está em `concepts` (cada concept abre uma página de
+  explicação). Toda habilidade, técnica, padrão ou ferramenta que as `tasks`
+  do ticket exigem PRECISA estar coberta por um `concept` do MESMO ticket —
+  ou já ensinada em um ticket ANTERIOR. Nunca peça numa task algo que o aluno
+  não viu nos conceitos. Antes de fechar cada ticket, confira: cada `task`
+  tem o(s) `concept`(s) que a ensina(m)? Se faltar, ADICIONE o concept (ou
+  reescreva a task). E evite `concepts` decorativos que nenhuma task usa.
 
 PERSONALIZAÇÃO obrigatória pelas skills declaradas do aluno:
 - novice (1): mencionou já ter ouvido falar
@@ -531,6 +555,10 @@ Regras inegociáveis:
   testes. O último ticket é o capstone que entrega o projeto descrito.
 - "concepts" devem ser termos curtos e citáveis (ex.: "Repository Pattern",
   "JWT", "TDD"), não frases longas — eles viram skills do aluno ao concluir.
+- **COBERTURA: cada `task` do ticket precisa ter seu fundamento em algum
+  `concept` do mesmo ticket (ou de um ticket anterior).** O aluno só estuda
+  o que está em `concepts`; uma task sem conceito correspondente deixa o
+  aluno sem base. E não liste `concepts` que nenhuma task exercita.
 - Ordene `concepts` na ordem pedagógica em que devem ser estudados dentro
   do ticket: do pré-requisito para o avançado.
 - Use código de ticket no formato TG-1, TG-2, ... TG-N.
