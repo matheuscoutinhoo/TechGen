@@ -165,6 +165,24 @@ class TestAbacusAIProvider:
         assert "HTTP 404" in str(excinfo.value)
 
     @respx.mock
+    def test_no_credits_error_gives_specific_message(self):
+        """Conta sem créditos: a mensagem precisa citar créditos e o fallback fake."""
+        respx.post(ENDPOINT).mock(
+            return_value=httpx.Response(
+                400,
+                json={
+                    "success": False,
+                    "error": "You have no remaining credits to use the LLM apis.",
+                },
+            )
+        )
+        with pytest.raises(AIProviderError) as excinfo:
+            _provider().generate_learning_trail("FastAPI")
+        message = str(excinfo.value).lower()
+        assert "crédito" in message
+        assert "ai_provider=fake" in message
+
+    @respx.mock
     def test_timeout_error_message_mentions_timeout_value(self):
         respx.post(ENDPOINT).mock(side_effect=httpx.ReadTimeout("timed out"))
         with pytest.raises(AIProviderError) as excinfo:

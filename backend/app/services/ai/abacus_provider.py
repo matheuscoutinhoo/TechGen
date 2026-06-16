@@ -419,6 +419,18 @@ class AbacusAIProvider(AIProvider):
                 response.request.url,
                 body_snippet,
             )
+            lowered = body_snippet.lower()
+            # Caso mais comum em dev: conta sem créditos. A mensagem genérica
+            # ("verifique credenciais/modelo/URL") confunde — é mais honesto
+            # dizer exatamente o que aconteceu e onde resolver.
+            if "credit" in lowered or "quota" in lowered or "billing" in lowered:
+                raise AIProviderError(
+                    "O Mentor está sem créditos na conta da Abacus AI para "
+                    "chamar o modelo. Recarregue os créditos no painel da "
+                    "Abacus ou troque ABACUS_MODEL/ABACUS_CONCEPT_MODEL por um "
+                    "modelo dentro do seu plano. Em desenvolvimento, defina "
+                    "AI_PROVIDER=fake no .env para trabalhar sem custo."
+                )
             raise AIProviderError(
                 f"O Mentor respondeu com erro (HTTP {response.status_code}). "
                 "Verifique credenciais, modelo e a URL configurados."
