@@ -25,3 +25,10 @@ class User(Base, TimestampMixin):
         back_populates="owner",
         cascade="all, delete-orphan",
     )
+    # Credencial de IA própria do usuário (BYOK). One-to-one e opcional: quando
+    # ausente, o sistema cai no provider global configurado por ambiente.
+    ai_credential: Mapped["AICredential | None"] = relationship(  # noqa: F821
+        back_populates="owner",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )

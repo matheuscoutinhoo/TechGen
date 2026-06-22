@@ -11,6 +11,7 @@ import { PageTitle } from '../../components/ui/PageTitle';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { Spinner } from '../../components/ui/Spinner';
 import { SkillEditor, type SkillEditorEntry } from '../../components/learning/SkillEditor';
+import { AICredentialEditor } from '../../components/account/AICredentialEditor';
 import { useSkills } from '../../hooks/useSkills';
 import type { ProficiencyLevel, SkillInput } from '../../types/api';
 import styles from './Account.module.css';
@@ -328,6 +329,17 @@ export function AccountPage() {
                      error={skillsActionError}
                   />
                )}
+            </section>
+
+            <section className={styles.section}>
+               <h2>Chave de IA (BYOK)</h2>
+               <p className="lead">
+                  Traga a sua própria chave de IA. Ela é cifrada no servidor e usada
+                  apenas nas suas trilhas — escolha o provedor (Abacus ou OpenAI) e
+                  atualize ou remova quando quiser. Sem chave própria, o Mentor usa a
+                  configuração padrão da plataforma.
+               </p>
+               <AICredentialEditor />
             </section>
 
             <form className={styles.section} onSubmit={handlePasswordSubmit} noValidate>

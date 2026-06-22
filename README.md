@@ -13,7 +13,7 @@
 | Frontend | React 18, TypeScript, Vite, React Router, CSS Modules |
 | Backend | Python 3.11+, FastAPI, SQLAlchemy 2, Pydantic v2 |
 | Banco | SQLite (inicial), preparado para PostgreSQL |
-| IA | Abacus AI (provider abstraído) |
+| IA | Abacus AI ou OpenAI (provider abstraído; BYOK por usuário) |
 | Testes | pytest + httpx (backend), Vitest + React Testing Library (frontend) |
 | Auth | JWT (HS256) + bcrypt |
 | VCS | Git (trunk-based em `develop`, releases via `release/*`) |
@@ -71,13 +71,22 @@ Documentação interativa da API: <http://localhost:8000/docs>
 | `SECRET_KEY` | Chave usada para assinar JWT | _obrigatória_ |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Expiração do token | `60` |
 | `ALLOWED_ORIGINS` | Origens CORS permitidas (CSV) | `http://localhost:5173` |
+| `ENCRYPTION_KEY` | Cifra as API keys BYOK (deriva de `SECRET_KEY` se vazia) | _deriva de `SECRET_KEY`_ |
 | `ABACUS_API_URL` | URL base da API Abacus (RouteLLM) | `https://routellm.abacus.ai` |
 | `ABACUS_API_KEY` | API key Abacus | _obrigatória em produção_ |
 | `ABACUS_MODEL` | Modelo usado no chat completions | `gpt-5` |
-| `ABACUS_TIMEOUT_SECONDS` | Timeout HTTP em segundos | `60` |
-| `AI_PROVIDER` | `abacus` ou `fake` (para dev/teste) | `abacus` |
+| `ABACUS_TIMEOUT_SECONDS` | Timeout HTTP em segundos | `300` |
+| `OPENAI_API_URL` | URL base da API OpenAI | `https://api.openai.com` |
+| `OPENAI_API_KEY` | API key OpenAI (provider global alternativo) | _opcional_ |
+| `OPENAI_MODEL` | Modelo OpenAI padrão | `gpt-4o-mini` |
+| `AI_PROVIDER` | `abacus`, `openai` ou `fake` (dev/teste) | `abacus` |
 
 > Em desenvolvimento, basta deixar `AI_PROVIDER=fake` para usar o provider determinístico (sem custo nem rede).
+
+> **BYOK (Bring Your Own Key):** cada usuário pode trazer a própria chave de IA
+> em **Minha conta → Chave de IA**, escolhendo Abacus ou OpenAI. A chave é
+> cifrada em repouso (Fernet) e usada só nas trilhas daquele usuário. Sem chave
+> própria, o Mentor usa o provider global definido por `AI_PROVIDER`.
 
 ### Rodar testes — backend
 

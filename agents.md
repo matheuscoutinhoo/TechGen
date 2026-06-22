@@ -623,9 +623,33 @@ Checklist antes de migrar:
 
 ---
 
-## 32. Integração com Abacus AI
+## 32. Integração com IA (Abacus / OpenAI — provider-agnóstico)
 
-- Acessada **apenas** via `AbacusAIProvider`, que implementa a interface `AIProvider`.
+- O sistema é **agnóstico quanto ao provedor de IA**. Tudo é acessado via a
+  interface `AIProvider`. Há duas implementações HTTP reais —
+  `AbacusAIProvider` e `OpenAIAIProvider` — além do `FakeAIProvider` de teste.
+- **Mesmo contrato.** Abacus (RouteLLM) e OpenAI falam exatamente o mesmo
+  contrato Chat Completions (`POST {base}/v1/chat/completions`, header
+  `Authorization: Bearer <key>`, resposta em `choices[0].message.content`).
+  Por isso `OpenAIAIProvider` **herda** de `AbacusAIProvider`, sobrescrevendo
+  apenas a base URL padrão (`https://api.openai.com`), o `provider_label` e as
+  mensagens de erro (timeout/créditos) que citam termos específicos. Toda a
+  lógica de payload, parsing e tratamento de erro é compartilhada.
+- **Duas formas de configurar a chave:**
+  - **Global (por ambiente):** `AI_PROVIDER` (`abacus` | `openai` | `fake`)
+    define o provider de fallback. É usado quando o usuário não trouxe a
+    própria chave.
+  - **Por usuário (BYOK):** cada usuário pode trazer a própria credencial via
+    `/api/v1/ai-credentials`, escolhendo `abacus` ou `openai`. Quando presente,
+    ela tem prioridade sobre o provider global. Detalhes na §41.
+- A montagem é feita pela factory `app/services/ai/factory.py`:
+  - `get_ai_provider()` — provider GLOBAL (cacheado), lido das settings.
+  - `build_provider_for_credential(provider, api_key, model, base_url)` — monta
+    o provider de um usuário a partir da credencial **decifrada**. NUNCA
+    cacheado (lida com segredo por requisição).
+- A injeção em `app/api/deps.py` (`get_ai_provider_dep`) resolve, por
+  requisição: credencial do usuário → provider BYOK; senão → provider global.
+  Nos testes, o `conftest` sobrescreve esse callable com o `FakeAIProvider`.
 - Usa o endpoint **RouteLLM** da Abacus em `POST {ABACUS_API_URL}/v1/chat/completions`, compatível com o contrato OpenAI Chat Completions.
 - Configuração por variáveis de ambiente:
   - `ABACUS_API_URL` (padrão `https://routellm.abacus.ai`)
@@ -754,6 +778,10 @@ Checklist antes de migrar:
 - Usuário só acessa as próprias trilhas (autorização verificada no service).
 - Validação de input no boundary (Pydantic).
 - Sem segredos em código ou logs.
+- **API keys BYOK do usuário são cifradas em repouso** (Fernet, em
+  `app/core/crypto.py`). Nunca são persistidas em texto puro, nunca retornam
+  pela API (só máscara dos últimos 4 caracteres) e nunca aparecem em log. A
+  chave de cifragem vem de `ENCRYPTION_KEY` (ou deriva de `SECRET_KEY`).
 - Rate limiting é evolução futura prevista (não bloqueia v0.1).
 
 ---
@@ -1185,6 +1213,78 @@ conceitos auxiliares fora dela quando o projeto exigir.
 
 ---
 
+## 41. BYOK — Credenciais de IA do Usuário (provider-agnóstico)
+
+Cada usuário pode **trazer a própria API key** de IA (Bring Your Own Key) e
+escolher o provedor. Um usuário pode usar Abacus enquanto outro usa OpenAI —
+sem qualquer mudança de código. Quando o usuário não configura nada, o sistema
+cai no provider global definido por ambiente (§32).
+
+### Princípio central
+- **Uma credencial ativa por usuário** (one-to-one). Trocar de provedor é
+  sobrescrever a credencial. A chave é **write-only** pela API: entra no `PUT`,
+  nunca volta.
+- **Máxima proteção do segredo:** cifrado em repouso (Fernet), nunca logado,
+  nunca devolvido em texto puro (a leitura expõe só `••••` + 4 últimos chars).
+
+### Modelo (`app/models/ai_credential.py`)
+- Tabela `ai_credentials`: `id`, `user_id` (FK único, cascade), `provider`
+  (`abacus` | `openai`), `encrypted_api_key` (Text), `model` (nullable),
+  `base_url` (nullable), timestamps. Apenas tipos portáveis (§31).
+- `AI_PROVIDER_KINDS` é a fonte de verdade dos provedores suportados.
+- Migration aditiva `f7a8b9c0d1e2` (nova tabela; down_revision `e6f7a8b9c0d1`).
+
+### Criptografia (`app/core/crypto.py`)
+- `encrypt_secret`/`decrypt_secret` via `cryptography.fernet.Fernet`.
+- `mask_secret` devolve `••••` + últimos 4 caracteres para a UI.
+- Chave Fernet derivada (SHA-256 → urlsafe-base64) de `ENCRYPTION_KEY` quando
+  definida, senão de `SECRET_KEY`. Determinística: rotacionar a fonte invalida
+  o que já foi cifrado (documentado).
+
+### Schemas (`app/schemas/ai_credential.py`)
+- `AICredentialUpsert` (write): `provider`, `api_key` (min 8), `model?`,
+  `base_url?` (precisa começar com http/https). Valida o provider.
+- `AICredentialStatus` (read): `configured`, `provider`, `model`, `base_url`,
+  `key_masked`, `updated_at`. **NUNCA** expõe a chave ou o valor cifrado.
+
+### Service / Repository
+- `AICredentialRepository.upsert` cria ou substitui a credencial do usuário.
+- `AICredentialService`: `get_status` (mascara), `upsert` (cifra antes de
+  persistir), `delete` (404 se não houver), `build_provider` (decifra e delega
+  à factory; devolve `None` quando o usuário não tem credencial → fallback).
+
+### Endpoints (`app/api/v1/ai_credentials.py`)
+- `GET /api/v1/ai-credentials` → `AICredentialStatus` (configurada ou não).
+- `PUT /api/v1/ai-credentials` → cria/atualiza; devolve status mascarado.
+- `DELETE /api/v1/ai-credentials` → 204 (404 se nada a remover).
+- Todos autenticados; a credencial é **isolada por usuário**.
+
+### Variáveis de ambiente
+- `ENCRYPTION_KEY` (opcional; deriva de `SECRET_KEY` quando vazia).
+- `AI_PROVIDER` aceita `openai` além de `abacus`/`fake`.
+- `OPENAI_API_URL` (padrão `https://api.openai.com`), `OPENAI_API_KEY`,
+  `OPENAI_MODEL` (padrão `gpt-4o-mini`), `OPENAI_TIMEOUT_SECONDS`. Servem ao
+  provider global OpenAI e como defaults do modo BYOK `openai`.
+
+### UX (frontend)
+- Seção **"Chave de IA (BYOK)"** na página de conta, componente
+  `components/account/AICredentialEditor` (autocontido, via `useAiCredential`).
+- Seletor de provedor (Abacus / OpenAI), campo de chave (`type="password"`,
+  write-only), modelo e base URL opcionais. Quando configurada, mostra a pílula
+  **"Configurada"** + a chave mascarada + botão **Remover**.
+- A chave nunca é pré-preenchida (o backend não a devolve). Atualizar exige
+  reenviar a chave.
+
+### Testes
+- Backend: round-trip de cifragem, CRUD/máscara do service, montagem de provider
+  por credencial, isolamento por usuário, e a API completa (incluindo que a
+  chave nunca vaza na resposta).
+- Frontend: estados configurado/não-configurado, validação, save e remove.
+- O `FakeAIProvider` permanece o default de teste; sem credencial, o fallback
+  por ambiente é preservado — **BYOK não quebra nada do fluxo existente**.
+
+---
+
 ## 36. Como Usar Este Documento
 
 - Antes de implementar qualquer coisa, **consulte a seção relevante**.
@@ -1194,4 +1294,4 @@ conceitos auxiliares fora dela quando o projeto exigir.
 
 ---
 
-_Última atualização: v0.3.0 — adicionado modo "Por projeto" (escopo + tecnologias) na criação de trilhas._
+_Última atualização: v0.4.0 — BYOK provider-agnóstico (Abacus/OpenAI): cada usuário traz a própria API key, cifrada em repouso, com fallback por ambiente preservado._

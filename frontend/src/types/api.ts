@@ -24,6 +24,30 @@ export interface SkillInput {
    proficiency: ProficiencyLevel;
 }
 
+/** Providers de IA suportados no modo BYOK (Bring Your Own Key). */
+export type AIProviderKind = 'abacus' | 'openai';
+
+/**
+ * Estado da credencial de IA do usuário, seguro para o cliente: nunca traz a
+ * chave em texto puro, apenas uma versão mascarada (ex.: `••••1234`).
+ */
+export interface AICredentialStatus {
+   configured: boolean;
+   provider: AIProviderKind | null;
+   model: string | null;
+   base_url: string | null;
+   key_masked: string | null;
+   updated_at: string | null;
+}
+
+/** Payload de criação/atualização da credencial (a chave só trafega aqui). */
+export interface AICredentialUpsert {
+   provider: AIProviderKind;
+   api_key: string;
+   model?: string | null;
+   base_url?: string | null;
+}
+
 export interface AuthResponse {
    access_token: string;
    token_type: string;

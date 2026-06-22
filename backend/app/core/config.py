@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     secret_key: str = Field(default="dev-secret-change-me", min_length=16)
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
+    # Chave de criptografia simétrica para segredos do usuário (BYOK: API keys
+    # de IA cifradas em repouso). Quando vazia, é derivada de ``secret_key``.
+    # Em produção, defina uma ``ENCRYPTION_KEY`` dedicada e estável — rotacionar
+    # a fonte invalida as chaves já gravadas.
+    encryption_key: str = ""
 
     # CORS — ``NoDecode`` impede o pydantic-settings 2.10+ de tentar JSON-parse
     # do valor cru; o validator abaixo cuida do split CSV.
@@ -33,8 +38,10 @@ class Settings(BaseSettings):
         default_factory=lambda: ["http://localhost:5173"]
     )
 
-    # IA
-    ai_provider: Literal["abacus", "fake"] = "fake"
+    # IA — provider GLOBAL (fallback usado quando o usuário não trouxe a
+    # própria chave via BYOK). Cada usuário pode sobrepor isto com a sua
+    # credencial em ``/api/v1/ai-credentials``.
+    ai_provider: Literal["abacus", "openai", "fake"] = "fake"
     abacus_api_url: str = "https://routellm.abacus.ai"
     abacus_api_key: str = ""
     abacus_model: str = "gpt-5"
@@ -52,6 +59,14 @@ class Settings(BaseSettings):
     # quando vazio.
     abacus_categorizer_model: str = "claude-haiku-4-5-20251001"
     abacus_timeout_seconds: int = 300
+
+    # OpenAI — provider GLOBAL alternativo (e defaults do modo BYOK quando o
+    # usuário escolhe "openai" sem especificar modelo/URL). A OpenAI fala o
+    # mesmo contrato Chat Completions da Abacus, então reaproveitamos o provider.
+    openai_api_url: str = "https://api.openai.com"
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    openai_timeout_seconds: int = 300
 
     @field_validator("allowed_origins", mode="before")
     @classmethod

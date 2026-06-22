@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.user import User
+from app.repositories.ai_credential_repository import AICredentialRepository
 from app.repositories.concept_explanation_repository import (
     ConceptExplanationRepository,
 )
@@ -13,6 +14,7 @@ from app.repositories.skill_repository import SkillRepository
 from app.repositories.user_repository import UserRepository
 from app.services.ai.base import AIProvider
 from app.services.ai.factory import get_ai_provider
+from app.services.ai_credential_service import AICredentialService
 from app.services.auth_service import AuthService
 from app.services.learning_trail_service import LearningTrailService
 from app.services.skill_service import SkillService
@@ -40,6 +42,12 @@ def get_concept_explanation_repository(
     return ConceptExplanationRepository(db)
 
 
+def get_ai_credential_repository(
+    db: Session = Depends(get_db),
+) -> AICredentialRepository:
+    return AICredentialRepository(db)
+
+
 # -------- Services --------
 def get_skill_service(
     repo: SkillRepository = Depends(get_skill_repository),
@@ -60,24 +68,10 @@ def get_user_service(
     return UserService(repo)
 
 
-def get_ai_provider_dep() -> AIProvider:
-    return get_ai_provider()
-
-
-def get_learning_trail_service(
-    repo: LearningTrailRepository = Depends(get_learning_trail_repository),
-    ai: AIProvider = Depends(get_ai_provider_dep),
-    skill_service: SkillService = Depends(get_skill_service),
-    concept_cache: ConceptExplanationRepository = Depends(
-        get_concept_explanation_repository
-    ),
-) -> LearningTrailService:
-    return LearningTrailService(
-        repository=repo,
-        ai_provider=ai,
-        skill_service=skill_service,
-        concept_cache_repository=concept_cache,
-    )
+def get_ai_credential_service(
+    repo: AICredentialRepository = Depends(get_ai_credential_repository),
+) -> AICredentialService:
+    return AICredentialService(repo)
 
 
 # -------- Autenticação --------
@@ -113,3 +107,32 @@ def get_current_user(
             detail="Usuário do token não existe mais",
         )
     return user
+
+
+# -------- AIProvider (depende do usuário autenticado — BYOK) --------
+def get_ai_provider_dep(
+    current_user: User = Depends(get_current_user),
+    credential_service: AICredentialService = Depends(get_ai_credential_service),
+) -> AIProvider:
+    # BYOK: usa a credencial do próprio usuário quando existir; caso contrário,
+    # cai no provider global configurado por ambiente — preservando intacto o
+    # comportamento de quem não trouxe a própria chave (e o FakeAIProvider nos
+    # testes, via override deste callable no conftest).
+    return credential_service.build_provider(current_user) or get_ai_provider()
+
+
+def get_learning_trail_service(
+    repo: LearningTrailRepository = Depends(get_learning_trail_repository),
+    ai: AIProvider = Depends(get_ai_provider_dep),
+    skill_service: SkillService = Depends(get_skill_service),
+    concept_cache: ConceptExplanationRepository = Depends(
+        get_concept_explanation_repository
+    ),
+) -> LearningTrailService:
+    return LearningTrailService(
+        repository=repo,
+        ai_provider=ai,
+        skill_service=skill_service,
+        concept_cache_repository=concept_cache,
+    )
+

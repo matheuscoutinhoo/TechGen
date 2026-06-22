@@ -57,6 +57,11 @@ def _serialize_skills(
 
 
 class AbacusAIProvider(AIProvider):
+    # Rótulo do provider usado em logs e mensagens de erro. Subclasses (ex.:
+    # OpenAI) sobrescrevem para refletir o serviço real, sem duplicar a lógica
+    # HTTP — o contrato Chat Completions é idêntico.
+    provider_label: str = "Abacus"
+
     def __init__(
         self,
         *,
@@ -71,7 +76,8 @@ class AbacusAIProvider(AIProvider):
     ) -> None:
         if not api_key or not model:
             raise AIProviderError(
-                "Provider Abacus mal configurado: api_key e model são obrigatórios"
+                f"Provider {self.provider_label} mal configurado: "
+                "api_key e model são obrigatórios"
             )
         # Aceita URLs com sufixos comuns (ex.: .../v1, .../v1/chat/completions)
         # e normaliza para a base esperada.
@@ -389,6 +395,23 @@ class AbacusAIProvider(AIProvider):
     # ------------------------------------------------------------------ #
     # HTTP helpers
     # ------------------------------------------------------------------ #
+    def _timeout_message(self) -> str:
+        """Mensagem de timeout. Sobrescrita pelas subclasses por provider."""
+        return (
+            f"O Mentor demorou mais que {self.timeout_seconds}s para responder. "
+            "Aumente ABACUS_TIMEOUT_SECONDS no .env ou use um modelo mais rápido."
+        )
+
+    def _credits_message(self) -> str:
+        """Mensagem de conta sem créditos. Sobrescrita pelas subclasses."""
+        return (
+            "O Mentor está sem créditos na conta da Abacus AI para "
+            "chamar o modelo. Recarregue os créditos no painel da "
+            "Abacus ou troque ABACUS_MODEL/ABACUS_CONCEPT_MODEL por um "
+            "modelo dentro do seu plano. Em desenvolvimento, defina "
+            "AI_PROVIDER=fake no .env para trabalhar sem custo."
+        )
+
     def _call_api(self, payload: dict[str, Any]) -> dict[str, Any]:
         url = f"{self.api_url}/v1/chat/completions"
         headers = {
@@ -402,19 +425,19 @@ class AbacusAIProvider(AIProvider):
                 with httpx.Client(timeout=self.timeout_seconds) as client:
                     response = client.post(url, headers=headers, json=payload)
         except httpx.TimeoutException as exc:
-            logger.warning("Timeout (%ss) ao chamar Abacus", self.timeout_seconds)
-            raise AIProviderError(
-                f"O Mentor demorou mais que {self.timeout_seconds}s para responder. "
-                "Aumente ABACUS_TIMEOUT_SECONDS no .env ou use um modelo mais rápido."
-            ) from exc
+            logger.warning(
+                "Timeout (%ss) ao chamar %s", self.timeout_seconds, self.provider_label
+            )
+            raise AIProviderError(self._timeout_message()) from exc
         except httpx.HTTPError as exc:
-            logger.exception("Falha de rede ao chamar Abacus")
+            logger.exception("Falha de rede ao chamar %s", self.provider_label)
             raise AIProviderError("Falha ao contatar o Mentor. Tente novamente em instantes.") from exc
 
         if response.status_code >= 400:
             body_snippet = response.text[:500].strip()
             logger.error(
-                "Abacus retornou status %s em %s: %s",
+                "%s retornou status %s em %s: %s",
+                self.provider_label,
                 response.status_code,
                 response.request.url,
                 body_snippet,
@@ -424,13 +447,7 @@ class AbacusAIProvider(AIProvider):
             # ("verifique credenciais/modelo/URL") confunde — é mais honesto
             # dizer exatamente o que aconteceu e onde resolver.
             if "credit" in lowered or "quota" in lowered or "billing" in lowered:
-                raise AIProviderError(
-                    "O Mentor está sem créditos na conta da Abacus AI para "
-                    "chamar o modelo. Recarregue os créditos no painel da "
-                    "Abacus ou troque ABACUS_MODEL/ABACUS_CONCEPT_MODEL por um "
-                    "modelo dentro do seu plano. Em desenvolvimento, defina "
-                    "AI_PROVIDER=fake no .env para trabalhar sem custo."
-                )
+                raise AIProviderError(self._credits_message())
             raise AIProviderError(
                 f"O Mentor respondeu com erro (HTTP {response.status_code}). "
                 "Verifique credenciais, modelo e a URL configurados."

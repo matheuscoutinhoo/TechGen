@@ -23,8 +23,19 @@ const USER = {
    updated_at: '2025-01-02T00:00:00Z',
 };
 
+const AI_CREDENTIAL_NOT_CONFIGURED = {
+   configured: false,
+   provider: null,
+   model: null,
+   base_url: null,
+   key_masked: null,
+   updated_at: null,
+};
+
 function defaultFetch(skills: unknown[] = []) {
    return vi.fn().mockImplementation((url: string) => {
+      if (url.endsWith('/ai-credentials'))
+         return Promise.resolve(jsonResponse(AI_CREDENTIAL_NOT_CONFIGURED));
       if (url.endsWith('/skills')) return Promise.resolve(jsonResponse(skills));
       return Promise.resolve(jsonResponse(USER));
    });
@@ -64,6 +75,8 @@ describe('<AccountPage />', () => {
 
    it('atualiza o perfil e mostra feedback de sucesso', async () => {
       globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+         if (url.endsWith('/ai-credentials'))
+            return Promise.resolve(jsonResponse(AI_CREDENTIAL_NOT_CONFIGURED));
          if (url.endsWith('/skills')) return Promise.resolve(jsonResponse([]));
          if (init?.method === 'PATCH') {
             return Promise.resolve(jsonResponse({ ...USER, name: 'Ada Atualizada' }));
@@ -104,6 +117,8 @@ describe('<AccountPage />', () => {
    it('exclui conta após confirmação e navega para a home', async () => {
       vi.spyOn(window, 'confirm').mockReturnValue(true);
       globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+         if (url.endsWith('/ai-credentials'))
+            return Promise.resolve(jsonResponse(AI_CREDENTIAL_NOT_CONFIGURED));
          if (url.endsWith('/skills')) return Promise.resolve(jsonResponse([]));
          if (init?.method === 'DELETE') {
             return Promise.resolve(new Response(null, { status: 204 }));
